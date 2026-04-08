@@ -863,3 +863,4 @@ function ns.UI.CreateQuestsTab(parent)
         RefreshQuestList(panels)
     end)
 end
+-- End of file
