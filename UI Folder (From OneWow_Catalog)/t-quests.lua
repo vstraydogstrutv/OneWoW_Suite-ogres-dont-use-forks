@@ -1,3 +1,4 @@
+---@diagnostic disable: deprecated, need-check-nil
 -- OneWoW Addon File
 -- OneWoW_Catalog/UI/t-quests.lua
 -- Created by MichinMuggin (Ricky)

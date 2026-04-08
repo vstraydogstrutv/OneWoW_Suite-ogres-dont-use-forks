@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-field
 -- OneWoW Addon File
 -- OneWoW_CatalogData_Quests/Core/Core.lua
 -- Created by MichinMuggin (Ricky)
