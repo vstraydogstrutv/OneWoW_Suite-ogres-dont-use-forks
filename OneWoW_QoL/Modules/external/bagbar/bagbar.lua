@@ -1,7 +1,9 @@
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
-local PE = OneWoW_GUI and OneWoW_GUI.PredicateEngine
+if not OneWoW_GUI then return end
+
+local PE = OneWoW_GUI.PredicateEngine
 
 local BagBarModule = {
     id          = "bagbar",
@@ -17,17 +19,37 @@ local BagBarModule = {
     defaultEnabled = true,
 }
 
+local CLASSID_CONSUMABLE = 0
+local CLASSID_CONTAINER  = 1
+local CLASSID_RECIPE     = 9
+local CLASSID_MISC       = 15
+local CLASSID_BATTLEPET  = 17
+local CLASSID_PROFESSION = 19
+
+local MISC_SUB_COMPANION = 2
+local MISC_SUB_MOUNT     = 5
+
 local barFrame      = nil
 local holders       = {}
 local buttons       = {}
-local currentItems  = {}
 local updateTimer   = nil
 local tempBlacklist = {}
 local previewMode   = false
 
-local function SyncKeybindings()
-    if InCombatLockdown() then return end
+local function ModuleBagEnabled()
+    return ns.ModuleRegistry:IsEnabled("bagbar")
+end
+
+local function HideChrome()
     if not barFrame then return end
+    barFrame:Hide()
+    local dh = barFrame.dragHandle
+    if dh then dh:Hide() end
+end
+
+local function SyncKeybindings()
+    if OneWoW_GUI:IsAddonRestricted() then return end
+    if not ModuleBagEnabled() or not barFrame then return end
     ClearOverrideBindings(barFrame)
     for i = 1, 4 do
         local key = GetBindingKey("BAGITEM_" .. i)
@@ -62,31 +84,52 @@ local function GetSettings()
     return s
 end
 
+local function PassesAdvancedFilter(itemID, bag, slot)
+    local s = GetSettings()
+    local expr = s.advancedFilter
+    if not expr or expr == "" then return true end
+    return PE:CheckItem(expr, itemID, bag, slot) == true
+end
+
+local function ClearBagBarButton(button)
+    if not button then return end
+    button.owb_itemID = nil
+    button.owb_bag = nil
+    button.owb_slot = nil
+    button.owb_itemLink = nil
+    button:SetAttribute("type1", nil)
+    button:SetAttribute("item1", nil)
+    if button.icon then button.icon:SetTexture(nil) end
+    if button.count then button.count:SetText("") end
+    if button.cooldown then
+        button.cooldown:Hide()
+        button.cooldown:Clear()
+    end
+end
+
+local function TeardownBar()
+    previewMode = false
+    if updateTimer then
+        updateTimer:Cancel()
+        updateTimer = nil
+    end
+    if barFrame then
+        ClearOverrideBindings(barFrame)
+        for i = 1, 12 do
+            ClearBagBarButton(buttons[i])
+        end
+        HideChrome()
+        local dh = barFrame.dragHandle
+        if dh then dh:SetAlpha(1) end
+    end
+end
+
 BagBarModule.GetSettings = GetSettings
 
 function BagBarModule:IsBlacklisted(itemID)
     if tempBlacklist[itemID] then return true end
     local s = GetSettings()
     return s.blacklist and s.blacklist[itemID] == true
-end
-
-local CLASSID_CONSUMABLE = 0
-local CLASSID_CONTAINER  = 1
-local CLASSID_RECIPE     = 9
-local CLASSID_MISC       = 15
-local CLASSID_BATTLEPET  = 17
-local CLASSID_PROFESSION = 19
-
-local MISC_SUB_COMPANION = 2
-local MISC_SUB_MOUNT     = 5
-
-local function PassesAdvancedFilter(itemID, bag, slot)
-    local s = GetSettings()
-    local expr = s.advancedFilter
-    if not expr or expr == "" or not PE then return true end
-    local ok, matched = pcall(PE.CheckItem, PE, expr, itemID, bag, slot)
-    if not ok then return true end
-    return matched == true
 end
 
 function BagBarModule:PassesCategoryFilter(itemID, bag, slot)
@@ -145,45 +188,10 @@ function BagBarModule:OnDisable()
     if self._eventFrame then
         self._eventFrame:UnregisterAllEvents()
     end
-    if barFrame then
-        ClearOverrideBindings(barFrame)
-    end
-    for i = 1, 12 do
-        local b = buttons[i]
-        if b then
-            b.owb_itemID = nil
-            b.owb_bag = nil
-            b.owb_slot = nil
-            b.owb_itemLink = nil
-            b:SetAttribute("type1", nil)
-            b:SetAttribute("item1", nil)
-        end
-    end
-    if barFrame then
-        barFrame:Hide()
-        if barFrame.dragHandle then
-            barFrame.dragHandle:Hide()
-        end
-    end
+    TeardownBar()
 end
 
-function BagBarModule:OnToggle(toggleId, value)
-end
-
-local function ClearBagBarButton(button)
-    if not button then return end
-    button.owb_itemID = nil
-    button.owb_bag = nil
-    button.owb_slot = nil
-    button.owb_itemLink = nil
-    button:SetAttribute("type1", nil)
-    button:SetAttribute("item1", nil)
-    if button.icon then button.icon:SetTexture(nil) end
-    if button.count then button.count:SetText("") end
-    if button.cooldown then
-        button.cooldown:Hide()
-        button.cooldown:Clear()
-    end
+function BagBarModule:OnToggle()
 end
 
 function BagBarModule:CreateBar()
@@ -214,13 +222,8 @@ function BagBarModule:CreateBar()
         edgeSize = 0,
         insets = { left = 0, right = 0, top = 0, bottom = 0 },
     })
-    if OneWoW_GUI then
-        dragHandle:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
-        dragHandle:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
-    else
-        dragHandle:SetBackdropColor(0.2, 0.2, 0.2, 0.9)
-        dragHandle:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
-    end
+    dragHandle:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
+    dragHandle:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
     dragHandle:EnableMouse(true)
     dragHandle:RegisterForDrag("LeftButton")
     dragHandle:SetMovable(true)
@@ -228,54 +231,42 @@ function BagBarModule:CreateBar()
     local dragLine = dragHandle:CreateTexture(nil, "ARTWORK")
     dragLine:SetSize(3, 20)
     dragLine:SetPoint("CENTER")
-    if OneWoW_GUI then
-        dragLine:SetColorTexture(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
-    else
-        dragLine:SetColorTexture(0.6, 0.6, 0.6, 1)
-    end
+    dragLine:SetColorTexture(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
     dragHandle.dragLine = dragLine
 
-    dragHandle:SetScript("OnEnter", function(self)
+    dragHandle:SetScript("OnEnter", function(myself)
         local st = GetSettings()
         if st.hideAnchor and not st.locked then
-            self:SetAlpha(1)
+            myself:SetAlpha(1)
         end
-        if OneWoW_GUI then
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-        else
-            self:SetBackdropColor(0.3, 0.3, 0.3, 1)
-        end
+        myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
         local dir = st.growDirection or "RIGHT"
         local tooltipAnchor = (dir == "LEFT") and "ANCHOR_RIGHT" or "ANCHOR_LEFT"
-        GameTooltip:SetOwner(self, tooltipAnchor)
+        GameTooltip:SetOwner(myself, tooltipAnchor)
         GameTooltip:SetText(ns.L["BAGBAR_TITLE"], 1, 1, 1)
         GameTooltip:AddLine(ns.L["BAGBAR_DRAG_TOOLTIP"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
-    dragHandle:SetScript("OnLeave", function(self)
+    dragHandle:SetScript("OnLeave", function(myself)
         local st = GetSettings()
         if st.hideAnchor and not st.locked then
-            self:SetAlpha(0)
+            myself:SetAlpha(0)
         end
-        if OneWoW_GUI then
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
-        else
-            self:SetBackdropColor(0.15, 0.15, 0.15, 0.9)
-        end
+        myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
         GameTooltip:Hide()
     end)
-    dragHandle:SetScript("OnDragStart", function(self)
+    dragHandle:SetScript("OnDragStart", function()
         if not GetSettings().locked then
             barFrame:StartMoving()
         end
     end)
-    dragHandle:SetScript("OnDragStop", function(self)
+    dragHandle:SetScript("OnDragStop", function()
         barFrame:StopMovingOrSizing()
         BagBarModule:SavePosition()
     end)
-    dragHandle:SetScript("OnMouseUp", function(self, mouseButton)
+    dragHandle:SetScript("OnMouseUp", function(myself, mouseButton)
         if mouseButton == "RightButton" then
-            BagBarModule:ShowContextMenu(self)
+            BagBarModule:ShowContextMenu(myself)
         end
     end)
 
@@ -306,9 +297,7 @@ function BagBarModule:CreateButton(index)
     button.icon = icon
     button._skinnedIcon = icon
 
-    if OneWoW_GUI then
-        OneWoW_GUI:SkinIconFrame(button, { preset = "clean" })
-    end
+    OneWoW_GUI:SkinIconFrame(button, { preset = "clean" })
 
     button.count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     button.count:SetPoint("BOTTOMRIGHT", -2, 2)
@@ -318,17 +307,15 @@ function BagBarModule:CreateButton(index)
     button.cooldown:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT")
     button.cooldown:SetDrawEdge(false)
     button.cooldown:SetHideCountdownNumbers(false)
-    if OneWoW_GUI then
-        OneWoW_GUI:SkinCooldown(button.cooldown)
-    end
+    OneWoW_GUI:SkinCooldown(button.cooldown)
 
-    button:SetScript("OnEnter", function(self)
-        if not self.owb_itemID or not self.owb_bag or not self.owb_slot then return end
-        if self._skinBorder and not (self._skinQuality and self._skinQuality > 1) then
-            self._skinBorder:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+    button:SetScript("OnEnter", function(myself)
+        if not myself.owb_itemID or not myself.owb_bag or not myself.owb_slot then return end
+        if myself._skinBorder and not (myself._skinQuality and myself._skinQuality > 1) then
+            myself._skinBorder:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
         end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetHyperlink(self.owb_itemLink or ("item:" .. self.owb_itemID))
+        GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
+        GameTooltip:SetHyperlink(myself.owb_itemLink or ("item:" .. myself.owb_itemID))
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(ns.L["BAGBAR_LEFT_CLICK_TO_USE"], 1, 1, 1)
         GameTooltip:AddLine(ns.L["BAGBAR_SHIFT_RIGHT_CLICK_TO_SKIP"], 0.7, 0.7, 0.7)
@@ -336,16 +323,16 @@ function BagBarModule:CreateButton(index)
         GameTooltip:Show()
     end)
 
-    button:SetScript("OnLeave", function(self)
-        if self._skinBorder and not (self._skinQuality and self._skinQuality > 1) then
-            self._skinBorder:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
+    button:SetScript("OnLeave", function(myself)
+        if myself._skinBorder and not (myself._skinQuality and myself._skinQuality > 1) then
+            myself._skinBorder:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
         end
         GameTooltip:Hide()
     end)
 
-    button:SetScript("PostClick", function(self, mouseButton)
-        if mouseButton == "RightButton" and self.owb_itemID and (IsShiftKeyDown() or IsAltKeyDown()) then
-            BagBarModule:AddToBlacklist(self.owb_itemID, IsAltKeyDown())
+    button:SetScript("PostClick", function(myself, mouseButton)
+        if mouseButton == "RightButton" and myself.owb_itemID and (IsShiftKeyDown() or IsAltKeyDown()) then
+            BagBarModule:AddToBlacklist(myself.owb_itemID, IsAltKeyDown())
             BagBarModule:ScheduleUpdate()
         end
     end)
@@ -397,7 +384,7 @@ function BagBarModule:SavePosition()
         end
         yOffset = isDown and (top - screenHeight) or bottom
 
-    else -- RIGHT (default)
+    else
         local centerY = (top + bottom) / 2
         if centerY > (screenHeight * 0.66) then
             anchorPoint = "TOPLEFT"
@@ -434,17 +421,14 @@ function BagBarModule:RegisterEvents()
     self._eventFrame:RegisterEvent("TRADE_SKILL_CLOSE")
     self._eventFrame:RegisterEvent("UPDATE_BINDINGS")
 
-    self._eventFrame:SetScript("OnEvent", function(self, event)
+    self._eventFrame:SetScript("OnEvent", function(_, event)
         if event == "UPDATE_BINDINGS" then
             SyncKeybindings()
             return
         elseif event == "TRADE_SKILL_SHOW" then
             BagBarModule._suppressedForProfessions = true
             if updateTimer then updateTimer:Cancel() end
-            if barFrame then
-                barFrame:Hide()
-                if barFrame.dragHandle then barFrame.dragHandle:Hide() end
-            end
+            HideChrome()
         elseif event == "TRADE_SKILL_CLOSE" then
             BagBarModule._suppressedForProfessions = false
             BagBarModule:ScheduleUpdate()
@@ -460,13 +444,21 @@ function BagBarModule:RegisterEvents()
             BagBarModule:UpdateCooldowns()
         elseif event == "PLAYER_ENTERING_WORLD" then
             C_Timer.After(2, function()
+                if not ModuleBagEnabled() or not barFrame then return end
                 BagBarModule:UpdateBar()
-                C_Timer.After(2, function() BagBarModule:UpdateBar() end)
+                C_Timer.After(2, function()
+                    if not ModuleBagEnabled() or not barFrame then return end
+                    BagBarModule:UpdateBar()
+                end)
             end)
         elseif event == "GET_ITEM_INFO_RECEIVED" then
             if not itemInfoPending then
                 itemInfoPending = true
                 C_Timer.After(0.5, function()
+                    if not ModuleBagEnabled() or not barFrame then
+                        itemInfoPending = false
+                        return
+                    end
                     BagBarModule:ScheduleUpdate()
                     itemInfoPending = false
                 end)
@@ -476,6 +468,7 @@ function BagBarModule:RegisterEvents()
 end
 
 function BagBarModule:ScheduleUpdate()
+    if not ModuleBagEnabled() or not barFrame then return end
     if updateTimer then
         updateTimer:Cancel()
     end
@@ -541,6 +534,10 @@ end
 
 function BagBarModule:UpdateBar()
     if not barFrame then return end
+    if not ModuleBagEnabled() then
+        HideChrome()
+        return
+    end
     if InCombatLockdown() then
         self.needsUpdate = true
         return
@@ -548,19 +545,11 @@ function BagBarModule:UpdateBar()
     self.needsUpdate = false
 
     if self._suppressedForProfessions then
-        barFrame:Hide()
-        if barFrame.dragHandle then barFrame.dragHandle:Hide() end
-        return
-    end
-
-    if not ns.ModuleRegistry:IsEnabled("bagbar") then
-        barFrame:Hide()
-        if barFrame.dragHandle then barFrame.dragHandle:Hide() end
+        HideChrome()
         return
     end
 
     local items     = self:GetUsableItems()
-    currentItems    = items
     local s         = GetSettings()
     local maxBtns   = s.maxButtons or 12
     local itemCount = #items
@@ -569,8 +558,7 @@ function BagBarModule:UpdateBar()
         for i = 1, 12 do
             ClearBagBarButton(buttons[i])
         end
-        barFrame:Hide()
-        if barFrame.dragHandle then barFrame.dragHandle:Hide() end
+        HideChrome()
         return
     end
 
@@ -605,6 +593,7 @@ function BagBarModule:UpdateBar()
 end
 
 function BagBarModule:LayoutButtons(count)
+    if not barFrame then return end
     local s       = GetSettings()
     local btnSize = s.buttonSize or 36
     local spacing = s.iconSpacing or 4
@@ -637,9 +626,7 @@ function BagBarModule:LayoutButtons(count)
         local b = buttons[i]
         b:SetSize(btnSize, btnSize)
 
-        if OneWoW_GUI then
-            OneWoW_GUI:SkinIconFrame(b, { preset = "clean" })
-        end
+        OneWoW_GUI:SkinIconFrame(b, { preset = "clean" })
 
         holders[i]:Show()
     end
@@ -657,8 +644,8 @@ function BagBarModule:LayoutButtons(count)
         barFrame:SetSize(btnSize, btnSize)
     end
 
-    if barFrame.dragHandle then
-        local dh = barFrame.dragHandle
+    local dh = barFrame.dragHandle
+    if dh then
         local bw = barFrame:GetWidth()
         local bh = barFrame:GetHeight()
         dh:ClearAllPoints()
@@ -675,7 +662,7 @@ function BagBarModule:LayoutButtons(count)
             dh:SetSize(math.max(bw, 36), 20)
             dh:SetPoint("TOP", barFrame, "BOTTOM", 0, -2)
             if dh.dragLine then dh.dragLine:SetSize(20, 3) end
-        else -- RIGHT
+        else
             dh:SetSize(20, math.max(bh, 36))
             dh:SetPoint("RIGHT", barFrame, "LEFT", -2, 0)
             if dh.dragLine then dh.dragLine:SetSize(3, 20) end
@@ -693,6 +680,7 @@ function BagBarModule:LayoutButtons(count)
 end
 
 function BagBarModule:UpdateCooldowns()
+    if not ModuleBagEnabled() or not barFrame then return end
     for i = 1, 12 do
         local b = buttons[i]
         if holders[i] and holders[i]:IsShown() and b and b.owb_bag and b.owb_slot then
@@ -707,21 +695,23 @@ end
 function BagBarModule:SetLocked(locked)
     local s = GetSettings()
     s.locked = locked
-    if barFrame and barFrame.dragHandle then
-        if locked then
-            barFrame.dragHandle:Hide()
-            barFrame.dragHandle:SetAlpha(1)
-        elseif s.hideAnchor then
-            barFrame.dragHandle:Show()
-            barFrame.dragHandle:SetAlpha(0)
-        else
-            barFrame.dragHandle:Show()
-            barFrame.dragHandle:SetAlpha(1)
-        end
+    if not barFrame then return end
+    local dh = barFrame.dragHandle
+    if not dh then return end
+    if locked then
+        dh:Hide()
+        dh:SetAlpha(1)
+    elseif s.hideAnchor then
+        dh:Show()
+        dh:SetAlpha(0)
+    else
+        dh:Show()
+        dh:SetAlpha(1)
     end
 end
 
 function BagBarModule:ShowPreview()
+    if not ModuleBagEnabled() then return end
     previewMode = true
     if not barFrame then
         self:CreateBar()
@@ -750,6 +740,7 @@ function BagBarModule:OpenSettings()
 end
 
 function BagBarModule:ShowContextMenu(anchor)
+    if not ModuleBagEnabled() then return end
     if MenuUtil and MenuUtil.CreateContextMenu then
         MenuUtil.CreateContextMenu(anchor, function(_, rootDescription)
             local s = GetSettings()
