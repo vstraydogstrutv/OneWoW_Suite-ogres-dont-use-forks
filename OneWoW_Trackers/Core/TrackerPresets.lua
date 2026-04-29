@@ -379,9 +379,9 @@ local BUNDLED_GUIDES = {
     },
     {
         id = "bundled_midnight_routine",
-        version = 1,
+        version = 2,
         data = {
-            title = "Midnight Weekly Routine",
+            title = "Campaign Weekly Tracker: Midnight",
             description = "Comprehensive weekly checklist for Midnight expansion content. Tracks weekly quests, Great Vault, crests, hunts, delves, PvP, and renown.",
             listType = "weekly",
             category = "Weeklies",
