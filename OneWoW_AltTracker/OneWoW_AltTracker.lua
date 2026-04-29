@@ -80,12 +80,6 @@ local function OnInitialize()
             ns.UI.ResizeOverviewPanels()
         end
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnMinimapChanged", OneWoWAltTracker, function(owner, hidden)
-        if owner.Minimap then owner.Minimap:SetShown(not hidden) end
-    end)
-    OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", OneWoWAltTracker, function(owner)
-        if owner.Minimap then owner.Minimap:UpdateIcon() end
-    end)
     OneWoW_GUI:RegisterSettingsCallback("OnMoneyDisplayChanged", OneWoWAltTracker, function()
         if ns.UI.RefreshMoneyDisplayTabs then
             ns.UI.RefreshMoneyDisplayTabs()
@@ -115,25 +109,6 @@ local function OnEnable()
 
     RegisterWithOneWoW()
 
-    if not ns.oneWoWHubActive then
-        OneWoWAltTracker.Minimap = OneWoW_GUI:CreateMinimapLauncher("OneWoW_AltTracker", {
-            label = "AltTracker",
-            onClick = function()
-                if ns.UI and ns.UI.Toggle then ns.UI:Toggle() end
-            end,
-            onRightClick = function()
-                if ns.UI and ns.UI.Show then ns.UI:Show("settings") end
-            end,
-            onTooltip = function(frame)
-                GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-                GameTooltip:AddLine(ns.L["ADDON_TITLE_FRAME"], 1, 0.82, 0, 1)
-                if ns.L["MINIMAP_TOOLTIP_HINT"] then
-                    GameTooltip:AddLine(ns.L["MINIMAP_TOOLTIP_HINT"], 0.7, 0.7, 0.8, 1)
-                end
-                GameTooltip:Show()
-            end,
-        })
-    end
     if _G.OneWoW then
         _G.OneWoW:RegisterMinimap("OneWoW_AltTracker", (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_ALTTRACKER"]) or "Open AltTracker", "alttracker", nil)
     end
@@ -240,32 +215,3 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
-_G["1WoW_AltTracker_OnAddonCompartmentClick"] = function(addonName, buttonName)
-    if ns.oneWoWHubActive and _G.OneWoW and _G.OneWoW.GUI then
-        _G.OneWoW.GUI:Show("alttracker")
-        return
-    end
-    if buttonName == "LeftButton" then
-        if ns.UI and ns.UI.Toggle then
-            ns.UI:Toggle()
-        end
-    elseif buttonName == "RightButton" then
-        if ns.UI and ns.UI.Show then
-            ns.UI:Show("settings")
-        end
-    end
-end
-
-_G["1WoW_AltTracker_OnAddonCompartmentEnter"] = function(addonName, menuButtonFrame)
-    GameTooltip:SetOwner(menuButtonFrame, "ANCHOR_LEFT")
-    local L = _G.OneWoW_AltTracker and _G.OneWoW_AltTracker.L
-    GameTooltip:SetText(L and L["ADDON_TITLE_FRAME"] or "|cFFFFD100OneWoW|r - AltTracker")
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddLine(L and L["UI_MINIMAP_LEFT_CLICK"] or "Left-Click to open AltTracker", 1, 1, 1)
-    GameTooltip:AddLine(L and L["UI_MINIMAP_RIGHT_CLICK"] or "Right-Click for options", 1, 1, 1)
-    GameTooltip:Show()
-end
-
-_G["1WoW_AltTracker_OnAddonCompartmentLeave"] = function(addonName, menuButtonFrame)
-    GameTooltip:Hide()
-end

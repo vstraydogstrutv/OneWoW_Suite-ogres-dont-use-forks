@@ -73,12 +73,6 @@ local function OnInitialize()
             OneWoW_GUI:ApplyFontToFrame(mainFrame)
         end
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnMinimapChanged", addon, function(owner, hidden)
-        if owner.Minimap then owner.Minimap:SetShown(not hidden) end
-    end)
-    OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", addon, function(owner)
-        if owner.Minimap then owner.Minimap:UpdateIcon() end
-    end)
     OneWoW_GUI:RegisterSettingsCallback("OnMoneyDisplayChanged", addon, function()
         if ns.UI.RefreshItemSearchList then ns.UI.RefreshItemSearchList() end
         if ns.UI.RefreshVendorsList then ns.UI.RefreshVendorsList() end
@@ -92,26 +86,7 @@ local function OnInitialize()
 end
 
 local function OnEnable()
-    local L = ns.L
     RegisterWithOneWoW()
-
-    if not ns.oneWoWHubActive then
-        addon.Minimap = OneWoW_GUI:CreateMinimapLauncher("OneWoW_Catalog", {
-            label = "Catalog",
-            onClick = function()
-                if ns.UI and ns.UI.Toggle then ns.UI:Toggle() end
-            end,
-            onRightClick = function()
-                if ns.UI and ns.UI.Show then ns.UI:Show("settings") end
-            end,
-            onTooltip = function(frame)
-                GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-                GameTooltip:AddLine(L["MINIMAP_TOOLTIP_TITLE"], 1, 0.82, 0, true)
-                GameTooltip:AddLine(L["MINIMAP_TOOLTIP_HINT"], 0.7, 0.7, 0.8, true)
-                GameTooltip:Show()
-            end,
-        })
-    end
 
     if _G.OneWoW then
         _G.OneWoW:RegisterMinimap("OneWoW_Catalog",

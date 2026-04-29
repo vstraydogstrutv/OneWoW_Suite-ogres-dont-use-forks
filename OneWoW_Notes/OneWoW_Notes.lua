@@ -26,16 +26,6 @@ local function RegisterWithOneWoW()
         { name = "items",   displayName = function() return ns.L["TAB_ITEMS"]   or "Items"   end, create = function(p) ns.UI.CreateItemsTab(p) end },
     }
 
-    local trackersAPI = _G.OneWoW_Trackers_API
-    if trackersAPI then
-        local tabInfo = trackersAPI.GetTabInfo()
-        table.insert(tabs, {
-            name = tabInfo.name,
-            displayName = tabInfo.displayName,
-            create = function(p) trackersAPI.CreateTrackerTab(p) end,
-        })
-    end
-
     _G.OneWoW:RegisterModule({
         name = "notes",
         displayName = function() return ns.L["ADDON_TITLE_SHORT"] or "Notes" end,
@@ -86,13 +76,6 @@ local function OnInitialize()
             ns.ZonePins:RefreshAllPinFonts()
         end
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnMinimapChanged", addon, function(owner, hidden)
-        if owner.Minimap then owner.Minimap:SetShown(not hidden) end
-    end)
-    OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", addon, function(owner)
-        if owner.Minimap then owner.Minimap:UpdateIcon() end
-    end)
-
     local _ver = OneWoW_GUI:GetAddonVersion(addonName)
     if _G.OneWoW and _G.OneWoW.RegisterLoadComponent then
         _G.OneWoW:RegisterLoadComponent("Notes", _ver, "/1wn")
@@ -154,25 +137,6 @@ local function OnEnable()
 
     RegisterWithOneWoW()
 
-    if not ns.oneWoWHubActive then
-        addon.Minimap = OneWoW_GUI:CreateMinimapLauncher("OneWoW_Notes", {
-            label = "Notes",
-            onClick = function()
-                if ns.UI and ns.UI.Toggle then ns.UI:Toggle() end
-            end,
-            onRightClick = function()
-                if ns.UI and ns.UI.Show then ns.UI:Show("settings") end
-            end,
-            onTooltip = function(frame)
-                GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-                GameTooltip:AddLine(ns.L["ADDON_TITLE_FRAME"], 1, 0.82, 0, 1)
-                if ns.L["MINIMAP_TOOLTIP_HINT"] then
-                    GameTooltip:AddLine(ns.L["MINIMAP_TOOLTIP_HINT"], 0.7, 0.7, 0.8, 1)
-                end
-                GameTooltip:Show()
-            end,
-        })
-    end
     if _G.OneWoW then
         _G.OneWoW:RegisterMinimap("OneWoW_Notes", (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_NOTES"]) or "Open Notes", "notes", nil)
     end
@@ -324,23 +288,3 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
-_G["1WoW_Notes_OnAddonCompartmentClick"] = function(addonName, mouseButton)
-    if ns.oneWoWHubActive and _G.OneWoW and _G.OneWoW.GUI then
-        _G.OneWoW.GUI:Show("notes")
-        return
-    end
-    if ns.UI and ns.UI.Toggle then
-        ns.UI:Toggle()
-    end
-end
-
-_G["1WoW_Notes_OnAddonCompartmentEnter"] = function(addonName, frame)
-    GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-    GameTooltip:AddLine(ns.L["ADDON_TITLE_FRAME"], 1, 0.82, 0, 1)
-    GameTooltip:AddLine(ns.L["MINIMAP_TOOLTIP_HINT"], 0.7, 0.7, 0.8, 1)
-    GameTooltip:Show()
-end
-
-_G["1WoW_Notes_OnAddonCompartmentLeave"] = function()
-    GameTooltip:Hide()
-end

@@ -1,14 +1,18 @@
 ## Interface: 120001, 120005
-## Title: OneWoW - Data: |cFFFFFFFFQuests|r
 ## Version: R6.2604.2321
+## Title: OneWoW - Data: |cFFFFFFFFQuests|r
 ## Notes: OneWoW Data Addon that: provides quest data for the Catalog.
-## Author: MichinMuggin / Ricky
-## X-Website: https://wow2.xyz/
-## X-Category: |cFFFFD100OneWoW|r
-## SavedVariables: OneWoW_CatalogData_Quests_DB
-## RequiredDeps: OneWoW_Catalog
+## Author: OneWoW Dev Team
+
+## RequiredDeps: OneWoW, OneWoW_GUI, OneWoW_Catalog
 ## Category: OneWoW
 ## Group: OneWoW_Catalog
+
+## SavedVariables: OneWoW_CatalogData_Quests_DB
+
+## X-Website: https://wow2.xyz/
+## X-Category: |cFFFFD100OneWoW|r
+## X-BugGrabber-Display: OneWow
 
 # Locales
 Locales\enUS.lua

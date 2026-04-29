@@ -308,17 +308,9 @@ function OneWoW_Bags:OnAddonLoaded(loadedAddon)
     end)
 
     OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", self, function(owner, newIconTheme)
-        if owner.Minimap then
-            owner.Minimap:UpdateIcon()
-        end
         RefreshGUI(owner)
     end)
 
-    OneWoW_GUI:RegisterSettingsCallback("OnMinimapChanged", self, function(owner, isHidden)
-        if owner.Minimap then
-            owner.Minimap:SetShown(not isHidden)
-        end
-    end)
     OneWoW_GUI:RegisterSettingsCallback("OnMoneyDisplayChanged", self, function()
         if OneWoW_Bags.BagsBar and OneWoW_Bags.BagsBar.UpdateGoldDisplay then
             OneWoW_Bags.BagsBar:UpdateGoldDisplay()
@@ -334,34 +326,11 @@ function OneWoW_Bags:OnAddonLoaded(loadedAddon)
     local _ver = OneWoW_GUI:GetAddonVersion(ADDON_NAME)
     if _G.OneWoW and _G.OneWoW.RegisterLoadComponent then
         _G.OneWoW:RegisterLoadComponent("Bags", _ver, "/1wb")
-    else
-        _G.print("|cFF00FF00OneWoW|r: |cFFFFFFFF" .. L["ADDON_TITLE"] .. "|r |cFF888888 v." .. _ver .. " |r |cFF00FF00Loaded|r - /1wb")
     end
 end
 
 function OneWoW_Bags:OnPlayerLogin()
     DetectOneWoW()
-
-    if not self.oneWoWHubActive then
-        self.Minimap = OneWoW_GUI:CreateMinimapLauncher("OneWoW_Bags", {
-            label = GetAddonDisplayName(),
-            onClick = function()
-                if self.GUI then self.GUI:Toggle() end
-            end,
-            onRightClick = function()
-                if self.Settings then
-                    if self.GUI then self.GUI:Show() end
-                    self.Settings:Toggle()
-                end
-            end,
-            onTooltip = function(frame)
-                GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-                GameTooltip:SetText("|cFFFFD100OneWoW|r - |cFF00FF00" .. L["ADDON_TITLE"] .. "|r", 1, 1, 1)
-                GameTooltip:AddLine(L["MINIMAP_SECTION_DESC"], 0.7, 0.7, 0.7)
-                GameTooltip:Show()
-            end,
-        })
-    end
 
     if _G.OneWoW and _G.OneWoW.RegisterMinimap then
         _G.OneWoW:RegisterMinimap("OneWoW_Bags", (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_BAGS"]), nil, function()
@@ -875,21 +844,7 @@ function OneWoW_Bags:RegisterSlashCommands()
         end
         local title = L["EXPORT_DIALOG_TITLE"]
         local payload = Serializer:Encode(Serializer:BuildExport(db))
-        LibCopyPaste:Copy(title, payload, { readOnly = true })
-
-        local children = { UIParent:GetChildren() }
-        for i = #children, 1, -1 do
-            local child = children[i]
-            if child and child.IsShown and child:IsShown() and child.GetFrameStrata then
-                for _, region in ipairs({ child:GetRegions() }) do
-                    if region.GetText and region:GetText() == title then
-                        child:SetFrameStrata("FULLSCREEN_DIALOG")
-                        child:Raise()
-                        return
-                    end
-                end
-            end
-        end
+        LibCopyPaste:Copy(title, payload, { readOnly = true, frameStrata = "FULLSCREEN_DIALOG" })
     end
 end
 
@@ -1168,23 +1123,6 @@ function OneWoW_Bags:ShowMoneyDialog(config)
 
     dialog.frame:Show()
     dialog.moneyBox.gold:SetFocus()
-end
-
-_G["1WoW_Bags_OnAddonCompartmentClick"] = function(addonName, buttonName)
-    if OneWoW_Bags.GUI then
-        OneWoW_Bags.GUI:Toggle()
-    end
-end
-
-_G["1WoW_Bags_OnAddonCompartmentEnter"] = function(addonName, button)
-    GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-    GameTooltip:SetText("|cFFFFD100OneWoW|r - |cFF00FF00" .. L["ADDON_TITLE"] .. "|r", 1, 1, 1)
-    GameTooltip:AddLine(L["COMPARTMENT_TOGGLE"], 0.7, 0.7, 0.7)
-    GameTooltip:Show()
-end
-
-_G["1WoW_Bags_OnAddonCompartmentLeave"] = function(addonName, button)
-    GameTooltip:Hide()
 end
 
 local eventFrame = CreateFrame("Frame")

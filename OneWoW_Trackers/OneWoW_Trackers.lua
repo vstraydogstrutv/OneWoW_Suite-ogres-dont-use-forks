@@ -30,21 +30,6 @@ local function ApplyLanguage()
     ns.SetLocale(selectedLang)
 end
 
-local function RegisterWithNotesAsSubtab()
-    _G.OneWoW_Trackers_API = {
-        CreateTrackerTab = function(parent)
-            ns.UI.CreateTrackerTab(parent)
-        end,
-        GetTabInfo = function()
-            return {
-                name = "tracker",
-                displayName = function() return ns.L["TAB_TRACKER"] or "Tracker" end,
-            }
-        end,
-    }
-    ns.mode = "notes_subtab"
-end
-
 local function RegisterAsOneWoWModule()
     if not _G.OneWoW or not _G.OneWoW.RegisterModule then return false end
 
@@ -65,27 +50,6 @@ local function RegisterAsOneWoWModule()
     ns.oneWoWHubActive = true
     ns.mode = "onewow_module"
     return true
-end
-
-local function SetupStandalone()
-    ns.mode = "standalone"
-
-    addon.Minimap = OneWoW_GUI:CreateMinimapLauncher("OneWoW_Trackers", {
-        label = "Trackers",
-        onClick = function()
-            if ns.UI and ns.UI.Toggle then ns.UI:Toggle() end
-        end,
-        onRightClick = function()
-        end,
-        onTooltip = function(frame)
-            GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-            GameTooltip:AddLine(ns.L["ADDON_TITLE_FRAME"] or "OneWoW Trackers", 1, 0.82, 0, 1)
-            if ns.L["MINIMAP_TOOLTIP_HINT"] then
-                GameTooltip:AddLine(ns.L["MINIMAP_TOOLTIP_HINT"], 0.7, 0.7, 0.8, 1)
-            end
-            GameTooltip:Show()
-        end,
-    })
 end
 
 local function OnInitialize()
@@ -121,12 +85,6 @@ local function OnInitialize()
         end
         if ns.UI and ns.UI.RefreshTab then ns.UI.RefreshTab() end
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnMinimapChanged", addon, function(owner, hidden)
-        if owner.Minimap then owner.Minimap:SetShown(not hidden) end
-    end)
-    OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", addon, function(owner)
-        if owner.Minimap then owner.Minimap:UpdateIcon() end
-    end)
     OneWoW_GUI:RegisterSettingsCallback("OnMoneyDisplayChanged", addon, function()
         if ns.TrackerEngine and ns.TrackerEngine.RefreshAllPinnedWindows then
             ns.TrackerEngine:RefreshAllPinnedWindows()
@@ -139,37 +97,17 @@ local function OnInitialize()
     local _ver = OneWoW_GUI:GetAddonVersion(addonName)
     if _G.OneWoW and _G.OneWoW.RegisterLoadComponent then
         _G.OneWoW:RegisterLoadComponent("Trackers", _ver, "/1wt")
-    else
-        addon._pendingLoadVer = _ver
     end
 end
 
 local function OnEnable()
-    local notesLoaded = C_AddOns.IsAddOnLoaded("OneWoW_Notes")
-    local oneWoWLoaded = C_AddOns.IsAddOnLoaded("OneWoW")
-
-    if oneWoWLoaded and RegisterAsOneWoWModule() then
-        -- registered as OneWoW module
-    elseif notesLoaded then
-        RegisterWithNotesAsSubtab()
-    else
-        SetupStandalone()
-        if addon._pendingLoadVer then
-            print("|cFFFFD100OneWoW Trackers:|r v." .. addon._pendingLoadVer .. " loaded - /1wt")
-        end
-    end
+    RegisterAsOneWoWModule()
 
     if _G.OneWoW then
         _G.OneWoW:RegisterMinimap("OneWoW_Trackers",
             (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_TRACKERS"]) or "Open Trackers",
-            ns.mode == "onewow_module" and "trackers" or nil,
-            ns.mode ~= "onewow_module" and function()
-                if ns.oneWoWHubActive and _G.OneWoW and _G.OneWoW.GUI then
-                    _G.OneWoW.GUI:Show("notes", "tracker")
-                elseif ns.UI and ns.UI.Toggle then
-                    ns.UI:Toggle()
-                end
-            end or nil
+            "trackers",
+            nil
         )
     end
 
@@ -243,17 +181,3 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
-_G["1WoW_Trackers_OnAddonCompartmentClick"] = function(addonName, mouseButton)
-    addon:SlashCommandHandler("")
-end
-
-_G["1WoW_Trackers_OnAddonCompartmentEnter"] = function(addonName, frame)
-    GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-    GameTooltip:AddLine(ns.L["ADDON_TITLE_FRAME"] or "OneWoW Trackers", 1, 0.82, 0, 1)
-    GameTooltip:AddLine(ns.L["MINIMAP_TOOLTIP_HINT"] or "Click to open Trackers", 0.7, 0.7, 0.8, 1)
-    GameTooltip:Show()
-end
-
-_G["1WoW_Trackers_OnAddonCompartmentLeave"] = function()
-    GameTooltip:Hide()
-end

@@ -70,29 +70,6 @@ end
 local function OnPlayerLogin()
     DetectOneWoW()
 
-    if not ns.oneWoWHubActive then
-        ns.Minimap = OneWoW_GUI:CreateMinimapLauncher("OneWoW_ShoppingList", {
-            label = "Shopping List",
-            onClick = function()
-                if ns.MainWindow then ns.MainWindow:Toggle() end
-            end,
-            onRightClick = function()
-                if ns.MainWindow and ns.MainWindow.ShowSettings then
-                    ns.MainWindow:ShowSettings()
-                end
-            end,
-            onTooltip = function(frame)
-                GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-                GameTooltip:AddLine("|cFFFFD100OneWoW|r - " .. L["OWSL_WINDOW_TITLE"], 1, 0.82, 0, 1)
-                GameTooltip:AddLine(L["OWSL_MM_CLICK_TO_OPEN"], 0.7, 0.7, 0.8, 1)
-                GameTooltip:Show()
-            end,
-        })
-        if ns._pendingLoadVer then
-            print("|cFF00FF00OneWoW|r: |cFFFFFFFFShopping List|r |cFF888888-|r v." .. ns._pendingLoadVer .. " |cFF888888-|r |cFF00FF00Loaded|r - /1wsl")
-        end
-    end
-
     if _G.OneWoW then
         _G.OneWoW:RegisterMinimap("OneWoW_ShoppingList", (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_SL"]) or "Open Shopping List", nil, function()
             if ns.MainWindow then ns.MainWindow:Toggle() end
@@ -132,13 +109,6 @@ local function OnAddonLoaded(loadedAddon)
                 end)
             end
         end
-    end)
-
-    OneWoW_GUI:RegisterSettingsCallback("OnMinimapChanged", ns, function(owner, hidden)
-        if owner.Minimap then owner.Minimap:SetShown(not hidden) end
-    end)
-    OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", ns, function(owner)
-        if owner.Minimap then owner.Minimap:UpdateIcon() end
     end)
 
     OneWoW_GUI:RegisterSettingsCallback("OnFontChanged", ns, function()
@@ -183,8 +153,6 @@ local function OnAddonLoaded(loadedAddon)
     local _ver = OneWoW_GUI:GetAddonVersion(ADDON_NAME)
     if _G.OneWoW and _G.OneWoW.RegisterLoadComponent then
         _G.OneWoW:RegisterLoadComponent("ShoppingList", _ver, "/1wsl")
-    else
-        ns._pendingLoadVer = _ver
     end
 end
 
@@ -233,46 +201,6 @@ SLASH_ONEWOW_SHOPPINGLIST1 = "/owsl"
 SLASH_ONEWOW_SHOPPINGLIST2 = "/shoppinglist"
 SLASH_ONEWOW_SHOPPINGLIST3 = "/1wsl"
 SlashCmdList["ONEWOW_SHOPPINGLIST"] = HandleSlashCommand
-
-_G["1WoW_ShoppingList_OnAddonCompartmentClick"] = function(addonName, buttonName)
-    if ns.MainWindow then
-        ns.MainWindow:Toggle()
-    end
-end
-
-_G["1WoW_ShoppingList_OnAddonCompartmentEnter"] = function(addonName, button)
-    GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-    GameTooltip:SetText("|cFFFFD100OneWoW|r " .. L["OWSL_WINDOW_TITLE"], 1, 1, 1)
-    GameTooltip:AddLine(L["OWSL_MM_CLICK_TO_OPEN"], 0.7, 0.7, 0.7)
-
-    local db = _G.OneWoW_ShoppingList_DB
-    if db and db.global and db.global.shoppingLists then
-        local lists = db.global.shoppingLists.lists
-        if lists then
-            local listCount  = 0
-            local itemCount  = 0
-            for _, listData in pairs(lists) do
-                if not listData.parentList then
-                    listCount = listCount + 1
-                end
-                if listData.items then
-                    for _ in pairs(listData.items) do
-                        itemCount = itemCount + 1
-                    end
-                end
-            end
-            GameTooltip:AddLine(" ", 1, 1, 1)
-            GameTooltip:AddLine(string.format(L["OWSL_MM_LIST_COUNT"], listCount), 1, 0.82, 0)
-            GameTooltip:AddLine(string.format(L["OWSL_MM_ITEM_COUNT"], itemCount), 0.7, 0.7, 0.7)
-        end
-    end
-
-    GameTooltip:Show()
-end
-
-_G["1WoW_ShoppingList_OnAddonCompartmentLeave"] = function(addonName, button)
-    GameTooltip:Hide()
-end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")

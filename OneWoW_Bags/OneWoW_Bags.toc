@@ -1,24 +1,19 @@
 ## Interface: 120001, 120005
-## Title: |cFFFFD100OneWoW|r - |cFF00FF00Bags|r
-## Category: OneWoW
 ## Version: R6.2604.2321
+## Title: |cFFFFD100OneWoW|r - |cFF00FF00Bags|r
 ## Notes: Unified bag interface for World of Warcraft. Part of the OneWoW Suite.
-## Author: MichinMuggin / Ricky
-## X-Website: https://wow2.xyz/
-## X-Category: |cFFFFD100OneWoW|r
-## X-BugGrabber-Display: OneWoW
-## SavedVariables: OneWoW_Bags_DB
-## AddonCompartmentFunc: 1WoW_Bags_OnAddonCompartmentClick
-## AddonCompartmentFuncOnEnter: 1WoW_Bags_OnAddonCompartmentEnter
-## AddonCompartmentFuncOnLeave: 1WoW_Bags_OnAddonCompartmentLeave
-## IconTexture: Interface\AddOns\OneWoW_GUI\Media\neutral-mini.png
-## RequiredDeps: OneWoW_GUI
-## OptionalDeps: OneWoW, OneWoW_AltTracker, OneWoW_ShoppingList, TradeSkillMaster, Baganator, Pawn
+## Author: OneWoW Dev Team
+
+## RequiredDeps: OneWoW, OneWoW_GUI
+## OptionalDeps: OneWoW_AltTracker, OneWoW_ShoppingList, TradeSkillMaster, Baganator, Pawn
+## Category: OneWoW
 ## Group: OneWoW
 
-# Libraries
-Libs\LibStub\LibStub.lua
-Libs\LibCopyPaste-1.0\LibCopyPaste-1.0.lua
+## SavedVariables: OneWoW_Bags_DB
+
+## X-Website: https://wow2.xyz/
+## X-Category: |cFFFFD100OneWoW|r
+## X-BugGrabber-Display: OneWow
 
 # Locales
 Locales\enUS.lua

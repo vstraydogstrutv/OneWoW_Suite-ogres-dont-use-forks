@@ -1,15 +1,18 @@
 ## Interface: 120001, 120005
-## Title: OneWoW - Data: |cFFFFFFFFCharacter|r
 ## Version: R6.2604.2321
+## Title: OneWoW - Data: |cFFFFFFFFCharacter|r
 ## Notes: OneWoW Data Addon that: tracks core character data including stats, XP, location, guild, economy, equipment, and action bars.
-## Author: MichinMuggin / Ricky
+## Author: OneWoW Dev Team
+
+## RequiredDeps: OneWoW, OneWoW_GUI, OneWoW_AltTracker
+## Category: OneWoW
+## Group: OneWoW_AltTracker
+
+## SavedVariables: OneWoW_AltTracker_Character_DB
+
 ## X-Website: https://wow2.xyz/
 ## X-Category: |cFFFFD100OneWoW|r
 ## X-BugGrabber-Display: OneWow
-## SavedVariables: OneWoW_AltTracker_Character_DB
-## RequiredDeps: OneWoW_AltTracker, OneWoW_GUI
-## Category: OneWoW
-## Group: OneWoW_AltTracker
 
 # Localization
 Locales\enUS.lua

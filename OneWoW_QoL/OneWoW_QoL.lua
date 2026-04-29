@@ -65,12 +65,6 @@ local function OnInitialize()
         OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", addon, function(self2)
             if ns.ApplyLanguage then ns.ApplyLanguage() end
         end)
-        OneWoW_GUI:RegisterSettingsCallback("OnMinimapChanged", addon, function(owner, hidden)
-            if owner.Minimap then owner.Minimap:SetShown(not hidden) end
-        end)
-        OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", addon, function(owner)
-            if owner.Minimap then owner.Minimap:UpdateIcon() end
-        end)
     end
 
     local _ver = C_AddOns.GetAddOnMetadata(addonName, "Version") or ""
@@ -96,23 +90,6 @@ local function OnEnable()
 
     RegisterWithOneWoW()
 
-    if not ns.oneWoWHubActive then
-        addon.Minimap = OneWoW_GUI:CreateMinimapLauncher("OneWoW_QoL", {
-            label = "QoL",
-            onClick = function()
-                if ns.UI and ns.UI.Toggle then ns.UI:Toggle() end
-            end,
-            onRightClick = function()
-                if ns.UI and ns.UI.Show then ns.UI:Show("settings") end
-            end,
-            onTooltip = function(frame)
-                GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-                GameTooltip:AddLine(ns.L["ADDON_TITLE_FRAME"], 1, 0.82, 0, 1)
-                GameTooltip:AddLine(ns.L["MINIMAP_TOOLTIP_HINT"], 0.7, 0.7, 0.8, 1)
-                GameTooltip:Show()
-            end,
-        })
-    end
     if _G.OneWoW then
         _G.OneWoW:RegisterMinimap("OneWoW_QoL", (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_QOL"]) or "Open QoL", "qol", nil)
     end
@@ -168,23 +145,3 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
-_G["1WoW_QoL_OnAddonCompartmentClick"] = function(addonName, mouseButton)
-    if ns.oneWoWHubActive and _G.OneWoW and _G.OneWoW.GUI then
-        _G.OneWoW.GUI:Show("qol")
-        return
-    end
-    if ns.UI and ns.UI.Toggle then
-        ns.UI:Toggle()
-    end
-end
-
-_G["1WoW_QoL_OnAddonCompartmentEnter"] = function(addonName, frame)
-    GameTooltip:SetOwner(frame, "ANCHOR_LEFT")
-    GameTooltip:AddLine(ns.L["ADDON_TITLE_FRAME"], 1, 0.82, 0, 1)
-    GameTooltip:AddLine(ns.L["MINIMAP_TOOLTIP_HINT"], 0.7, 0.7, 0.8, 1)
-    GameTooltip:Show()
-end
-
-_G["1WoW_QoL_OnAddonCompartmentLeave"] = function()
-    GameTooltip:Hide()
-end
