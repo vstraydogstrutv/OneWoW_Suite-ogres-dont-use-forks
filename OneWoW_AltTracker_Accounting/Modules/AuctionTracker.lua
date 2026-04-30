@@ -30,7 +30,7 @@ function Module:Initialize()
     frame:RegisterEvent("COMMODITY_SEARCH_RESULTS_UPDATED")
     frame:RegisterEvent("AUCTION_HOUSE_AUCTION_CREATED")
     frame:RegisterEvent("PLAYER_MONEY")
-    frame:SetScript("OnEvent", function(self, event, ...)
+    frame:SetScript("OnEvent", function(_, event, ...)
         if event == "ITEM_SEARCH_RESULTS_UPDATED" then
             private.UpdateItemMap(...)
         elseif event == "COMMODITY_SEARCH_RESULTS_UPDATED" then
@@ -50,12 +50,12 @@ function Module:Initialize()
         private.OnConfirmCommodityPurchase(itemId, quantity)
     end)
 
-    hooksecurefunc(C_AuctionHouse, "PostItem", function(item, duration, quantity, startPrice, buyoutPrice)
-        private.OnPostItem(item, duration, quantity, buyoutPrice)
+    hooksecurefunc(C_AuctionHouse, "PostItem", function(item, _, quantity, _, buyoutPrice)
+        private.OnPostItem(item, quantity, buyoutPrice)
     end)
 
-    hooksecurefunc(C_AuctionHouse, "PostCommodity", function(item, duration, quantity, unitPrice)
-        private.OnPostCommodity(item, duration, quantity, unitPrice)
+    hooksecurefunc(C_AuctionHouse, "PostCommodity", function(item, _, quantity, unitPrice)
+        private.OnPostCommodity(item, quantity, unitPrice)
     end)
 end
 
@@ -104,7 +104,7 @@ function private.OnConfirmCommodityPurchase(itemId, quantity)
     }
 end
 
-function private.OnPostItem(item, duration, quantity, buyoutPrice)
+function private.OnPostItem(item, quantity, buyoutPrice)
     if not buyoutPrice or buyoutPrice == 0 then return end
     private.pendingPost.itemLink = C_Item.GetItemLink(item)
     private.pendingPost.quantity = quantity or 1
@@ -113,7 +113,7 @@ function private.OnPostItem(item, duration, quantity, buyoutPrice)
     private.pendingPost.timestamp = GetTime()
 end
 
-function private.OnPostCommodity(item, duration, quantity, unitPrice)
+function private.OnPostCommodity(item, quantity, unitPrice)
     if not unitPrice or unitPrice == 0 then return end
     private.pendingPost.itemLink = C_Item.GetItemLink(item)
     private.pendingPost.quantity = quantity or 1
