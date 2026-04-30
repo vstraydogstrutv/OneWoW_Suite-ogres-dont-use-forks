@@ -1042,7 +1042,11 @@ local preset = OneWoW_GUI:GetIconStylePreset("clean")
 
 These components exist in the library but are not fully documented here. See source for option keys.
 
-- **CreateSlider(parent, options)** — minVal, maxVal, step, currentVal, onChange, width, fmt. Optional `getLabel(pos) -> string` overrides the default `string.format(fmt, pos)` display (also used for the Low/High tick labels). Optional `getValue(pos) -> any` maps slider position to a domain value; when provided, `onChange` is called as `onChange(mappedValue, pos)` instead of `onChange(pos)`. Return value: a container frame with `.slider` and `.valLabel` fields for external access (e.g. to `Enable()`/`Disable()` the underlying slider).
+- **CreateSlider(parent, options)** — minVal, maxVal, step, currentVal, onChange, width, fmt. Optional `getLabel(pos) -> string` overrides the default `string.format(fmt, pos)` display (also used for the Low/High tick labels). Optional `getValue(pos) -> any` maps slider position to a domain value; when provided, `onChange` is called as `onChange(mappedValue, pos)` instead of `onChange(pos)`. Return value: a container frame with `.slider` and `.valLabel` fields for external access (e.g. to `Enable()`/`Disable()` the underlying slider). Uses **`ConfigureOptionsSliderEnds`** internally for Low/High strings.
+
+### ConfigureOptionsSliderEnds (OptionsSliderTemplate)
+
+When building **`OptionsSliderTemplate`** sliders manually (custom layout), call **`OneWoW_GUI:ConfigureOptionsSliderEnds(slider, lowText, highText)`** after **`SetMinMaxValues`** / value setup. It applies **`slider.Low` / `slider.High`** (with **`_G[name.."Low"]`** fallback), **`HookScript("OnShow", …)`** once per slider, and stores texts so endpoints stay correct after **`ClearFrame`** + widget reuse (Blizzard otherwise restores localized “Low”/“High”).
 - **CreateProgressBar(parent, options)** — progress bar with theme colors
 - **CreateDataTable(parent, options)** — table with `ClearDataRows`, `LayoutDataRows`, `CreateDataRow`
 - **CreateOverviewPanel(parent, options)** — overview layout

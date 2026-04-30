@@ -546,6 +546,44 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
     end)
 end
 
+--- OptionsSliderTemplate Low/High labels reset when frames are reused (e.g. after ClearFrame orphans globals).
+--- Keeps custom endpoint text by applying on configure and on each Show (single HookScript per slider).
+function OneWoW_GUI:ConfigureOptionsSliderEnds(slider, lowText, highText)
+    if not slider then return end
+    slider.__OneWoWSliderEndLow = lowText
+    slider.__OneWoWSliderEndHigh = highText
+
+    local function apply()
+        local low = slider.__OneWoWSliderEndLow
+        local high = slider.__OneWoWSliderEndHigh
+        if slider.Low then
+            slider.Low:SetText(low)
+        else
+            local name = slider:GetName()
+            if name then
+                local lo = _G[name .. "Low"]
+                if lo then lo:SetText(low) end
+            end
+        end
+        if slider.High then
+            slider.High:SetText(high)
+        else
+            local name = slider:GetName()
+            if name then
+                local hi = _G[name .. "High"]
+                if hi then hi:SetText(high) end
+            end
+        end
+    end
+
+    apply()
+
+    if not slider.__OneWoWSliderEndsHooked then
+        slider.__OneWoWSliderEndsHooked = true
+        slider:HookScript("OnShow", apply)
+    end
+end
+
 function OneWoW_GUI:CreateSlider(parent, options)
     options = options or {}
     local minVal = options.minVal or 0
@@ -579,8 +617,7 @@ function OneWoW_GUI:CreateSlider(parent, options)
     valLabel:SetText(formatVal(currentVal))
     valLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
 
-    if slider.Low  then slider.Low:SetText(formatVal(minVal)) end
-    if slider.High then slider.High:SetText(formatVal(maxVal)) end
+    self:ConfigureOptionsSliderEnds(slider, formatVal(minVal), formatVal(maxVal))
     if slider.Text then slider.Text:SetText("") end
 
     slider:SetScript("OnValueChanged", function(self, val)
