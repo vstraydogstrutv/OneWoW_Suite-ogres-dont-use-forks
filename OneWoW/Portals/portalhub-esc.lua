@@ -539,7 +539,7 @@ function EscMenu:CreatePortalButton(parent, portalData, xOffset, yOffset, iconSi
 		end
 	elseif portalData.type == "housing" then
 		OneWoW.PortalHubDetection:ApplyHousingTeleportAttributes(button)
-		local icon = C_Spell.GetSpellTexture(1233637)
+		local icon = C_Spell.GetSpellTexture(1263273)
 		if icon then button:SetNormalTexture(icon) end
 	end
 
