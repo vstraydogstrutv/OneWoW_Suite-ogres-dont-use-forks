@@ -1,4 +1,4 @@
-local ADDON_NAME, OneWoW = ...
+local _, OneWoW = ...
 
 OneWoW.Locales = OneWoW.Locales or {}
 OneWoW.Locales["enUS"] = {
@@ -624,6 +624,9 @@ OneWoW.Locales["enUS"] = {
 
     ["PORTALS_SUBTAB"] = "Portals",
 
+    ["PORTALS_LIST_TITLE"] = "Categories",
+    ["PORTALS_DETAIL_TITLE"] = "Portals",
+    ["PORTAL_DISPLAY_OPTIONS"] = "Display Options",
     ["Show Portals on ESC"] = "Show Portals on ESC",
     ["PORTAL_RANDOM_HEARTHSTONE"] = "Random Hearthstone",
     ["Show Unavailable"] = "Show Unavailable (Dimmed)",
@@ -638,6 +641,8 @@ OneWoW.Locales["enUS"] = {
     ["Select a Category"] = "Select a Category",
     ["Favorites"] = "Favorites",
     ["Favorites: %d/%d"] = "Favorites: %d/%d",
+    ["PORTAL_STATUS_AVAILABLE"] = "%s (%d available)",
+    ["PORTAL_STATUS_AVAILABLE_UNAVAILABLE"] = "%s (%d available, %d unavailable)",
     ["Right-click to favorite"] = "Right-click to favorite",
     ["UI_PORTAL_ITEM_ID"] = "Item ID: %s",
     ["UI_PORTAL_HOUSE_ID"] = "House ID: %s",

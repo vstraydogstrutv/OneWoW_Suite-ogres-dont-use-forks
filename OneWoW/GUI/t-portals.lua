@@ -1,4 +1,4 @@
-local ADDON_NAME, OneWoW = ...
+local _, OneWoW = ...
 
 local GUI = OneWoW.GUI
 
@@ -11,26 +11,50 @@ local selectedCategory = nil
 local portalButtons = {}
 local headerFrames = {}
 local portalButtonPool = {}
-local currentPortals = {}
 
 function GUI:CreatePortalsTab(parent)
 	local L = OneWoW.L or {}
 
-	local controlPanel = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	controlPanel:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
-	controlPanel:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
-	controlPanel:SetHeight(70)
-	controlPanel:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-	controlPanel:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-	controlPanel:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+	local split = OneWoW_GUI:CreateSplitPanel(parent, {
+		showSearch = true,
+		searchPlaceholder = L["SEARCH_PLACEHOLDER"] or "Search...",
+	})
+	split.listTitle:SetText(L["PORTALS_LIST_TITLE"] or L["Categories"])
+	split.detailTitle:SetText(L["PORTALS_DETAIL_TITLE"] or L["PORTALS_SUBTAB"] or "Portals")
+
+	local categoryScrollChild = split.listScrollChild
+	local portalPanel = split.detailPanel
+	local portalScrollFrame = split.detailScrollFrame
+	local portalScrollChild = split.detailScrollChild
+	local leftStatusText = split.leftStatusText
+	local rightStatusText = split.rightStatusText
+	local selectedCategoryRow = nil
+
+	local controlPanel = OneWoW_GUI:CreateFrame(portalPanel, {
+		height = 118,
+		backdrop = BACKDROP_INNER_NO_INSETS,
+		bgColor = "BG_SECONDARY",
+		borderColor = "BORDER_SUBTLE",
+	})
+	controlPanel:SetPoint("TOPLEFT", portalPanel, "TOPLEFT", 8, -32)
+	controlPanel:SetPoint("TOPRIGHT", portalPanel, "TOPRIGHT", -22, -32)
+
+	portalScrollFrame:ClearAllPoints()
+	portalScrollFrame:SetPoint("TOPLEFT", portalPanel, "TOPLEFT", 8, -158)
+	portalScrollFrame:SetPoint("BOTTOMRIGHT", portalPanel, "BOTTOMRIGHT", -22, 8)
 
 	local ph = OneWoW.db.global.portalHub
 
+	local optionsTitle = OneWoW_GUI:CreateFS(controlPanel, 12)
+	optionsTitle:SetPoint("TOPLEFT", controlPanel, "TOPLEFT", 12, -10)
+	optionsTitle:SetText(L["PORTAL_DISPLAY_OPTIONS"] or L["Show Unavailable"])
+	optionsTitle:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
+
 	local escCheckbox = OneWoW_GUI:CreateCheckbox(controlPanel, { label = L["Show Portals on ESC"] })
-	escCheckbox:SetPoint("TOPLEFT", controlPanel, "TOPLEFT", 10, -5)
+	escCheckbox:SetPoint("TOPLEFT", controlPanel, "TOPLEFT", 12, -34)
 	escCheckbox:SetChecked(OneWoW.db.global.portalHub.escPortalsEnabled)
-	escCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.escPortalsEnabled = self:GetChecked()
+	escCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.escPortalsEnabled = checkbox:GetChecked()
 		if OneWoW.PortalHubEsc and GameMenuFrame and GameMenuFrame:IsShown() then
 			OneWoW.PortalHubEsc:ShowPortalFrames()
 		end
@@ -41,8 +65,8 @@ function GUI:CreatePortalsTab(parent)
 	local randomHearthCheckbox = OneWoW_GUI:CreateCheckbox(controlPanel, { label = L["PORTAL_RANDOM_HEARTHSTONE"] })
 	randomHearthCheckbox:SetPoint("LEFT", escLabel, "RIGHT", 20, 0)
 	randomHearthCheckbox:SetChecked(OneWoW.db.global.portalHub.randomHearthstone)
-	randomHearthCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.randomHearthstone = self:GetChecked()
+	randomHearthCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.randomHearthstone = checkbox:GetChecked()
 		if OneWoW.PortalHubEsc and OneWoW.PortalHubEsc.Reload then
 			OneWoW.PortalHubEsc:Reload()
 		end
@@ -54,13 +78,11 @@ function GUI:CreatePortalsTab(parent)
 	showAllCheckbox:SetPoint("LEFT", randomHearthLabel, "RIGHT", 20, 0)
 	showAllCheckbox:SetChecked(OneWoW.db.global.portalHub.showAll)
 
-	local showAllLabel = showAllCheckbox.label
-
 	local showAllEscCheckbox = OneWoW_GUI:CreateCheckbox(controlPanel, { label = L["PORTAL_SHOW_ALL_ESC"] })
-	showAllEscCheckbox:SetPoint("LEFT", showAllLabel, "RIGHT", 20, 0)
+	showAllEscCheckbox:SetPoint("TOPLEFT", controlPanel, "TOPLEFT", 12, -62)
 	showAllEscCheckbox:SetChecked(OneWoW.db.global.portalHub.showAllOnEsc or false)
-	showAllEscCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.showAllOnEsc = self:GetChecked()
+	showAllEscCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.showAllOnEsc = checkbox:GetChecked()
 		if OneWoW.PortalHubEsc and OneWoW.PortalHubEsc.Reload then
 			OneWoW.PortalHubEsc:Reload()
 		end
@@ -71,25 +93,23 @@ function GUI:CreatePortalsTab(parent)
 	local showSeasonalCheckbox = OneWoW_GUI:CreateCheckbox(controlPanel, { label = L["PORTAL_SHOW_SEASONAL"] })
 	showSeasonalCheckbox:SetPoint("LEFT", showAllEscLabel, "RIGHT", 20, 0)
 	showSeasonalCheckbox:SetChecked(OneWoW.db.global.portalHub.showSeasonal)
-	showSeasonalCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.showSeasonal = self:GetChecked()
+	showSeasonalCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.showSeasonal = checkbox:GetChecked()
 		if OneWoW.PortalHubEsc and OneWoW.PortalHubEsc.Reload then
 			OneWoW.PortalHubEsc:Reload()
 		end
 	end)
 
-	local showSeasonalLabel = showSeasonalCheckbox.label
-
 	local topRowLabel = OneWoW_GUI:CreateFS(controlPanel, 10)
-	topRowLabel:SetPoint("TOPLEFT", controlPanel, "TOPLEFT", 12, -32)
+	topRowLabel:SetPoint("TOPLEFT", controlPanel, "TOPLEFT", 12, -91)
 	topRowLabel:SetText(L["PORTAL_ESC_TOP_ROW"])
 	topRowLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
 
 	local showDalaranCheckbox = OneWoW_GUI:CreateCheckbox(controlPanel, { label = L["PORTAL_DALARAN_HEARTH"] })
 	showDalaranCheckbox:SetPoint("LEFT", topRowLabel, "RIGHT", 10, 0)
 	showDalaranCheckbox:SetChecked(ph.showDalaranHearth ~= false)
-	showDalaranCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.showDalaranHearth = self:GetChecked()
+	showDalaranCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.showDalaranHearth = checkbox:GetChecked()
 		if OneWoW.PortalHubEsc and OneWoW.PortalHubEsc.Reload then
 			OneWoW.PortalHubEsc:Reload()
 		end
@@ -100,8 +120,8 @@ function GUI:CreatePortalsTab(parent)
 	local showGarrisonCheckbox = OneWoW_GUI:CreateCheckbox(controlPanel, { label = L["PORTAL_GARRISON_HEARTH"] })
 	showGarrisonCheckbox:SetPoint("LEFT", showDalaranLabel, "RIGHT", 15, 0)
 	showGarrisonCheckbox:SetChecked(ph.showGarrisonHearth ~= false)
-	showGarrisonCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.showGarrisonHearth = self:GetChecked()
+	showGarrisonCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.showGarrisonHearth = checkbox:GetChecked()
 		if OneWoW.PortalHubEsc and OneWoW.PortalHubEsc.Reload then
 			OneWoW.PortalHubEsc:Reload()
 		end
@@ -112,8 +132,8 @@ function GUI:CreatePortalsTab(parent)
 	local showWhistleCheckbox = OneWoW_GUI:CreateCheckbox(controlPanel, { label = L["PORTAL_FLIGHT_WHISTLE"] })
 	showWhistleCheckbox:SetPoint("LEFT", showGarrisonLabel, "RIGHT", 15, 0)
 	showWhistleCheckbox:SetChecked(ph.showFlightWhistle ~= false)
-	showWhistleCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.showFlightWhistle = self:GetChecked()
+	showWhistleCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.showFlightWhistle = checkbox:GetChecked()
 		if OneWoW.PortalHubEsc and OneWoW.PortalHubEsc.Reload then
 			OneWoW.PortalHubEsc:Reload()
 		end
@@ -124,49 +144,12 @@ function GUI:CreatePortalsTab(parent)
 	local showHousingCheckbox = OneWoW_GUI:CreateCheckbox(controlPanel, { label = L["PORTAL_HOUSING_PORTAL"] })
 	showHousingCheckbox:SetPoint("LEFT", showWhistleLabel, "RIGHT", 15, 0)
 	showHousingCheckbox:SetChecked(ph.showHousingPortal ~= false)
-	showHousingCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.showHousingPortal = self:GetChecked()
+	showHousingCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.showHousingPortal = checkbox:GetChecked()
 		if OneWoW.PortalHubEsc and OneWoW.PortalHubEsc.Reload then
 			OneWoW.PortalHubEsc:Reload()
 		end
 	end)
-
-	local categoryPanel = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	categoryPanel:SetPoint("TOPLEFT", controlPanel, "BOTTOMLEFT", 0, -10)
-	categoryPanel:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 0, 35)
-	categoryPanel:SetWidth(233)
-	categoryPanel:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-	categoryPanel:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
-	categoryPanel:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
-
-	local categoryTitle = OneWoW_GUI:CreateFS(categoryPanel, 16)
-	categoryTitle:SetPoint("TOP", categoryPanel, "TOP", 0, -10)
-	categoryTitle:SetText(L["Categories"])
-	categoryTitle:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
-
-	local categoryScrollFrame, categoryScrollChild = OneWoW_GUI:CreateScrollFrame(categoryPanel, {})
-	categoryScrollFrame:ClearAllPoints()
-	categoryScrollFrame:SetPoint("TOPLEFT", categoryPanel, "TOPLEFT", 10, -40)
-	categoryScrollFrame:SetPoint("BOTTOMRIGHT", categoryPanel, "BOTTOMRIGHT", -30, 10)
-
-	local portalPanel = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	portalPanel:SetPoint("TOPLEFT", categoryPanel, "TOPRIGHT", 10, 0)
-	portalPanel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 35)
-	portalPanel:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-	portalPanel:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
-	portalPanel:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
-
-	local portalTitle = OneWoW_GUI:CreateFS(portalPanel, 16)
-	portalTitle:SetPoint("TOP", portalPanel, "TOP", 0, -10)
-	portalTitle:SetText(L["Select a Category"])
-	portalTitle:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
-	portalPanel.title = portalTitle
-
-	local portalScrollFrame, portalScrollChild = OneWoW_GUI:CreateScrollFrame(portalPanel, {})
-	portalScrollFrame:ClearAllPoints()
-	portalScrollFrame:SetPoint("TOPLEFT", portalPanel, "TOPLEFT", 10, -40)
-	portalScrollFrame:SetPoint("BOTTOMRIGHT", portalPanel, "BOTTOMRIGHT", -30, 10)
-	portalPanel.scrollChild = portalScrollChild
 
 	local secureOverlay = CreateFrame("ScrollFrame", nil, UIParent)
 	secureOverlay:SetPoint("TOPLEFT", portalScrollFrame, "TOPLEFT")
@@ -177,8 +160,11 @@ function GUI:CreatePortalsTab(parent)
 	local secureScrollChild = CreateFrame("Frame", nil, secureOverlay)
 	secureScrollChild:SetSize(portalScrollFrame:GetWidth(), 1)
 	secureOverlay:SetScrollChild(secureScrollChild)
+	portalScrollFrame:HookScript("OnSizeChanged", function(_, width)
+		secureScrollChild:SetWidth(width)
+	end)
 
-	secureOverlay:SetScript("OnMouseWheel", function(self, delta)
+	secureOverlay:SetScript("OnMouseWheel", function(_, delta)
 		local scrollBar = portalScrollFrame.ScrollBar
 		if scrollBar then
 			local current = scrollBar:GetValue()
@@ -189,7 +175,7 @@ function GUI:CreatePortalsTab(parent)
 		end
 	end)
 
-	portalScrollFrame:HookScript("OnVerticalScroll", function(self, offset)
+	portalScrollFrame:HookScript("OnVerticalScroll", function(_, offset)
 		secureOverlay:SetVerticalScroll(offset)
 	end)
 
@@ -212,33 +198,6 @@ function GUI:CreatePortalsTab(parent)
 	end
 
 	HideSecureOverlay()
-
-	local leftStatusBar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	leftStatusBar:SetPoint("TOPLEFT", categoryPanel, "BOTTOMLEFT", 0, -5)
-	leftStatusBar:SetPoint("TOPRIGHT", categoryPanel, "BOTTOMRIGHT", 0, -5)
-	leftStatusBar:SetHeight(25)
-	leftStatusBar:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-	leftStatusBar:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-	leftStatusBar:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-
-	local leftStatusText = OneWoW_GUI:CreateFS(leftStatusBar, 10)
-	leftStatusText:SetPoint("LEFT", leftStatusBar, "LEFT", 10, 0)
-	leftStatusText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-	leftStatusText:SetText("")
-
-	local rightStatusBar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	rightStatusBar:SetPoint("TOPLEFT", portalPanel, "BOTTOMLEFT", 0, -5)
-	rightStatusBar:SetPoint("TOPRIGHT", portalPanel, "BOTTOMRIGHT", 0, -5)
-	rightStatusBar:SetHeight(25)
-	rightStatusBar:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-	rightStatusBar:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-	rightStatusBar:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-
-	local rightStatusText = OneWoW_GUI:CreateFS(rightStatusBar, 10)
-	rightStatusText:SetPoint("LEFT", rightStatusBar, "LEFT", 10, 0)
-	rightStatusText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-	rightStatusText:SetText("")
-	portalPanel.statusText = rightStatusText
 
 	local function UpdateCooldown(button, portal)
 		if not button.cooldownFrame then
@@ -272,7 +231,7 @@ function GUI:CreatePortalsTab(parent)
 		end
 	end
 
-	local function CreatePortalButton(parentFrame, portal, size)
+	local function CreatePortalButton(portal, size)
 		local button
 		if #portalButtonPool > 0 then
 			button = table.remove(portalButtonPool)
@@ -312,7 +271,7 @@ function GUI:CreatePortalsTab(parent)
 				button:SetAttribute("type1", "toy")
 				button:SetAttribute("toy1", portal.id)
 			end
-			local _, name, icon = C_ToyBox.GetToyInfo(portal.id)
+			local _, _, icon = C_ToyBox.GetToyInfo(portal.id)
 			if icon then
 				button:SetNormalTexture(icon)
 			else
@@ -371,7 +330,7 @@ function GUI:CreatePortalsTab(parent)
 
 		button:RegisterForClicks("AnyDown", "AnyUp")
 
-		button:SetScript("OnMouseUp", function(self, mouseButton)
+		button:SetScript("OnMouseUp", function(portalButton, mouseButton)
 			if mouseButton == "RightButton" then
 				if not isAvailable then
 					return
@@ -389,9 +348,9 @@ function GUI:CreatePortalsTab(parent)
 
 				local added = OneWoW.PortalHubModule:ToggleFavorite(portal.type, portal.id, spellName or "Unknown")
 				if added then
-					self.favoriteIcon:Show()
+					portalButton.favoriteIcon:Show()
 				else
-					self.favoriteIcon:Hide()
+					portalButton.favoriteIcon:Hide()
 				end
 
 				local favCount = #OneWoW.db.global.portalHub.escFavorites or 0
@@ -403,8 +362,8 @@ function GUI:CreatePortalsTab(parent)
 			end
 		end)
 
-		button:SetScript("OnEnter", function(self)
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		button:SetScript("OnEnter", function(portalButton)
+			GameTooltip:SetOwner(portalButton, "ANCHOR_RIGHT")
 			if portal.type == "toy" then
 				GameTooltip:SetToyByItemID(portal.id)
 				GameTooltip:AddLine(" ")
@@ -433,7 +392,7 @@ function GUI:CreatePortalsTab(parent)
 			GameTooltip:Show()
 		end)
 
-		button:SetScript("OnLeave", function(self)
+		button:SetScript("OnLeave", function()
 			GameTooltip:Hide()
 		end)
 
@@ -447,7 +406,7 @@ function GUI:CreatePortalsTab(parent)
 	local function ShowCategory(categoryID, categoryName)
 		if InCombatLockdown() then return end
 		selectedCategory = categoryID
-		portalPanel.title:SetText(categoryName)
+		split.detailTitle:SetText(categoryName)
 
 		for _, button in ipairs(portalButtons) do
 			button:Hide()
@@ -465,7 +424,6 @@ function GUI:CreatePortalsTab(parent)
 
 		local showAll = OneWoW.db.global.portalHub.showAll
 		local allPortals = OneWoW.PortalHubModule:GetPortalsForCategory(categoryID, showAll)
-		currentPortals = allPortals
 
 		local available = {}
 		local unavailable = {}
@@ -533,7 +491,7 @@ function GUI:CreatePortalsTab(parent)
 				yOffset = -row * (iconSize + 5) - 5
 				col = 0
 			else
-				local button = CreatePortalButton(secureScrollChild, portal, iconSize)
+				local button = CreatePortalButton(portal, iconSize)
 				button:SetPoint("TOPLEFT", secureScrollChild, "TOPLEFT", xOffset, yOffset)
 				table.insert(portalButtons, button)
 
@@ -549,8 +507,7 @@ function GUI:CreatePortalsTab(parent)
 			end
 		end
 
-		local totalRows = math.ceil(#displayPortals / columns)
-		local contentHeight = math.max(totalRows * (iconSize + 5), portalScrollFrame:GetHeight())
+		local contentHeight = math.max(math.abs(yOffset) + iconSize + 10, portalScrollFrame:GetHeight())
 		portalScrollChild:SetHeight(contentHeight)
 		secureScrollChild:SetHeight(contentHeight)
 
@@ -568,220 +525,158 @@ function GUI:CreatePortalsTab(parent)
 		end
 
 		local favCount = #OneWoW.db.global.portalHub.escFavorites or 0
-		local statusMsg = string.format("%s (%d available", categoryName, availableCount)
+		local statusMsg = string.format(L["PORTAL_STATUS_AVAILABLE"] or "%s (%d available)", categoryName, availableCount)
 		if showAll then
-			statusMsg = statusMsg .. string.format(", %d unavailable)", unavailableCount)
-		else
-			statusMsg = statusMsg .. ")"
+			statusMsg = string.format(L["PORTAL_STATUS_AVAILABLE_UNAVAILABLE"] or "%s (%d available, %d unavailable)", categoryName, availableCount, unavailableCount)
 		end
-		portalPanel.statusText:SetText(statusMsg)
+		rightStatusText:SetText(statusMsg)
 		leftStatusText:SetText(string.format(L["Favorites: %d/%d"], favCount, 15))
 	end
 
 	local categoryItems = {}
+	local firstCategoryRow = nil
+	local favoritesRow = nil
 
-	local function RefreshCategories()
+	local function CategoryHasPortals(category, showAll)
+		if showAll then
+			return true
+		end
+
+		if category.id == "professions" then
+			local wormholes = OneWoW.PortalHubDetection:GetWormholes(true)
+			local rippers = OneWoW.PortalHubDetection:GetDimensionalRippers(true)
+			local transporters = OneWoW.PortalHubDetection:GetUltrasafeTransporters(true)
+			for _, w in ipairs(wormholes) do
+				if PlayerHasToy(w.id) then
+					return true
+				end
+			end
+			for _, r in ipairs(rippers) do
+				if PlayerHasToy(r.id) then
+					return true
+				end
+			end
+			for _, t in ipairs(transporters) do
+				if PlayerHasToy(t.id) then
+					return true
+				end
+			end
+			return false
+		end
+
+		local portals = OneWoW.PortalHubModule:GetPortalsForCategory(category.id, false)
+		for _, portal in ipairs(portals) do
+			if portal.type ~= "header" and OneWoW.PortalHubDetection:IsAvailable(portal.type, portal.id) then
+				return true
+			end
+		end
+		return false
+	end
+
+	local function SetSelectedCategoryRow(row)
+		if selectedCategoryRow and selectedCategoryRow ~= row then
+			selectedCategoryRow:SetActive(false)
+		end
+		selectedCategoryRow = row
+		if row then
+			row:SetActive(true)
+		end
+	end
+
+	local function CreateCategoryRow(category, yOffset, isSubcat)
+		local row = OneWoW_GUI:CreateListRowBasic(categoryScrollChild, {
+			height = isSubcat and 28 or 30,
+			label = category.name,
+			onClick = function(row)
+				SetSelectedCategoryRow(row)
+				ShowCategory(category.id, category.name)
+			end,
+		})
+		row:SetPoint("TOPLEFT", categoryScrollChild, "TOPLEFT", 4, yOffset)
+		row:SetPoint("TOPRIGHT", categoryScrollChild, "TOPRIGHT", -4, yOffset)
+		row.categoryID = category.id
+		row.isSubcat = isSubcat
+		if isSubcat and row.label then
+			row.label:ClearAllPoints()
+			row.label:SetPoint("LEFT", row, "LEFT", 22, 0)
+			row.label:SetPoint("RIGHT", row, "RIGHT", -10, 0)
+		end
+		table.insert(categoryItems, row)
+		if not firstCategoryRow then
+			firstCategoryRow = row
+		end
+		if category.id == "favorites" then
+			favoritesRow = row
+		end
+		if selectedCategory == category.id then
+			SetSelectedCategoryRow(row)
+		end
+		return yOffset - (isSubcat and 32 or 34)
+	end
+
+	local function RefreshCategories(filterText)
 		for _, item in ipairs(categoryItems) do
 			item:Hide()
 			item:SetParent(nil)
 		end
 		categoryItems = {}
+		firstCategoryRow = nil
+		favoritesRow = nil
+		selectedCategoryRow = nil
 
 		local categories = OneWoW.PortalHubModule:GetCategories()
 		local showAll = OneWoW.db.global.portalHub.showAll
+		local filter = (filterText or ""):lower()
 
-		local yOffset = 0
+		local yOffset = -5
 		for _, category in ipairs(categories) do
-			local hasPortals = false
-			if not showAll then
-				if category.id == "professions" then
-					local wormholes = OneWoW.PortalHubDetection:GetWormholes(true)
-					local rippers = OneWoW.PortalHubDetection:GetDimensionalRippers(true)
-					local transporters = OneWoW.PortalHubDetection:GetUltrasafeTransporters(true)
-					for _, w in ipairs(wormholes) do
-						if PlayerHasToy(w.id) then
-							hasPortals = true
-							break
-						end
-					end
-					if not hasPortals then
-						for _, r in ipairs(rippers) do
-							if PlayerHasToy(r.id) then
-								hasPortals = true
-								break
-							end
-						end
-					end
-					if not hasPortals then
-						for _, t in ipairs(transporters) do
-							if PlayerHasToy(t.id) then
-								hasPortals = true
-								break
-							end
-						end
-					end
-				else
-					local portals = OneWoW.PortalHubModule:GetPortalsForCategory(category.id, false)
-					for _, portal in ipairs(portals) do
-						if portal.type ~= "header" and OneWoW.PortalHubDetection:IsAvailable(portal.type, portal.id) then
-							hasPortals = true
-							break
-						end
+			local hasPortals = CategoryHasPortals(category, showAll)
+			local categoryMatches = filter == "" or (category.name or ""):lower():find(filter, 1, true)
+			local matchingSubcats = {}
+
+			if category.subcategories then
+				for _, subcat in ipairs(category.subcategories) do
+					local hasSubPortals = CategoryHasPortals(subcat, showAll)
+					local subcatMatches = filter == "" or (subcat.name or ""):lower():find(filter, 1, true)
+					if hasSubPortals and subcatMatches then
+						table.insert(matchingSubcats, subcat)
 					end
 				end
-			else
-				hasPortals = true
 			end
 
-			if hasPortals or category.id == "favorites" then
-				local categoryFrame = CreateFrame("Frame", nil, categoryScrollChild, "BackdropTemplate")
-				categoryFrame:SetSize(categoryScrollChild:GetWidth(), 40)
-				categoryFrame:SetPoint("TOPLEFT", categoryScrollChild, "TOPLEFT", 0, yOffset)
-				categoryFrame:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-				categoryFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-				categoryFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-
-				local icon = categoryFrame:CreateTexture(nil, "ARTWORK")
-				icon:SetSize(24, 24)
-				icon:SetPoint("LEFT", categoryFrame, "LEFT", 8, 0)
-				if category.iconAtlas then
-					icon:SetAtlas(category.iconAtlas)
-				else
-					icon:SetTexture(category.icon)
-				end
-
-				local nameText = OneWoW_GUI:CreateFS(categoryFrame, 12)
-				nameText:SetPoint("LEFT", icon, "RIGHT", 8, 0)
-				nameText:SetText(category.name)
-				nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
-
-				categoryFrame:EnableMouse(true)
-				categoryFrame:SetScript("OnEnter", function(self)
-					if selectedCategory ~= category.id then
-						self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-					end
-				end)
-				categoryFrame:SetScript("OnLeave", function(self)
-					if selectedCategory ~= category.id then
-						self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-					end
-				end)
-				categoryFrame:SetScript("OnMouseDown", function(self)
-					selectedCategory = category.id
-					ShowCategory(category.id, category.name)
-					for _, item in ipairs(categoryItems) do
-						if item.categoryID == category.id then
-							item:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-							item:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
-						else
-							if item.isSubcat then
-								item:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
-								item:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-							else
-								item:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-								item:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-							end
-						end
-					end
-				end)
-
-				categoryFrame.categoryID = category.id
-				categoryFrame.isParent = category.subcategories ~= nil
-				table.insert(categoryItems, categoryFrame)
-				yOffset = yOffset - 45
-
-				if category.subcategories then
-					for _, subcat in ipairs(category.subcategories) do
-						local hasSubPortals = false
-						if not showAll then
-							local subPortals = OneWoW.PortalHubModule:GetPortalsForCategory(subcat.id, false)
-							for _, portal in ipairs(subPortals) do
-								if portal.type ~= "header" and OneWoW.PortalHubDetection:IsAvailable(portal.type, portal.id) then
-									hasSubPortals = true
-									break
-								end
-							end
-						else
-							hasSubPortals = true
-						end
-
-						if hasSubPortals then
-							local subcatFrame = CreateFrame("Frame", nil, categoryScrollChild, "BackdropTemplate")
-							subcatFrame:SetSize(categoryScrollChild:GetWidth() - 20, 35)
-							subcatFrame:SetPoint("TOPLEFT", categoryScrollChild, "TOPLEFT", 20, yOffset)
-							subcatFrame:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-							subcatFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
-							subcatFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-
-							local subcatText = OneWoW_GUI:CreateFS(subcatFrame, 10)
-							subcatText:SetPoint("LEFT", subcatFrame, "LEFT", 10, 0)
-							subcatText:SetText(subcat.name)
-							subcatText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-
-							subcatFrame:EnableMouse(true)
-							subcatFrame:SetScript("OnEnter", function(self)
-								if selectedCategory ~= subcat.id then
-									self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-								end
-							end)
-							subcatFrame:SetScript("OnLeave", function(self)
-								if selectedCategory ~= subcat.id then
-									self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
-								end
-							end)
-							subcatFrame:SetScript("OnMouseDown", function(self)
-								selectedCategory = subcat.id
-								ShowCategory(subcat.id, subcat.name)
-								for _, item in ipairs(categoryItems) do
-									if item.categoryID == subcat.id then
-										item:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-										item:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
-									else
-										if item.isSubcat then
-											item:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
-											item:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-										else
-											item:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-											item:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-										end
-									end
-								end
-							end)
-
-							subcatFrame.categoryID = subcat.id
-							subcatFrame.isSubcat = true
-							table.insert(categoryItems, subcatFrame)
-							yOffset = yOffset - 40
-						end
-					end
+			if ((hasPortals or category.id == "favorites") and categoryMatches) or #matchingSubcats > 0 then
+				yOffset = CreateCategoryRow(category, yOffset, false)
+				for _, subcat in ipairs(matchingSubcats) do
+					yOffset = CreateCategoryRow(subcat, yOffset, true)
 				end
 			end
 		end
 
 		categoryScrollChild:SetHeight(math.abs(yOffset) + 50)
+		if selectedCategoryRow then
+			selectedCategoryRow:Click()
+		elseif favoritesRow then
+			favoritesRow:Click()
+		elseif firstCategoryRow then
+			firstCategoryRow:Click()
+		else
+			split.detailTitle:SetText(L["Select a Category"])
+			rightStatusText:SetText("")
+			leftStatusText:SetText("")
+		end
 	end
 
-	showAllCheckbox:SetScript("OnClick", function(self)
-		OneWoW.db.global.portalHub.showAll = self:GetChecked()
-		if selectedCategory then
-			local categories = OneWoW.PortalHubModule:GetCategories()
-			for _, cat in ipairs(categories) do
-				if cat.id == selectedCategory then
-					ShowCategory(selectedCategory, cat.name)
-					break
-				end
-				if cat.subcategories then
-					for _, subcat in ipairs(cat.subcategories) do
-						if subcat.id == selectedCategory then
-							ShowCategory(selectedCategory, subcat.name)
-							break
-						end
-					end
-				end
-			end
-		end
-		RefreshCategories()
+	showAllCheckbox:SetScript("OnClick", function(checkbox)
+		OneWoW.db.global.portalHub.showAll = checkbox:GetChecked()
+		local filterText = split.searchBox and split.searchBox:GetSearchText() or ""
+		RefreshCategories(filterText)
 	end)
+
+	if split.searchBox then
+		split.searchBox:SetScript("OnTextChanged", function(searchBox)
+			RefreshCategories(searchBox:GetSearchText())
+		end)
+	end
 
 	parent:HookScript("OnShow", function()
 		ShowSecureOverlay()
@@ -790,8 +685,10 @@ function GUI:CreatePortalsTab(parent)
 		HideSecureOverlay()
 	end)
 
-	RefreshCategories()
-	ShowCategory("favorites", L["Favorites"])
+	C_Timer.After(0.1, function()
+		RefreshCategories("")
+		OneWoW_GUI:ApplyFontToFrame(parent)
+	end)
 
 	parent.Cleanup = function()
 		HideSecureOverlay()
