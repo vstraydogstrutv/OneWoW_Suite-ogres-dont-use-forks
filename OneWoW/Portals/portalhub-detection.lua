@@ -3,6 +3,94 @@ local ADDON_NAME, OneWoW = ...
 OneWoW.PortalHubDetection = OneWoW.PortalHubDetection or {}
 local Detection = OneWoW.PortalHubDetection
 
+local housingHouse = nil
+local housingRequested = false
+local housingLoaded = false
+local housingCallbacks = {}
+local housingEventFrame = CreateFrame("Frame")
+
+local function ApplyPendingHousingCallbacks()
+	if InCombatLockdown() then
+		housingEventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+		return
+	end
+
+	for _, callback in ipairs(housingCallbacks) do
+		callback(housingHouse)
+	end
+	wipe(housingCallbacks)
+end
+
+housingEventFrame:SetScript("OnEvent", function(self, event, houses)
+	if event == "PLAYER_HOUSE_LIST_UPDATED" then
+		housingHouse = houses and houses[1] or nil
+		housingLoaded = true
+		self:UnregisterEvent("PLAYER_HOUSE_LIST_UPDATED")
+		ApplyPendingHousingCallbacks()
+	elseif event == "PLAYER_REGEN_ENABLED" then
+		self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+		ApplyPendingHousingCallbacks()
+	end
+end)
+
+function Detection:RequestHousingHouse(callback)
+	if callback then
+		if housingLoaded then
+			callback(housingHouse)
+			return
+		end
+		tinsert(housingCallbacks, callback)
+	end
+
+	if housingRequested then
+		return
+	end
+
+	housingRequested = true
+	housingEventFrame:RegisterEvent("PLAYER_HOUSE_LIST_UPDATED")
+	C_Housing.GetPlayerOwnedHouses()
+end
+
+function Detection:ApplyHousingTeleportAttributes(button, suffix)
+	suffix = suffix or ""
+	button._onewowHousingRequestToken = (button._onewowHousingRequestToken or 0) + 1
+	local requestToken = button._onewowHousingRequestToken
+	button:SetAttribute("type" .. suffix, nil)
+	button:SetAttribute("house-neighborhood-guid" .. suffix, nil)
+	button:SetAttribute("house-guid" .. suffix, nil)
+	button:SetAttribute("house-plot-id" .. suffix, nil)
+
+	local function applyHouse(house)
+		if button._onewowHousingRequestToken ~= requestToken then
+			return
+		end
+
+		if InCombatLockdown() then
+			tinsert(housingCallbacks, applyHouse)
+			housingEventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+			return
+		end
+
+		button:SetAttribute("type" .. suffix, nil)
+		button:SetAttribute("house-neighborhood-guid" .. suffix, nil)
+		button:SetAttribute("house-guid" .. suffix, nil)
+		button:SetAttribute("house-plot-id" .. suffix, nil)
+
+		if house and house.neighborhoodGUID and house.houseGUID and house.plotID then
+			button:SetAttribute("type" .. suffix, "teleporthome")
+			button:SetAttribute("house-neighborhood-guid" .. suffix, house.neighborhoodGUID)
+			button:SetAttribute("house-guid" .. suffix, house.houseGUID)
+			button:SetAttribute("house-plot-id" .. suffix, house.plotID)
+		end
+	end
+
+	if housingHouse then
+		applyHouse(housingHouse)
+	else
+		self:RequestHousingHouse(applyHouse)
+	end
+end
+
 function Detection:IsAvailable(type, id)
 	if type == "toy" then
 		return PlayerHasToy(id)

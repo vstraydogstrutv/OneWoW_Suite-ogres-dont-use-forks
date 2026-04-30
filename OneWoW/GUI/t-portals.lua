@@ -296,6 +296,7 @@ function GUI:CreatePortalsTab(parent)
 		button:SetParent(secureScrollChild)
 		button:SetSize(size, size)
 		button:Show()
+		button._onewowHousingRequestToken = (button._onewowHousingRequestToken or 0) + 1
 
 		if not button.dimOverlay then
 			button.dimOverlay = button:CreateTexture(nil, "ARTWORK")
@@ -346,10 +347,9 @@ function GUI:CreatePortalsTab(parent)
 			end
 		elseif portal.type == "housing" then
 			if isAvailable then
-				button:SetAttribute("type1", "macro")
-				button:SetAttribute("macrotext1", "/run local h=C_Housing.GetCurrentHouseInfo();if h and h.houseGUID then C_Housing.TeleportHome(h.neighborhoodGUID,h.houseGUID,h.plotID)else print('No house')end")
+				OneWoW.PortalHubDetection:ApplyHousingTeleportAttributes(button, "1")
 			end
-			local icon = C_Spell.GetSpellTexture(1263273)
+			local icon = C_Spell.GetSpellTexture(1233637)
 			if icon then
 				button:SetNormalTexture(icon)
 			end

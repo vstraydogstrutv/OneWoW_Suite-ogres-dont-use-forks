@@ -110,7 +110,7 @@ function OneWoW_GUI:CreateHeader(parent, options)
     local text = options.text or ""
     local yOffset = options.yOffset or -OneWoW_GUI:GetSpacing("MD")
     local header = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    header._owBaseSize = 16
+    OneWoW_GUI:SetFontBaseSize(header, 16)
     OneWoW_GUI:SafeSetFont(header, OneWoW_GUI:GetFont(), 16)
     header:SetPoint("TOPLEFT", OneWoW_GUI:GetSpacing("MD"), yOffset)
     header:SetText(text)
@@ -135,7 +135,7 @@ function OneWoW_GUI:CreateSection(parent, options)
     local title = options.title or ""
     local yOffset = options.yOffset or 0
     local header = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    header._owBaseSize = 12
+    OneWoW_GUI:SetFontBaseSize(header, 12)
     OneWoW_GUI:SafeSetFont(header, OneWoW_GUI:GetFont(), 12)
     header:SetPoint("TOPLEFT", parent, "TOPLEFT", OneWoW_GUI:GetSpacing("MD"), yOffset)
     header:SetText(title)
@@ -168,7 +168,7 @@ function OneWoW_GUI:CreateTitleBar(parent, options)
     titleBg:SetFrameLevel(parent:GetFrameLevel() + 1)
 
     titleBg._titleText = titleBg:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    titleBg._titleText._owBaseSize = 12
+    OneWoW_GUI:SetFontBaseSize(titleBg._titleText, 12)
     OneWoW_GUI:SafeSetFont(titleBg._titleText, OneWoW_GUI:GetFont(), 12)
 
     if showBrand then
@@ -190,7 +190,7 @@ function OneWoW_GUI:CreateTitleBar(parent, options)
         end)
 
         local brandText = titleBg:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        brandText._owBaseSize = 12
+        OneWoW_GUI:SetFontBaseSize(brandText, 12)
         OneWoW_GUI:SafeSetFont(brandText, OneWoW_GUI:GetFont(), 12)
         brandText:SetPoint("LEFT", brandIcon, "RIGHT", 4, 0)
         brandText:SetText("OneWoW")
@@ -228,7 +228,7 @@ function OneWoW_GUI:CreateSectionHeader(parent, options)
     section:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
 
     local titleText = section:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    titleText._owBaseSize = 12
+    OneWoW_GUI:SetFontBaseSize(titleText, 12)
     OneWoW_GUI:SafeSetFont(titleText, OneWoW_GUI:GetFont(), 12)
     titleText:SetPoint("LEFT", 12, 0)
     titleText:SetText(title)
@@ -239,6 +239,292 @@ function OneWoW_GUI:CreateSectionHeader(parent, options)
     section.bottomY = yOffset - sectionHeight
 
     return section
+end
+
+function OneWoW_GUI:CreateHeroPanel(parent, options)
+    options = options or {}
+    local height = options.height or Constants.GUI.HERO_PANEL_HEIGHT
+    local insetX = options.insetX or OneWoW_GUI:GetSpacing("MD")
+    local yOffset = options.yOffset or -OneWoW_GUI:GetSpacing("MD")
+    local panel = self:CreateFrame(parent, {
+        height = height,
+        backdrop = Constants.BACKDROP_INNER_NO_INSETS,
+        bgColor = options.bgColor or "BG_SECONDARY",
+        borderColor = options.borderColor or "BORDER_ACCENT",
+    })
+    panel:SetPoint("TOPLEFT", parent, "TOPLEFT", insetX, yOffset)
+    panel:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -insetX, yOffset)
+
+    local accent = panel:CreateTexture(nil, "ARTWORK")
+    accent:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
+    accent:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 0, 0)
+    accent:SetWidth(4)
+    accent:SetColorTexture(OneWoW_GUI:GetThemeColor(options.accentColor or "ACCENT_PRIMARY"))
+    panel.accent = accent
+
+    local iconSize = options.iconSize or 48
+    local iconFrame = self:CreateFrame(panel, {
+        width = iconSize + 10,
+        height = iconSize + 10,
+        backdrop = Constants.BACKDROP_INNER_NO_INSETS,
+        bgColor = "BG_TERTIARY",
+        borderColor = "BORDER_ACCENT",
+    })
+    iconFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", OneWoW_GUI:GetSpacing("LG"), -OneWoW_GUI:GetSpacing("LG"))
+
+    local icon = iconFrame:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(iconSize, iconSize)
+    icon:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
+    if options.iconAtlas then
+        icon:SetAtlas(options.iconAtlas)
+    else
+        icon:SetTexture(options.iconTexture or self:GetBrandIcon())
+    end
+    panel.icon = icon
+
+    local title = self:CreateFS(panel, options.titleSize or 18)
+    title:SetPoint("TOPLEFT", iconFrame, "TOPRIGHT", OneWoW_GUI:GetSpacing("MD"), -2)
+    title:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -OneWoW_GUI:GetSpacing("LG"), -2)
+    title:SetJustifyH("LEFT")
+    title:SetText(options.title or "")
+    title:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
+    panel.title = title
+
+    local subtitle = self:CreateFS(panel, options.subtitleSize or 12)
+    subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
+    subtitle:SetPoint("TOPRIGHT", title, "BOTTOMRIGHT", 0, -4)
+    subtitle:SetJustifyH("LEFT")
+    subtitle:SetText(options.subtitle or "")
+    subtitle:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+    panel.subtitle = subtitle
+
+    local description = self:CreateFS(panel, options.descriptionSize or 11)
+    description:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -6)
+    description:SetPoint("TOPRIGHT", subtitle, "BOTTOMRIGHT", 0, -6)
+    description:SetJustifyH("LEFT")
+    description:SetWordWrap(true)
+    description:SetText(options.description or "")
+    description:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+    panel.description = description
+
+    if options.calloutText and options.calloutText ~= "" then
+        local callout = self:CreateFrame(panel, {
+            width = options.calloutWidth or 185,
+            height = Constants.GUI.BADGE_HEIGHT,
+            backdrop = Constants.BACKDROP_INNER_NO_INSETS,
+            bgColor = "BG_ACTIVE",
+            borderColor = "BORDER_ACCENT",
+        })
+        callout:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -OneWoW_GUI:GetSpacing("MD"), OneWoW_GUI:GetSpacing("MD"))
+        callout.text = self:CreateFS(callout, 10)
+        callout.text:SetPoint("CENTER", callout, "CENTER", 0, 0)
+        callout.text:SetText(options.calloutText)
+        callout.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+        panel.callout = callout
+    end
+
+    panel.bottomY = yOffset - height
+    return panel
+end
+
+function OneWoW_GUI:CreateSummaryStrip(parent, options)
+    options = options or {}
+    local height = options.height or Constants.GUI.SUMMARY_STRIP_HEIGHT
+    local insetX = options.insetX or OneWoW_GUI:GetSpacing("MD")
+    local yOffset = options.yOffset or 0
+    local items = options.items or {}
+    local strip = self:CreateFrame(parent, {
+        height = height,
+        backdrop = Constants.BACKDROP_INNER_NO_INSETS,
+        bgColor = options.bgColor or "BG_PRIMARY",
+        borderColor = options.borderColor or "BORDER_SUBTLE",
+    })
+    strip:SetPoint("TOPLEFT", parent, "TOPLEFT", insetX, yOffset)
+    strip:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -insetX, yOffset)
+    strip.itemBoxes = {}
+
+    for i, item in ipairs(items) do
+        local box = self:CreateFrame(strip, {
+            backdrop = Constants.BACKDROP_INNER_NO_INSETS,
+            bgColor = "BG_TERTIARY",
+            borderColor = "BORDER_SUBTLE",
+        })
+        box.value = self:CreateFS(box, item.valueSize or 15)
+        box.value:SetPoint("TOPLEFT", box, "TOPLEFT", OneWoW_GUI:GetSpacing("SM"), -7)
+        box.value:SetPoint("TOPRIGHT", box, "TOPRIGHT", -OneWoW_GUI:GetSpacing("SM"), -7)
+        box.value:SetJustifyH("LEFT")
+        box.value:SetText(item.value or "")
+        box.value:SetTextColor(OneWoW_GUI:GetThemeColor(item.valueColor or "TEXT_ACCENT"))
+
+        box.label = self:CreateFS(box, item.labelSize or 10)
+        box.label:SetPoint("TOPLEFT", box.value, "BOTTOMLEFT", 0, -4)
+        box.label:SetPoint("TOPRIGHT", box.value, "BOTTOMRIGHT", 0, -4)
+        box.label:SetJustifyH("LEFT")
+        box.label:SetText(item.label or "")
+        box.label:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+
+        strip.itemBoxes[i] = box
+    end
+
+    local function LayoutBoxes()
+        local count = #strip.itemBoxes
+        if count == 0 then return end
+        local width = strip:GetWidth()
+        if width <= 0 then return end
+        local gap = OneWoW_GUI:GetSpacing("SM")
+        local innerX = OneWoW_GUI:GetSpacing("SM")
+        local boxWidth = (width - (innerX * 2) - (gap * (count - 1))) / count
+        for i, box in ipairs(strip.itemBoxes) do
+            box:ClearAllPoints()
+            box:SetPoint("TOPLEFT", strip, "TOPLEFT", innerX + ((i - 1) * (boxWidth + gap)), -OneWoW_GUI:GetSpacing("SM"))
+            box:SetSize(boxWidth, height - (OneWoW_GUI:GetSpacing("SM") * 2))
+        end
+    end
+
+    strip:SetScript("OnSizeChanged", LayoutBoxes)
+    C_Timer.After(0, LayoutBoxes)
+
+    function strip:SetItemValue(index, value)
+        local box = self.itemBoxes and self.itemBoxes[index]
+        if box and box.value then
+            box.value:SetText(value or "")
+        end
+    end
+
+    strip.bottomY = yOffset - height
+    return strip
+end
+
+function OneWoW_GUI:CreateSelectableCard(parent, options)
+    options = options or {}
+    local height = options.height or Constants.GUI.SELECTABLE_CARD_HEIGHT
+    local card = CreateFrame("Button", options.name, parent, "BackdropTemplate")
+    card:SetHeight(height)
+    card:SetBackdrop(Constants.BACKDROP_INNER_NO_INSETS)
+    card:RegisterForClicks("LeftButtonUp")
+    card._checked = options.checked and true or false
+    card._onToggle = options.onToggle
+
+    local selectedAccent = card:CreateTexture(nil, "ARTWORK")
+    selectedAccent:SetPoint("TOPLEFT", card, "TOPLEFT", 0, 0)
+    selectedAccent:SetPoint("BOTTOMLEFT", card, "BOTTOMLEFT", 0, 0)
+    selectedAccent:SetWidth(4)
+    selectedAccent:SetColorTexture(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
+    card.selectedAccent = selectedAccent
+
+    local iconSize = options.iconSize or Constants.GUI.SELECTABLE_CARD_ICON_SIZE
+    local iconFrame = self:CreateFrame(card, {
+        width = iconSize + 8,
+        height = iconSize + 8,
+        backdrop = Constants.BACKDROP_INNER_NO_INSETS,
+        bgColor = "BG_TERTIARY",
+        borderColor = "BORDER_SUBTLE",
+    })
+    iconFrame:SetPoint("LEFT", card, "LEFT", OneWoW_GUI:GetSpacing("MD"), 0)
+    card.iconFrame = iconFrame
+
+    local icon = iconFrame:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(iconSize, iconSize)
+    icon:SetPoint("CENTER", iconFrame, "CENTER", 0, 0)
+    if options.iconAtlas then
+        icon:SetAtlas(options.iconAtlas)
+    else
+        icon:SetTexture(options.iconTexture or self:GetBrandIcon())
+    end
+    card.icon = icon
+
+    local check = self:CreateCheckbox(card, {
+        label = "",
+        checked = card._checked,
+        onClick = function(self)
+            card:SetChecked(self:GetChecked() and true or false)
+        end,
+    })
+    check:SetPoint("RIGHT", card, "RIGHT", -OneWoW_GUI:GetSpacing("MD"), 0)
+    card.checkbox = check
+
+    local title = self:CreateFS(card, options.titleSize or 13)
+    title:SetPoint("TOPLEFT", iconFrame, "TOPRIGHT", OneWoW_GUI:GetSpacing("MD"), -5)
+    title:SetPoint("RIGHT", check, "LEFT", -OneWoW_GUI:GetSpacing("MD"), 0)
+    title:SetJustifyH("LEFT")
+    title:SetText(options.title or "")
+    card.title = title
+
+    local summary = self:CreateFS(card, options.summarySize or 11)
+    summary:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -5)
+    summary:SetPoint("RIGHT", check, "LEFT", -OneWoW_GUI:GetSpacing("MD"), 0)
+    summary:SetJustifyH("LEFT")
+    summary:SetWordWrap(true)
+    summary:SetText(options.summary or "")
+    card.summary = summary
+
+    if options.badgeText and options.badgeText ~= "" then
+        local badge = self:CreateFrame(card, {
+            width = options.badgeWidth or 92,
+            height = Constants.GUI.BADGE_HEIGHT,
+            backdrop = Constants.BACKDROP_INNER_NO_INSETS,
+            bgColor = "BG_TERTIARY",
+            borderColor = "BORDER_SUBTLE",
+        })
+        badge:SetPoint("TOPRIGHT", check, "LEFT", -OneWoW_GUI:GetSpacing("MD"), -5)
+        badge.text = self:CreateFS(badge, 9)
+        badge.text:SetPoint("CENTER", badge, "CENTER", 0, 0)
+        badge.text:SetText(options.badgeText)
+        card.badge = badge
+        title:SetPoint("RIGHT", badge, "LEFT", -OneWoW_GUI:GetSpacing("SM"), 0)
+    end
+
+    local function ApplyVisual(self, hover)
+        if self._checked then
+            self:SetBackdropColor(OneWoW_GUI:GetThemeColor(hover and "BG_HOVER" or "BG_ACTIVE"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor(hover and "BORDER_FOCUS" or "BORDER_ACCENT"))
+            self.selectedAccent:Show()
+            self.title:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+            self.summary:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+            self.icon:SetDesaturated(false)
+            self.icon:SetAlpha(1)
+            self.iconFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+            if self.badge then
+                self.badge:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+                self.badge.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+            end
+        else
+            self:SetBackdropColor(OneWoW_GUI:GetThemeColor(hover and "BG_HOVER" or "BG_SECONDARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor(hover and "BORDER_FOCUS" or "BORDER_SUBTLE"))
+            self.selectedAccent:Hide()
+            self.title:SetTextColor(OneWoW_GUI:GetThemeColor(hover and "TEXT_ACCENT" or "TEXT_PRIMARY"))
+            self.summary:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
+            self.icon:SetDesaturated(true)
+            self.icon:SetAlpha(0.68)
+            self.iconFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+            if self.badge then
+                self.badge:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+                self.badge.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+            end
+        end
+    end
+
+    function card:SetChecked(checked, silent)
+        self._checked = checked and true or false
+        self.checkbox:SetChecked(self._checked)
+        ApplyVisual(self, self:IsMouseOver())
+        if not silent and self._onToggle then
+            self._onToggle(self, self._checked)
+        end
+    end
+
+    function card:GetChecked()
+        return self._checked
+    end
+
+    card:SetScript("OnEnter", function(self) ApplyVisual(self, true) end)
+    card:SetScript("OnLeave", function(self) ApplyVisual(self, false) end)
+    card:SetScript("OnClick", function(self)
+        self:SetChecked(not self._checked)
+    end)
+
+    card:SetChecked(card._checked, true)
+    return card
 end
 
 function OneWoW_GUI:CreateVerticalPaneResizer(options)

@@ -16,44 +16,45 @@ local FirstRun = OneWoW.FirstRun
 
 -- Authoritative feature catalog. Each entry:
 --   addonName   - the WoW addon folder / TOC name (what DisableAddOn sees)
---   label       - human-readable
---   summary     - short description
+--   labelKey    - localized display name key
+--   summaryKey  - localized short description key
 --   group       - "feature" | "standalone" | "utility" - grouping in the UI
+--   iconTexture - card icon texture path
 --   datastores  - list of sibling data addons this feature needs loaded
 -- Datastores are "pulled in" if any checked feature needs them.
 FirstRun.CATALOG = {
-    { addonName = "OneWoW_AltTracker",    label = "AltTracker",          group = "feature",
-      summary = "Cross-character dashboard: progress, gold, professions, bank, auctions, lockouts.",
+    { addonName = "OneWoW_AltTracker", labelKey = "WIZARD_FEATURE_ALTTRACKER", summaryKey = "WIZARD_FEATURE_ALTTRACKER_DESC", group = "feature",
+      iconTexture = "Interface\\Icons\\Achievement_Guild_ClassyDwarf",
       datastores = { "OneWoW_AltTracker_Storage", "OneWoW_AltTracker_Character",
                      "OneWoW_AltTracker_Collections", "OneWoW_AltTracker_Endgame",
                      "OneWoW_AltTracker_Accounting", "OneWoW_AltTracker_Professions",
                      "OneWoW_AltTracker_Auctions" } },
-    { addonName = "OneWoW_Catalog",       label = "Catalog",             group = "feature",
-      summary = "Browseable journal / vendors / tradeskills / quests / item search.",
+    { addonName = "OneWoW_Catalog", labelKey = "WIZARD_FEATURE_CATALOG", summaryKey = "WIZARD_FEATURE_CATALOG_DESC", group = "feature",
+      iconTexture = "Interface\\Icons\\INV_Misc_Book_11",
       datastores = { "OneWoW_CatalogData_Journal", "OneWoW_CatalogData_Quests",
                      "OneWoW_CatalogData_Vendors", "OneWoW_CatalogData_Tradeskills" } },
-    { addonName = "OneWoW_Notes",         label = "Notes",               group = "feature",
-      summary = "Note-taking for characters, players, NPCs, zones, items.",
+    { addonName = "OneWoW_Notes", labelKey = "WIZARD_FEATURE_NOTES", summaryKey = "WIZARD_FEATURE_NOTES_DESC", group = "feature",
+      iconTexture = "Interface\\Icons\\INV_Inscription_Scroll",
       datastores = {} },
-    { addonName = "OneWoW_Trackers",      label = "Trackers",            group = "feature",
-      summary = "User-defined tracker lists, guides, dailies, weeklies, todos.",
+    { addonName = "OneWoW_Trackers", labelKey = "WIZARD_FEATURE_TRACKERS", summaryKey = "WIZARD_FEATURE_TRACKERS_DESC", group = "feature",
+      iconTexture = "Interface\\Icons\\Ability_Hunter_MarkedForDeath",
       datastores = {} },
-    { addonName = "OneWoW_QoL",           label = "Quality of Life",     group = "feature",
-      summary = "Feature pack: autoloot, autorepair, coords, mounts, panels, and many toggles.",
+    { addonName = "OneWoW_QoL", labelKey = "WIZARD_FEATURE_QOL", summaryKey = "WIZARD_FEATURE_QOL_DESC", group = "feature",
+      iconTexture = "Interface\\Icons\\INV_Gizmo_RocketBoot_01",
       datastores = {} },
 
-    { addonName = "OneWoW_Bags",          label = "Bags",                group = "standalone",
-      summary = "Unified bags / bank / guild bank UI with categories, sorting, imports.",
+    { addonName = "OneWoW_Bags", labelKey = "WIZARD_FEATURE_BAGS", summaryKey = "WIZARD_FEATURE_BAGS_DESC", group = "standalone",
+      iconTexture = "Interface\\Icons\\INV_Misc_Bag_08",
       datastores = { "OneWoW_AltTracker_Storage", "OneWoW_AltTracker_Character" } },
-    { addonName = "OneWoW_ShoppingList",  label = "Shopping List",       group = "standalone",
-      summary = "Shopping / crafting material lists with profession + alt-inventory awareness.",
+    { addonName = "OneWoW_ShoppingList", labelKey = "WIZARD_FEATURE_SHOPPINGLIST", summaryKey = "WIZARD_FEATURE_SHOPPINGLIST_DESC", group = "standalone",
+      iconTexture = "Interface\\Icons\\INV_Misc_Coin_01",
       datastores = { "OneWoW_AltTracker_Storage", "OneWoW_AltTracker_Professions" } },
-    { addonName = "OneWoW_DirectDeposit", label = "Direct Deposit",      group = "standalone",
-      summary = "Automates gold / item moves between character and Warband Bank.",
+    { addonName = "OneWoW_DirectDeposit", labelKey = "WIZARD_FEATURE_DIRECTDEPOSIT", summaryKey = "WIZARD_FEATURE_DIRECTDEPOSIT_DESC", group = "standalone",
+      iconTexture = "Interface\\Icons\\INV_Misc_Coin_02",
       datastores = {} },
 
-    { addonName = "OneWoW_Utility_DevTool", label = "DevTool (developers)", group = "utility",
-      summary = "Frame inspection, event monitor, error export, globals / atlas browsers.",
+    { addonName = "OneWoW_Utility_DevTool", labelKey = "WIZARD_FEATURE_DEVTOOL", summaryKey = "WIZARD_FEATURE_DEVTOOL_DESC", group = "utility",
+      iconTexture = "Interface\\Icons\\INV_Gizmo_02",
       datastores = {} },
 }
 
@@ -110,6 +111,7 @@ function FirstRun:GetCurrentSelections()
 end
 
 function FirstRun:Apply(selections)
+    local L = OneWoW.L or {}
     for _, entry in ipairs(FirstRun.CATALOG) do
         SetEnabled(entry.addonName, selections[entry.addonName] and true or false)
     end
@@ -123,9 +125,9 @@ function FirstRun:Apply(selections)
     end
 
     StaticPopupDialogs["ONEWOW_MANAGE_FEATURES_RELOAD"] = {
-        text = "Feature selection saved. Reload UI to apply?",
-        button1 = "Reload now",
-        button2 = "Later",
+        text = L["WIZARD_RELOAD_TEXT"],
+        button1 = L["WIZARD_RELOAD_NOW"],
+        button2 = L["WIZARD_RELOAD_LATER"],
         OnAccept = function() ReloadUI() end,
         timeout = 0,
         whileDead = true,
@@ -151,58 +153,126 @@ end
 -- rest of the addon's UI standards: no raw SetBackdrop, no UICheckButtonTemplate.
 function FirstRun:BuildPanel(parent)
     local L = OneWoW.L or {}
+    local C = OneWoW_GUI.Constants.GUI
 
-    local scrollFrame, content = OneWoW_GUI:CreateScrollFrame(parent, { name = "OneWoW_ManageFeaturesScroll" })
-    content:SetHeight(900)
-
-    local headerBg = OneWoW_GUI:CreateFrame(content, {
-        bgColor     = "BG_SECONDARY",
-        borderColor = "BORDER_SUBTLE",
-    })
-    headerBg:SetPoint("TOPLEFT",  content, "TOPLEFT",  10,  -10)
-    headerBg:SetPoint("TOPRIGHT", content, "TOPRIGHT", -10, -10)
-    headerBg:SetHeight(80)
-
-    local headerTitle = OneWoW_GUI:CreateFS(headerBg, 16)
-    headerTitle:SetPoint("TOPLEFT", headerBg, "TOPLEFT", 15, -12)
-    headerTitle:SetText(L["MANAGE_FEATURES_TITLE"] or "Manage Features")
-    headerTitle:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
-
-    local headerDesc = OneWoW_GUI:CreateFS(headerBg, 11)
-    headerDesc:SetPoint("TOPLEFT",  headerBg, "TOPLEFT",  15, -36)
-    headerDesc:SetPoint("TOPRIGHT", headerBg, "TOPRIGHT", -15, -36)
-    headerDesc:SetJustifyH("LEFT")
-    headerDesc:SetWordWrap(true)
-    headerDesc:SetText(L["MANAGE_FEATURES_DESC"] or
-        "Uncheck any feature you don't use. Its addon (and any exclusively-owned datastore addons) will be fully unloaded \226\128\148 no RAM, no CPU, no SavedVariables written. Shared datastores (e.g. Storage / Character) stay enabled as long as any enabled feature depends on them.")
-    headerDesc:SetHeight(44)
-    headerDesc:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-
-    -- Invisible layout container for the two action buttons; no backdrop, no
-    -- theme, nothing to standardize - purely positional.
-    local actionBar = CreateFrame("Frame", nil, content)
-    actionBar:SetPoint("TOPLEFT",  headerBg, "BOTTOMLEFT",  0, -8)
-    actionBar:SetPoint("TOPRIGHT", headerBg, "BOTTOMRIGHT", 0, -8)
-    actionBar:SetHeight(32)
-
-    local recommendedBtn = OneWoW_GUI:CreateButton(actionBar, { text = "Use recommended", width = 160, height = 26 })
-    recommendedBtn:SetPoint("LEFT", actionBar, "LEFT", 0, 0)
-
-    local applyBtn = OneWoW_GUI:CreateButton(actionBar, { text = "Apply & Reload", width = 160, height = 26 })
-    applyBtn:SetPoint("RIGHT", actionBar, "RIGHT", 0, 0)
-
-    -- Invisible layout container for the group bands + feature rows.
-    local listContainer = CreateFrame("Frame", nil, content)
-    listContainer:SetPoint("TOPLEFT",  actionBar, "BOTTOMLEFT",  0, -8)
-    listContainer:SetPoint("TOPRIGHT", actionBar, "BOTTOMRIGHT", 0, -8)
-    listContainer:SetHeight(600)
+    local _, content = OneWoW_GUI:CreateScrollFrame(parent, { name = "OneWoW_ManageFeaturesScroll" })
+    content:SetHeight(1)
 
     local selections = FirstRun:GetCurrentSelections()
-    local checkboxes = {}
+    local originalSelections = {}
+    for _, entry in ipairs(FirstRun.CATALOG) do
+        originalSelections[entry.addonName] = selections[entry.addonName] and true or false
+    end
+
+    local function CountSelected()
+        local count = 0
+        for _, entry in ipairs(FirstRun.CATALOG) do
+            if selections[entry.addonName] then
+                count = count + 1
+            end
+        end
+        return count
+    end
+
+    local function CountWantedDatastores()
+        local count = 0
+        local datastoreState = ComputeDatastoreState(selections)
+        for _, ds in ipairs(DATASTORE_ADDONS) do
+            if datastoreState[ds] then
+                count = count + 1
+            end
+        end
+        return count
+    end
+
+    local function HasChanges()
+        for _, entry in ipairs(FirstRun.CATALOG) do
+            local addonName = entry.addonName
+            if (selections[addonName] and true or false) ~= originalSelections[addonName] then
+                return true
+            end
+        end
+        return false
+    end
+
+    local hero = OneWoW_GUI:CreateHeroPanel(content, {
+        title = L["WIZARD_HERO_TITLE"],
+        subtitle = L["WIZARD_HERO_SUBTITLE"],
+        description = L["WIZARD_HERO_DESC"],
+        calloutText = L["WIZARD_HERO_CALLOUT"],
+        iconTexture = OneWoW_GUI:GetBrandIcon((OneWoW_GUI.GetSetting and OneWoW_GUI:GetSetting("minimap.theme")) or "neutral"),
+        yOffset = -10,
+    })
+
+    local summary = OneWoW_GUI:CreateSummaryStrip(content, {
+        yOffset = hero.bottomY - 8,
+        items = {
+            { label = L["WIZARD_SUMMARY_SELECTED"] },
+            { label = L["WIZARD_SUMMARY_DATA"] },
+            { label = L["WIZARD_SUMMARY_RELOAD"] },
+        },
+    })
+
+    local actionBar = OneWoW_GUI:CreateLayoutFrame(content, { height = C.ACTION_BAR_HEIGHT })
+    actionBar:SetPoint("TOPLEFT", content, "TOPLEFT", 12, summary.bottomY - 8)
+    actionBar:SetPoint("TOPRIGHT", content, "TOPRIGHT", -12, summary.bottomY - 8)
+
+    local presetButtons = OneWoW_GUI:CreateFitFrameButtons(actionBar, {
+        yOffset = 0,
+        width = C.WIZARD_PRESET_WIDTH,
+        marginX = 0,
+        items = {
+            { text = L["WIZARD_PRESET_RECOMMENDED"], value = "recommended" },
+            { text = L["WIZARD_PRESET_MINIMAL"], value = "minimal" },
+            { text = L["WIZARD_PRESET_MANUAL"], value = "manual", isActive = true },
+        },
+    })
+
+    local applyBtn = OneWoW_GUI:CreateFitTextButton(actionBar, {
+        text = L["WIZARD_APPLY_RELOAD"],
+        height = 26,
+        minWidth = 130,
+    })
+    applyBtn:SetPoint("TOPRIGHT", actionBar, "TOPRIGHT", 0, 0)
+
+    local listContainer = OneWoW_GUI:CreateLayoutFrame(content, {})
+    listContainer:SetPoint("TOPLEFT", content, "TOPLEFT", 12, summary.bottomY - C.ACTION_BAR_HEIGHT - 16)
+    listContainer:SetPoint("TOPRIGHT", content, "TOPRIGHT", -12, summary.bottomY - C.ACTION_BAR_HEIGHT - 16)
+    listContainer:SetHeight(600)
+
+    local cards = {}
     local rowY = 0
 
-    local groupLabels = { feature = "Features", standalone = "Standalones", utility = "Utilities" }
+    local groupLabels = {
+        feature = L["WIZARD_GROUP_FEATURES"],
+        standalone = L["WIZARD_GROUP_STANDALONE"],
+        utility = L["WIZARD_GROUP_UTILITY"],
+    }
     local groupOrder  = { "feature", "standalone", "utility" }
+
+    local function RefreshSummary()
+        summary:SetItemValue(1, format("%d / %d", CountSelected(), #FirstRun.CATALOG))
+        summary:SetItemValue(2, format("%d", CountWantedDatastores()))
+        summary:SetItemValue(3, HasChanges() and L["WIZARD_SUMMARY_PENDING"] or L["WIZARD_SUMMARY_READY"])
+    end
+
+    local function ApplyPreset(preset)
+        for _, entry in ipairs(FirstRun.CATALOG) do
+            local want = false
+            if preset == "recommended" then
+                want = (entry.group ~= "utility")
+            elseif preset == "minimal" then
+                want = false
+            else
+                want = selections[entry.addonName] and true or false
+            end
+            selections[entry.addonName] = want
+            if cards[entry.addonName] then
+                cards[entry.addonName]:SetChecked(want, true)
+            end
+        end
+        RefreshSummary()
+    end
 
     for _, group in ipairs(groupOrder) do
         local groupHeader = OneWoW_GUI:CreateSectionHeader(listContainer, {
@@ -213,58 +283,47 @@ function FirstRun:BuildPanel(parent)
 
         for _, entry in ipairs(FirstRun.CATALOG) do
             if entry.group == group then
-                local row = OneWoW_GUI:CreateFrame(listContainer, {
-                    bgColor     = "BG_SECONDARY",
-                    borderColor = "BORDER_SUBTLE",
-                })
-                row:SetHeight(44)
-                row:SetPoint("TOPLEFT",  listContainer, "TOPLEFT",   0, -rowY)
-                row:SetPoint("TOPRIGHT", listContainer, "TOPRIGHT",  0, -rowY)
-
-                local cb = OneWoW_GUI:CreateCheckbox(row, {
-                    label   = "",
+                local card = OneWoW_GUI:CreateSelectableCard(listContainer, {
+                    title = L[entry.labelKey],
+                    summary = L[entry.summaryKey],
+                    badgeText = groupLabels[group],
+                    iconTexture = entry.iconTexture,
                     checked = selections[entry.addonName],
-                    onClick = function(self)
-                        selections[entry.addonName] = self:GetChecked() and true or false
+                    onToggle = function(_, checked)
+                        selections[entry.addonName] = checked and true or false
+                        presetButtons.SetActiveByValue("manual")
+                        RefreshSummary()
                     end,
                 })
-                cb:SetPoint("LEFT", row, "LEFT", 10, 0)
-                checkboxes[entry.addonName] = cb
-
-                local label = OneWoW_GUI:CreateFS(row, 13)
-                label:SetPoint("LEFT", cb, "RIGHT", 8, 6)
-                label:SetText(entry.label)
-                label:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
-
-                local summary = OneWoW_GUI:CreateFS(row, 11)
-                summary:SetPoint("LEFT",  cb, "RIGHT", 8, -10)
-                summary:SetPoint("RIGHT", row, "RIGHT", -10, -10)
-                summary:SetJustifyH("LEFT")
-                summary:SetText(entry.summary)
-                summary:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-
-                rowY = rowY + 48
+                card:SetPoint("TOPLEFT",  listContainer, "TOPLEFT",  0, -rowY)
+                card:SetPoint("TOPRIGHT", listContainer, "TOPRIGHT", 0, -rowY)
+                cards[entry.addonName] = card
+                rowY = rowY + C.SELECTABLE_CARD_HEIGHT + 6
             end
         end
         rowY = rowY + 10
     end
 
     listContainer:SetHeight(math.max(1, rowY))
-    content:SetHeight(120 + rowY + 40)
+    content:SetHeight(math.abs(summary.bottomY) + C.ACTION_BAR_HEIGHT + rowY + 60)
 
-    recommendedBtn:SetScript("OnClick", function()
-        for _, entry in ipairs(FirstRun.CATALOG) do
-            local want = (entry.group ~= "utility")
-            selections[entry.addonName] = want
-            if checkboxes[entry.addonName] then
-                checkboxes[entry.addonName]:SetChecked(want)
-            end
-        end
+    presetButtons[1]:SetScript("OnClick", function()
+        presetButtons.SetActiveByValue("recommended")
+        ApplyPreset("recommended")
+    end)
+    presetButtons[2]:SetScript("OnClick", function()
+        presetButtons.SetActiveByValue("minimal")
+        ApplyPreset("minimal")
+    end)
+    presetButtons[3]:SetScript("OnClick", function()
+        presetButtons.SetActiveByValue("manual")
     end)
 
     applyBtn:SetScript("OnClick", function()
         FirstRun:Apply(selections)
     end)
+
+    RefreshSummary()
 end
 
 function FirstRun:ShouldShowWizard()
@@ -279,11 +338,12 @@ function FirstRun:ShowWizard()
         return
     end
 
+    local C = OneWoW_GUI.Constants.GUI
     local result = OneWoW_GUI:CreateDialog({
         name      = "OneWoW_FirstRunWizard",
-        title     = (OneWoW.L and OneWoW.L["WIZARD_TITLE"]) or "Welcome to OneWoW",
-        width     = 760,
-        height    = 620,
+        title     = OneWoW.L["WIZARD_TITLE"],
+        width     = C.WIZARD_DIALOG_WIDTH,
+        height    = C.WIZARD_DIALOG_HEIGHT,
         showBrand = true,
         buttons   = nil,
     })
