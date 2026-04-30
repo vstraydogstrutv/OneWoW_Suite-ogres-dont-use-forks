@@ -249,7 +249,7 @@ Handedness keywords:
 | `#offhand` | (off-hand weapons and holdable items) |
 | `#holdable` | |
 | `#ranged` | |
-| `#wand` | |
+| `#wand` | `#wands` |
 | `#tabard` | |
 | `#shirt` | |
 
@@ -278,6 +278,8 @@ Handedness keywords:
 | `#roomcustomization` | |
 | `#exteriorcustomization` | |
 | `#serviceitem` | |
+
+Decor items (`#decor`) additionally expose four **numeric properties** (`decorstorage`, `decorplaced`, `decorredeemable`, `decortotal`) from the housing catalog; see [Numeric comparisons](#numeric-comparisons).
 
 ### Profession Reagent Subtype
 
@@ -693,6 +695,15 @@ Syntax: `property>=value`, `property<=value`, `property>value`, `property<value`
 | `durability` | | Current durability (bag/slot items; otherwise treated as `0` for comparisons) |
 | `maxdurability` | | Maximum durability for the slot |
 | `durabilitypct` | | `current / max * 100` when the slot has durability from `C_Container.GetContainerItemDurability`; otherwise the field is unset and numeric comparisons treat it as `0` |
+| `decorstorage` | | In-storage quantity for housing **decor** items (from `C_HousingCatalog` catalog entry matching the item ID) |
+| `decorplaced` | | Number of placed instances |
+| `decorredeemable` | | Remaining redeemable count |
+| `decortotal` | | Sum of storage, placed, and redeemable |
+
+> **`#decor` vs `decorstorage>=1`:** The keyword `#decor` matches the Housing · Decor **item subclass**. Numeric `decor*` properties count catalog state for that item and are independent of `#decor` wording overlap.
+
+> **Housing decor counts:** `BuildProps` calls `ResolveHousing` only for items whose class/subclass are Housing · Decor (`#decor`). Counts come from `C_HousingCatalog.CreateCatalogSearcher` (skipped when the API returns no searcher — e.g. housing unavailable). The catalog runs an **async** search and fills `decor*` fields in the callback; the first predicate evaluation can see `0`/missing values until props refresh (same `props[field] or 0` rule as other numerics).
+
 
 > **`#armor` vs `armor>=N`:** The keyword `#armor` matches any item in the
 > Armor item class. The property `armor` in a comparison like `armor>=100`
@@ -743,6 +754,7 @@ petlevel:1-10           Low-level pets
 petquality>=4           Epic or better pets
 ilvl>=reqlevel          Item level at or above required level (property vs property)
 durabilitypct<100       Damaged gear (bag/slot only; see durability note above)
+#decor & decorplaced>=1 Housing decor you've placed at least once (see housing-decor notes above)
 ```
 
 
@@ -955,9 +967,9 @@ in this document; full API and extension notes are in
 | Area | What lives there (approx.) |
 |---|---|
 | Caches | `propsCache`, `tooltipCache`, `compiledCache` — keyed by expression string and `bagID:slotID` where applicable. |
-| Data / patterns | Hearthstone ID set, knowledge-study icon set, `ITEM_CONTEXT_CATEGORY` → `#raid` / `#dungeon` / etc., locale patterns for charges / tradeable / unique-equip, `CLASS_ID` (token → class id). |
+| Data / patterns | Hearthstone ID set, knowledge-study icon set, `ITEM_CONTEXT_CATEGORY` → `#raid` / `#dungeon` / etc., locale patterns for charges / tradeable / unique-equip, `CLASS_ID` (token → class id); `ResolveHousing` + `C_HousingCatalog` for decor quantity fields. |
 | `CONSTANT_MAP` | `${POOR}` … `${HEIRLOOM}` and expansion `${CLASSIC}` … `${LASTTITAN}` for `ResolveParams` / vendor templates. |
-| `PROP_REGISTRY` | Built-in numeric and string property names and aliases (including money units on `vendorprice` / `totalvalue`). Exposed to callers via `RegisterProperty` merges. |
+| `PROP_REGISTRY` | Built-in numeric and string property names and aliases (including money units on `vendorprice` / `totalvalue` and housing decor counts: `decorstorage`, `decorplaced`, `decorredeemable`, `decortotal`). Exposed to callers via `RegisterProperty` merges. |
 | `FLAG_REGISTRY` | Lowercased `IsEquipment`-style words → `props` field names (vendor-style verbose rules). |
 | `KEYWORD_MAP` | All `#` keywords via `RegisterKeyword` (quality, class, subtypes, stats, context, etc.). |
 | `BuildProps` | Layer 1: `itemID` + optional slot → flat `props` (lazy tooltip/binds/stats on access). |

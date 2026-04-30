@@ -33,6 +33,7 @@ local C_ToyBox, PlayerHasToy = C_ToyBox, PlayerHasToy
 local C_MountJournal, C_PetJournal = C_MountJournal, C_PetJournal
 local C_TransmogCollection = C_TransmogCollection
 local C_TradeSkillUI = C_TradeSkillUI
+local C_HousingCatalog = C_HousingCatalog
 local GetSpecialization, GetSpecializationInfo = GetSpecialization, GetSpecializationInfo
 local BattlePetToolTip_UnpackBattlePetLink = BattlePetToolTip_UnpackBattlePetLink
 
@@ -246,23 +247,29 @@ PE.ParseMoney = ParseMoney
 local MONEY_CHAR_CLASS = "[%d%.gGsScC]"
 
 -- Numeric properties
+RegisterPropAlias({"vendorprice", "price", "unitvalue"},    "vendorPrice", "number", "money")
 RegisterPropAlias({"ilvl", "itemlevel", "level"},           "ilvl")
 RegisterPropAlias({"id", "itemid"},                         "id")
 RegisterPropAlias({"count", "stacks"},                      "count")
-RegisterPropAlias({"vendorprice", "price", "unitvalue"},    "vendorPrice", "number", "money")
 RegisterPropAlias({"maxstack", "stacksize"},                "maxStack")
 RegisterPropAlias({"reqlevel", "minlevel"},                 "reqLevel")
 RegisterPropAlias({"expansion", "expac"},                   "expansionID")
 RegisterPropAlias({"class", "typeid"},                      "classID")
 RegisterPropAlias({"subclass", "subtypeid"},                "subClassID")
-RegisterPropAlias("pettype",                                "petType")
-RegisterPropAlias("petquality",                             "petQuality")
-RegisterPropAlias("petlevel",                               "petLevel")
-RegisterPropAlias("petmaxhealth",                           "petMaxHealth")
-RegisterPropAlias("petpower",                               "petPower")
-RegisterPropAlias("petspeed",                               "petSpeed")
-RegisterPropAlias("petcollected",                           "petCollected")
-RegisterPropAlias("petlimit",                               "petLimit")
+
+RegisterPropAlias("decorstorage",       "decorNumStorage")
+RegisterPropAlias("decorplaced",        "decorNumPlaced")
+RegisterPropAlias("decorredeemable",    "decorNumRedeemable")
+RegisterPropAlias("decortotal",         "decorNumTotal")
+
+RegisterPropAlias("pettype",        "petType")
+RegisterPropAlias("petquality",     "petQuality")
+RegisterPropAlias("petlevel",       "petLevel")
+RegisterPropAlias("petmaxhealth",   "petMaxHealth")
+RegisterPropAlias("petpower",       "petPower")
+RegisterPropAlias("petspeed",       "petSpeed")
+RegisterPropAlias("petcollected",   "petCollected")
+RegisterPropAlias("petlimit",       "petLimit")
 
 RegisterPropAlias("quality",        "quality")
 RegisterPropAlias("bindtype",       "bindType")
@@ -1157,6 +1164,44 @@ local function GetTooltipText(bagID, slotID)
     return text
 end
 
+-- ---------- ResolveHousing ----------
+-- Fills in props with information related to housing decor items
+---@param props table
+local function ResolveHousing(props)
+    local searcher = C_HousingCatalog.CreateCatalogSearcher()
+    if not searcher then return end -- check for when housing is unavailable in-game
+
+    local itemID = rawget(props, "id")
+
+    searcher:SetCollected(true)
+    searcher:SetResultsUpdatedCallback(function()
+       local matchingEntryIDs = searcher:GetCatalogSearchResults()
+
+       for _, entryID in ipairs(matchingEntryIDs) do
+          if entryID.entryType == Enum.HousingCatalogEntryType.Decor then
+            local info = C_HousingCatalog.GetCatalogEntryInfo(entryID)
+
+            if info then
+                if info.itemID == itemID then
+                    local quantity = info.quantity or 0
+                    local numPlaced = info.numPlaced or 0
+                    local remainingRedeemable = info.remainingRedeemable or 0
+                    local total = quantity + numPlaced + remainingRedeemable
+
+                    rawset(props, "decorNumStorage", quantity)
+                    rawset(props, "decorNumPlaced", numPlaced)
+                    rawset(props, "decorNumRedeemable", remainingRedeemable)
+                    rawset(props, "decorNumTotal", total)
+
+                    break
+                end
+            end
+          end
+       end
+    end)
+    searcher:RunSearch()
+end
+
 -- ---------- ResolveCollected ----------
 ---@param itemID number
 ---@param hyperlink string|nil
@@ -1895,6 +1940,10 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
         local isCatalyst, isCatalystUpgrade = TransmogUpgradeMaster_API.IsAppearanceMissing(hyperlink)
         props.isCatalyst = isCatalyst == true
         props.isCatalystUpgrade = isCatalystUpgrade == true
+    end
+
+    if props.classID == Enum.ItemClass.Housing and props.subClassID == Enum.ItemHousingSubclass.Decor then
+        ResolveHousing(props)
     end
 
     -- BIND DETECTION NOTE: API-based bind detection removed as it's not detailed enough. Warbound == Soulbound according to the API.
