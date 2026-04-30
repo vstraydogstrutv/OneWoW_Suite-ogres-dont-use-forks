@@ -295,7 +295,7 @@ end
 
 ## SavedVariables
 
-The addon uses AceDB. Your module's data is automatically available under:
+The addon uses the `OneWoW_GUI.DB` API (see `OneWoW_GUI/Database.lua` and `OneWoW_GUI/Docs/DATABASE.md`). The SavedVariable `OneWoW_QoL_DB` is initialized in `single` mode by `Core/Database.lua`. Your module's data is automatically available under:
 
 ```
 OneWoW_QoL_DB.global.modules.yourmodule
@@ -303,7 +303,7 @@ OneWoW_QoL_DB.global.modules.yourmodule
 
 The registry handles enable/disable state and toggle values in this space automatically. You do not need to read or write there directly unless you want to store additional per-module data.
 
-If you need your own saved data, access the AceDB global table:
+If you need your own saved data, access the global scope through `addon.db`:
 
 ```lua
 local addon = _G.OneWoW_QoL
@@ -361,4 +361,4 @@ It demonstrates:
 
 **Not cleaning up in OnDisable** - If you register events or create hooks in `OnEnable`, you must reverse them in `OnDisable`. Otherwise the module keeps running even when the user disables it.
 
-**Accessing AceDB before PLAYER_LOGIN** - The `addon.db` table is not available until after `PLAYER_LOGIN`. The registry's `OnEnable` callback is called after initialization, so accessing `addon.db` inside `OnEnable` is safe. Do not access it at file load time (module table definition time).
+**Accessing `addon.db` before PLAYER_LOGIN** - The `addon.db` handle is created during `ADDON_LOADED` by `OneWoW_GUI.DB:Init` and is not available until after that. The registry's `OnEnable` callback is called after initialization, so accessing `addon.db` inside `OnEnable` is safe. Do not access it at file load time (module table definition time).

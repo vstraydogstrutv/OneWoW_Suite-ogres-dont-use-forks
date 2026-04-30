@@ -5,6 +5,9 @@ if not OneWoW_GUI then return end
 
 local PE = OneWoW_GUI.PredicateEngine
 
+local strtrim = strtrim
+local tinsert, sort = tinsert, sort
+
 local BagBarModule = {
     id          = "bagbar",
     title       = "BAGBAR_TITLE",
@@ -19,15 +22,7 @@ local BagBarModule = {
     defaultEnabled = true,
 }
 
-local CLASSID_CONSUMABLE = 0
-local CLASSID_CONTAINER  = 1
-local CLASSID_RECIPE     = 9
-local CLASSID_MISC       = 15
-local CLASSID_BATTLEPET  = 17
-local CLASSID_PROFESSION = 19
-
-local MISC_SUB_COMPANION = 2
-local MISC_SUB_MOUNT     = 5
+local BAGBAR_MAX_SLOTS = 24
 
 local barFrame      = nil
 local holders       = {}
@@ -62,33 +57,23 @@ end
 local function GetSettings()
     local addon = _G.OneWoW_QoL
     if not addon or not addon.db then return {} end
-    local mods = addon.db.global.modules
-    if not mods["bagbar"] then mods["bagbar"] = {} end
-    local s = mods["bagbar"]
-    if s.locked          == nil then s.locked          = false end
-    if s.maxButtons      == nil then s.maxButtons      = 12   end
-    if s.buttonSize      == nil then s.buttonSize      = 36   end
-    if s.columns         == nil then s.columns         = 12   end
-    if s.iconSpacing     == nil then s.iconSpacing     = 4    end
-    if not s.manualItems    then s.manualItems    = {} end
-    if not s.blacklist      then s.blacklist      = {} end
-    if s.showRecipes     == nil then s.showRecipes     = true end
-    if s.showMounts      == nil then s.showMounts      = true end
-    if s.showPets        == nil then s.showPets        = true end
-    if s.showUsableItems == nil then s.showUsableItems = true end
-    if s.showContainers  == nil then s.showContainers  = true end
-    if s.showDecor       == nil then s.showDecor       = true end
-    if s.hideAnchor      == nil then s.hideAnchor      = false   end
-    if s.growDirection   == nil then s.growDirection   = "RIGHT" end
-    if s.advancedFilter  == nil then s.advancedFilter  = ""      end
+    local s = addon.db.global.modules.bagbar
+    if not s then return {} end
+    if not s.manualItems then s.manualItems = {} end
+    if not s.blacklist then s.blacklist = {} end
     return s
 end
 
-local function PassesAdvancedFilter(itemID, bag, slot)
-    local s = GetSettings()
-    local expr = s.advancedFilter
-    if not expr or expr == "" then return true end
-    return PE:CheckItem(expr, itemID, bag, slot) == true
+--- User-authored PredicateEngine text plus hidden "!#gear" (never stored / shown in UI).
+---@param s table
+---@return string fullExpr Always non-empty for PE:CheckItem.
+local function BuildBagBarEvalExpr(s)
+    local user = strtrim(s.expressionFilter or "")
+    local tail = "!#gear"
+    if user == "" then
+        return tail
+    end
+    return "(" .. user .. ") & (" .. tail .. ")"
 end
 
 local function ClearBagBarButton(button)
@@ -115,7 +100,7 @@ local function TeardownBar()
     end
     if barFrame then
         ClearOverrideBindings(barFrame)
-        for i = 1, 12 do
+        for i = 1, BAGBAR_MAX_SLOTS do
             ClearBagBarButton(buttons[i])
         end
         HideChrome()
@@ -130,36 +115,6 @@ function BagBarModule:IsBlacklisted(itemID)
     if tempBlacklist[itemID] then return true end
     local s = GetSettings()
     return s.blacklist and s.blacklist[itemID] == true
-end
-
-function BagBarModule:PassesCategoryFilter(itemID, bag, slot)
-    local s = GetSettings()
-    local _, _, _, _, _, classID, subClassID = C_Item.GetItemInfoInstant(itemID)
-    local categoryPass
-    if not classID then
-        categoryPass = true
-    elseif classID == CLASSID_RECIPE or classID == CLASSID_PROFESSION then
-        categoryPass = s.showRecipes
-    elseif classID == CLASSID_CONTAINER then
-        categoryPass = s.showContainers
-    elseif classID == CLASSID_CONSUMABLE then
-        categoryPass = s.showUsableItems
-    elseif classID == CLASSID_BATTLEPET then
-        categoryPass = s.showPets
-    elseif classID == CLASSID_MISC then
-        if subClassID == MISC_SUB_MOUNT then
-            categoryPass = s.showMounts
-        elseif subClassID == MISC_SUB_COMPANION then
-            categoryPass = s.showPets
-        else
-            categoryPass = s.showDecor
-        end
-    else
-        categoryPass = true
-    end
-
-    if not categoryPass then return false end
-    return PassesAdvancedFilter(itemID, bag, slot)
 end
 
 function BagBarModule:AddToBlacklist(itemID, permanent)
@@ -272,7 +227,7 @@ function BagBarModule:CreateBar()
 
     barFrame.dragHandle = dragHandle
 
-    for i = 1, 12 do
+    for i = 1, BAGBAR_MAX_SLOTS do
         self:CreateButton(i)
     end
 
@@ -480,22 +435,27 @@ end
 
 function BagBarModule:IsItemUsableForBar(bag, slot, itemID)
     if not itemID then return false end
+
     local info = C_Container.GetContainerItemInfo(bag, slot)
     if info then
         if info.isUsable == false then return false end
     end
-    if C_Item.IsUsableItem then
-        local u = C_Item.IsUsableItem(itemID)
-        if u ~= nil then return u end
-    end
+
+    local u = C_Item.IsUsableItem(itemID)
+    if u ~= nil then return u end
+
     if info and info.isUsable == true then return true end
+
     local spellName = C_Item.GetItemSpell(itemID)
     return spellName ~= nil and spellName ~= ""
 end
 
 function BagBarModule:ShouldShowItem(bag, slot, itemID)
     if self:IsBlacklisted(itemID) then return false end
-    if not self:PassesCategoryFilter(itemID, bag, slot) then return false end
+    local s = GetSettings()
+    local expr = BuildBagBarEvalExpr(s)
+    local info = C_Container.GetContainerItemInfo(bag, slot)
+    if not PE:CheckItem(expr, itemID, bag, slot, info) then return false end
     return self:IsItemUsableForBar(bag, slot, itemID)
 end
 
@@ -510,7 +470,7 @@ function BagBarModule:GetUsableItems()
                 local itemLink = C_Container.GetContainerItemLink(bag, slot)
                 local info     = C_Container.GetContainerItemInfo(bag, slot)
                 if info and info.iconFileID then
-                    table.insert(items, {
+                    tinsert(items, {
                         bag        = bag,
                         slot       = slot,
                         itemID     = itemID,
@@ -523,7 +483,7 @@ function BagBarModule:GetUsableItems()
             end
         end
     end
-    table.sort(items, function(a, b)
+    sort(items, function(a, b)
         if a.manualPin ~= b.manualPin then
             return a.manualPin > b.manualPin
         end
@@ -551,11 +511,11 @@ function BagBarModule:UpdateBar()
 
     local items     = self:GetUsableItems()
     local s         = GetSettings()
-    local maxBtns   = s.maxButtons or 12
+    local maxBtns   = math.min(s.maxButtons or 12, BAGBAR_MAX_SLOTS)
     local itemCount = #items
 
     if itemCount == 0 and not previewMode then
-        for i = 1, 12 do
+        for i = 1, BAGBAR_MAX_SLOTS do
             ClearBagBarButton(buttons[i])
         end
         HideChrome()
@@ -567,7 +527,7 @@ function BagBarModule:UpdateBar()
         visible = math.min(3, maxBtns)
     end
 
-    for i = 1, 12 do
+    for i = 1, BAGBAR_MAX_SLOTS do
         if i <= itemCount and i <= maxBtns then
             local item = items[i]
             local b = buttons[i]
@@ -599,7 +559,7 @@ function BagBarModule:LayoutButtons(count)
     local spacing = s.iconSpacing or 4
     local dir     = s.growDirection or "RIGHT"
     -- Down/Up are single-column: buttons stack vertically
-    local cols    = (dir == "DOWN" or dir == "UP") and 1 or (s.columns or 12)
+    local cols    = (dir == "DOWN" or dir == "UP") and 1 or math.min(s.columns or 12, BAGBAR_MAX_SLOTS)
     local actualCols = math.min(count, cols)
     local rows       = math.max(1, math.ceil(count / cols))
 
@@ -631,7 +591,7 @@ function BagBarModule:LayoutButtons(count)
         holders[i]:Show()
     end
 
-    for i = count + 1, 12 do
+    for i = count + 1, BAGBAR_MAX_SLOTS do
         holders[i]:Hide()
         ClearBagBarButton(buttons[i])
     end
@@ -681,7 +641,7 @@ end
 
 function BagBarModule:UpdateCooldowns()
     if not ModuleBagEnabled() or not barFrame then return end
-    for i = 1, 12 do
+    for i = 1, BAGBAR_MAX_SLOTS do
         local b = buttons[i]
         if holders[i] and holders[i]:IsShown() and b and b.owb_bag and b.owb_slot then
             local start, duration, enable = C_Container.GetContainerItemCooldown(b.owb_bag, b.owb_slot)

@@ -1,5 +1,5 @@
 local MAJOR, MINOR = "OneWoW_GUI-1.0", 10
-local OneWoW_GUI, oldMinor = LibStub:NewLibrary(MAJOR, MINOR)
+local OneWoW_GUI = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not OneWoW_GUI then return end
 
@@ -60,17 +60,17 @@ function OneWoW_GUI:RestoreWindowPosition(frame, storage)
     frame._owgNeedsBoundsCheck = true
     if not frame._owgBoundsHooked then
         frame._owgBoundsHooked = true
-        frame:HookScript("OnShow", function(self)
-            if not self._owgNeedsBoundsCheck then return end
-            self._owgNeedsBoundsCheck = false
+        frame:HookScript("OnShow", function(myself)
+            if not myself._owgNeedsBoundsCheck then return end
+            myself._owgNeedsBoundsCheck = false
             C_Timer.After(0, function()
-                if not self:IsShown() then return end
-                local l, b, r, t = self:GetLeft(), self:GetBottom(), self:GetRight(), self:GetTop()
+                if not myself:IsShown() then return end
+                local l, b, r, t = myself:GetLeft(), myself:GetBottom(), myself:GetRight(), myself:GetTop()
                 if not l or not b or not r or not t then return end
                 local sw, sh = GetScreenWidth(), GetScreenHeight()
                 if l < 0 or b < 0 or r > sw or t > sh then
-                    self:ClearAllPoints()
-                    self:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+                    myself:ClearAllPoints()
+                    myself:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
                 end
             end)
         end)

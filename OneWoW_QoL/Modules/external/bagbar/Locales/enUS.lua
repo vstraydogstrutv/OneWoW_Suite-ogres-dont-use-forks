@@ -1,14 +1,11 @@
--- OneWoW_QoL Addon File
--- OneWoW_QoL/Modules/external/bagbar/Locales/enUS.lua
-local addonName, ns = ...
+local _, ns = ...
 if not ns.L_enUS then ns.L_enUS = {} end
 local L = ns.L_enUS
 
 L["BAGBAR_TITLE"]                         = "Bag Bar"
-L["BAGBAR_DESC"]                          = "Displays a movable action bar showing learnable and usable items from your bags. Shows recipes, mounts, pets, toys, transmog, housing decor, and curios. Optionally shows consumables and other usable items."
+L["BAGBAR_DESC"]                          = "Shows usable bag items on a movable bar. Items are chosen with a PredicateEngine expression (same vocabulary as Bag search). Equippable gear is always excluded from the bar (applied automatically, not shown in the editor)."
 L["BAGBAR_DRAG_TOOLTIP"]                  = "Click and drag to move"
 L["BAGBAR_LOCK_POSITION"]                 = "Lock Position"
-L["BAGBAR_SHOW_USABLE_ITEMS"]             = "Show usable items (potions, food, misc)"
 L["BAGBAR_MAX_BUTTONS"]                   = "Maximum Buttons"
 L["BAGBAR_BUTTON_SIZE"]                   = "Button Size"
 L["BAGBAR_LEFT_CLICK_TO_USE"]             = "Left-click to use"
@@ -16,7 +13,7 @@ L["BAGBAR_SHIFT_RIGHT_CLICK_TO_SKIP"]     = "Shift+Right-click to skip this sess
 L["BAGBAR_ALT_RIGHT_CLICK_TO_BLACKLIST"]  = "Alt+Right-click to permanently blacklist"
 L["BAGBAR_SETTINGS_HEADER"]               = "Bar Settings"
 L["BAGBAR_MANUAL_ITEMS_HEADER"]           = "Manual Items"
-L["BAGBAR_MANUAL_DESC"]                   = "Add items to always show in the bar regardless of type."
+L["BAGBAR_MANUAL_DESC"]                   = "Pin specific items for higher priority in the bar. They still must match your expression filter and bar usability rules."
 L["BAGBAR_ITEM_ID_LABEL"]                 = "Item ID:"
 L["BAGBAR_ADD_BUTTON"]                    = "Add"
 L["BAGBAR_DRAG_ITEM_HERE"]                = "Drag Item Here"
@@ -27,14 +24,6 @@ L["BAGBAR_CLEAR_BLACKLIST"]               = "Clear Blacklist"
 L["BAGBAR_BLACKLIST_CLEARED"]             = "Bag Bar blacklist cleared."
 L["BAGBAR_SHOW_BAR"]                      = "Show Bar"
 L["BAGBAR_HIDE_BAR"]                      = "Hide Bar"
-L["BAGBAR_CATEGORY_FILTERS_HEADER"]       = "Category Filters"
-L["BAGBAR_CATEGORY_FILTERS_DESC"]         = "Choose which types of usable items appear on the bar."
-L["BAGBAR_SHOW_RECIPES"]                  = "Recipes"
-L["BAGBAR_SHOW_MOUNTS"]                   = "Mounts"
-L["BAGBAR_SHOW_PETS"]                     = "Pets"
-L["BAGBAR_SHOW_CONSUMABLES"]              = "Consumables"
-L["BAGBAR_SHOW_CONTAINERS"]               = "Containers"
-L["BAGBAR_SHOW_DECOR"]                    = "Other / Misc"
 L["BAGBAR_CLEAR_BLACKLIST_CONFIRM"]       = "Are you sure you want to clear the entire Bag Bar blacklist?"
 L["BAGBAR_ICON_SPACING"]                 = "Icon Spacing"
 L["BAGBAR_COLUMNS"]                      = "Columns"
@@ -47,9 +36,9 @@ L["BAGBAR_GROW_RIGHT"]                   = "Right"
 L["BAGBAR_GROW_LEFT"]                    = "Left"
 L["BAGBAR_GROW_DOWN"]                    = "Down"
 L["BAGBAR_GROW_UP"]                      = "Up"
-L["BAGBAR_ADVANCED_FILTER_HEADER"]       = "Advanced Filter"
-L["BAGBAR_ADVANCED_FILTER_DESC"]         = "Optional search expression. Click the ? for all available keywords and operators."
-L["BAGBAR_ADVANCED_FILTER_PLACEHOLDER"]  = "e.g. #mount or #toy"
+L["BAGBAR_EXPRESSION_FILTER_HEADER"]      = "Expression Filter"
+L["BAGBAR_EXPRESSION_FILTER_DESC"]        = "PredicateEngine expression for which bag items may appear (same keywords as Bag search). Click ? for help. Equippable gear is always excluded in addition to this expression."
+L["BAGBAR_EXPRESSION_FILTER_PLACEHOLDER"] = "e.g. #usable & #mount"
 
 BINDING_NAME_BAGITEM_1 = "Bag Item 1"
 BINDING_NAME_BAGITEM_2 = "Bag Item 2"
