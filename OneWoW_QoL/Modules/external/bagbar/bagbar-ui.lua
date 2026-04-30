@@ -190,32 +190,18 @@ local function BuildContent(container, _)
         end
         ns.BagBarModule._refreshCustomDetail()
     end)
-    cy = cy - 32
 
     local lockBtn = OneWoW_GUI:CreateFitTextButton(container, {
         text = s.locked and (L["BAGBAR_LOCK_POSITION"] .. " (ON)") or (L["BAGBAR_LOCK_POSITION"] .. " (OFF)"),
         height = 26,
     })
-    lockBtn:SetPoint("TOPLEFT", container, "TOPLEFT", 12, cy)
+    lockBtn:SetPoint("TOPLEFT", previewBtn, "TOPRIGHT", 12, 0)
     lockBtn:SetScript("OnClick", function()
         ns.BagBarModule:SetLocked(not GetSettings().locked)
         ns.BagBarModule._refreshCustomDetail()
     end)
-    cy = cy - 32
+    cy = cy - 32 - 12
 
-    -- Hide anchor toggle
-    local hideAnchorCheck = OneWoW_GUI:CreateCheckbox(container, {
-        label   = L["BAGBAR_HIDE_ANCHOR"],
-        checked = s.hideAnchor,
-        onClick = function(self)
-            GetSettings().hideAnchor = self:GetChecked()
-            ns.BagBarModule:ScheduleUpdate()
-        end,
-    })
-    hideAnchorCheck:SetPoint("TOPLEFT", container, "TOPLEFT", 12, cy)
-    cy = cy - 28
-
-    -- Grow direction dropdown
     local GROW_DIRS = { "RIGHT", "LEFT", "DOWN", "UP" }
     local growDirLabels = {
         RIGHT = L["BAGBAR_GROW_RIGHT"],
@@ -256,7 +242,21 @@ local function BuildContent(container, _)
             ns.BagBarModule:ScheduleUpdate()
         end,
     })
+
+    local hideAnchorCheck = OneWoW_GUI:CreateCheckbox(container, {
+        label   = L["BAGBAR_HIDE_ANCHOR"],
+        checked = s.hideAnchor,
+        onClick = function(self)
+            GetSettings().hideAnchor = self:GetChecked()
+            ns.BagBarModule:ScheduleUpdate()
+        end,
+    })
+    hideAnchorCheck:SetPoint("LEFT", growDirDropdown, "RIGHT", 20, 0)
+    hideAnchorCheck:SetPoint("TOP", growDirDropdown, "TOP", 0, 0)
     cy = cy - 32
+
+    local SLIDER_PAIR_GAP = 24
+    local SLIDER_WIDTH = 170
 
     local maxLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     maxLabel:SetPoint("TOPLEFT", container, "TOPLEFT", 12, cy)
@@ -266,17 +266,38 @@ local function BuildContent(container, _)
 
     local maxSlider = CreateFrame("Slider", "OneWoW_QoL_BagBarMaxSlider", container, "OptionsSliderTemplate")
     maxSlider:SetPoint("TOPLEFT", container, "TOPLEFT", 24, cy)
-    maxSlider:SetWidth(220)
+    maxSlider:SetWidth(SLIDER_WIDTH)
     maxSlider:SetMinMaxValues(1, 24)
     maxSlider:SetValue(math.min(s.maxButtons or 12, 24))
     maxSlider:SetValueStep(1)
     maxSlider:SetObeyStepOnDrag(true)
-    _G["OneWoW_QoL_BagBarMaxSliderLow"]:SetText("1")
-    _G["OneWoW_QoL_BagBarMaxSliderHigh"]:SetText("24")
+    OneWoW_GUI:ConfigureOptionsSliderEnds(maxSlider, "1", "24")
     maxSlider:SetScript("OnValueChanged", function(_, value)
         local v = math.min(math.floor(value + 0.5), 24)
         GetSettings().maxButtons = v
         maxLabel:SetText(string.format("%s: %d", L["BAGBAR_MAX_BUTTONS"], v))
+        ns.BagBarModule:ScheduleUpdate()
+    end)
+
+    local colsLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    colsLabel:SetPoint("TOP", maxLabel, "TOP")
+    colsLabel:SetPoint("LEFT", maxSlider, "RIGHT", SLIDER_PAIR_GAP, 0)
+    colsLabel:SetText(string.format("%s: %d", L["BAGBAR_COLUMNS"], math.min(s.columns or 12, 24)))
+    colsLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+
+    local colsSlider = CreateFrame("Slider", "OneWoW_QoL_BagBarColsSlider", container, "OptionsSliderTemplate")
+    colsSlider:SetPoint("TOP", maxSlider, "TOP")
+    colsSlider:SetPoint("LEFT", maxSlider, "RIGHT", SLIDER_PAIR_GAP, 0)
+    colsSlider:SetWidth(SLIDER_WIDTH)
+    colsSlider:SetMinMaxValues(1, 24)
+    colsSlider:SetValue(math.min(s.columns or 12, 24))
+    colsSlider:SetValueStep(1)
+    colsSlider:SetObeyStepOnDrag(true)
+    OneWoW_GUI:ConfigureOptionsSliderEnds(colsSlider, "1", "24")
+    colsSlider:SetScript("OnValueChanged", function(_, value)
+        local v = math.min(math.floor(value + 0.5), 24)
+        GetSettings().columns = v
+        colsLabel:SetText(string.format("%s: %d", L["BAGBAR_COLUMNS"], v))
         ns.BagBarModule:ScheduleUpdate()
     end)
     cy = cy - 46
@@ -289,13 +310,12 @@ local function BuildContent(container, _)
 
     local sizeSlider = CreateFrame("Slider", "OneWoW_QoL_BagBarSizeSlider", container, "OptionsSliderTemplate")
     sizeSlider:SetPoint("TOPLEFT", container, "TOPLEFT", 24, sliderRowY - sizeLabel:GetStringHeight() - 4)
-    sizeSlider:SetWidth(170)
+    sizeSlider:SetWidth(SLIDER_WIDTH)
     sizeSlider:SetMinMaxValues(24, 48)
     sizeSlider:SetValue(s.buttonSize or 36)
     sizeSlider:SetValueStep(2)
     sizeSlider:SetObeyStepOnDrag(true)
-    _G["OneWoW_QoL_BagBarSizeSliderLow"]:SetText("24")
-    _G["OneWoW_QoL_BagBarSizeSliderHigh"]:SetText("48")
+    OneWoW_GUI:ConfigureOptionsSliderEnds(sizeSlider, "24", "48")
     sizeSlider:SetScript("OnValueChanged", function(_, value)
         local v = math.floor(value + 0.5)
         GetSettings().buttonSize = v
@@ -303,45 +323,21 @@ local function BuildContent(container, _)
         ns.BagBarModule:ScheduleUpdate()
     end)
 
-    local colsLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    colsLabel:SetPoint("TOP", sizeLabel, "TOP")
-    colsLabel:SetPoint("LEFT", sizeSlider, "RIGHT", 24, 0)
-    colsLabel:SetText(string.format("%s: %d", L["BAGBAR_COLUMNS"], math.min(s.columns or 12, 24)))
-    colsLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-
-    local colsSlider = CreateFrame("Slider", "OneWoW_QoL_BagBarColsSlider", container, "OptionsSliderTemplate")
-    colsSlider:SetPoint("TOP", sizeSlider, "TOP")
-    colsSlider:SetPoint("LEFT", sizeSlider, "RIGHT", 24, 0)
-    colsSlider:SetWidth(170)
-    colsSlider:SetMinMaxValues(1, 24)
-    colsSlider:SetValue(math.min(s.columns or 12, 24))
-    colsSlider:SetValueStep(1)
-    colsSlider:SetObeyStepOnDrag(true)
-    _G["OneWoW_QoL_BagBarColsSliderLow"]:SetText("1")
-    _G["OneWoW_QoL_BagBarColsSliderHigh"]:SetText("24")
-    colsSlider:SetScript("OnValueChanged", function(_, value)
-        local v = math.min(math.floor(value + 0.5), 24)
-        GetSettings().columns = v
-        colsLabel:SetText(string.format("%s: %d", L["BAGBAR_COLUMNS"], v))
-        ns.BagBarModule:ScheduleUpdate()
-    end)
-    cy = cy - 50
-
     local spacingLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    spacingLabel:SetPoint("TOPLEFT", container, "TOPLEFT", 12, cy)
+    spacingLabel:SetPoint("TOP", sizeLabel, "TOP")
+    spacingLabel:SetPoint("LEFT", sizeSlider, "RIGHT", SLIDER_PAIR_GAP, 0)
     spacingLabel:SetText(string.format("%s: %d", L["BAGBAR_ICON_SPACING"], s.iconSpacing or 4))
     spacingLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-    cy = cy - spacingLabel:GetStringHeight() - 4
 
     local spacingSlider = CreateFrame("Slider", "OneWoW_QoL_BagBarSpacingSlider", container, "OptionsSliderTemplate")
-    spacingSlider:SetPoint("TOPLEFT", container, "TOPLEFT", 24, cy)
-    spacingSlider:SetWidth(220)
+    spacingSlider:SetPoint("TOP", sizeSlider, "TOP")
+    spacingSlider:SetPoint("LEFT", sizeSlider, "RIGHT", SLIDER_PAIR_GAP, 0)
+    spacingSlider:SetWidth(SLIDER_WIDTH)
     spacingSlider:SetMinMaxValues(0, 12)
     spacingSlider:SetValue(s.iconSpacing or 4)
     spacingSlider:SetValueStep(1)
     spacingSlider:SetObeyStepOnDrag(true)
-    _G["OneWoW_QoL_BagBarSpacingSliderLow"]:SetText("0")
-    _G["OneWoW_QoL_BagBarSpacingSliderHigh"]:SetText("12")
+    OneWoW_GUI:ConfigureOptionsSliderEnds(spacingSlider, "0", "12")
     spacingSlider:SetScript("OnValueChanged", function(_, value)
         local v = math.floor(value + 0.5)
         GetSettings().iconSpacing = v
@@ -352,7 +348,8 @@ local function BuildContent(container, _)
 
     cy = OneWoW_GUI:CreateSection(container, { title = L["BAGBAR_EXPRESSION_FILTER_HEADER"], yOffset = cy })
 
-    local exprDesc = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local exprDescToBoxGap = 14
+    local exprDesc = container:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     exprDesc:SetPoint("TOPLEFT", container, "TOPLEFT", 12, cy)
     exprDesc:SetPoint("TOPRIGHT", container, "TOPRIGHT", -12, cy)
     exprDesc:SetJustifyH("LEFT")
@@ -360,7 +357,7 @@ local function BuildContent(container, _)
     exprDesc:SetSpacing(2)
     exprDesc:SetText(L["BAGBAR_EXPRESSION_FILTER_DESC"])
     exprDesc:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
-    cy = cy - exprDesc:GetStringHeight() - 8
+    cy = cy - exprDesc:GetStringHeight() - exprDescToBoxGap
 
     local exprBox = OneWoW_GUI:CreateEditBox(container, {
         height = 24,
@@ -371,8 +368,8 @@ local function BuildContent(container, _)
             ns.BagBarModule:ScheduleUpdate()
         end,
     })
-    exprBox:SetPoint("TOPLEFT",  exprDesc, "BOTTOMLEFT",  0, -8)
-    exprBox:SetPoint("TOPRIGHT", exprDesc, "BOTTOMRIGHT", -30, -8)
+    exprBox:SetPoint("TOPLEFT", exprDesc, "BOTTOMLEFT", 0, -exprDescToBoxGap)
+    exprBox:SetPoint("TOPRIGHT", exprDesc, "BOTTOMRIGHT", -30, -exprDescToBoxGap)
 
     local exprHelpBtn
     if OneWoW_GUI.CreateKeywordHelpButton then
@@ -385,7 +382,9 @@ local function BuildContent(container, _)
     exprBox:SetText(s.expressionFilter or "")
     exprBox:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
 
-    cy = cy - 64
+    cy = cy - exprBox:GetHeight() - 16
+
+    cy = OneWoW_GUI:CreateSection(container, { title = L["BAGBAR_MANUAL_ITEMS_HEADER"], yOffset = cy })
 
     local manualIntro = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     manualIntro:SetPoint("TOPLEFT", container, "TOPLEFT", 12, cy)
@@ -396,8 +395,6 @@ local function BuildContent(container, _)
     manualIntro:SetText(L["BAGBAR_MANUAL_DESC"])
     manualIntro:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
     cy = cy - manualIntro:GetStringHeight() - 8
-
-    cy = OneWoW_GUI:CreateSection(container, { title = L["BAGBAR_MANUAL_ITEMS_HEADER"], yOffset = cy })
 
     local manualItemBox, manualAddBtn, manualDrop
     cy, manualItemBox, manualAddBtn, manualDrop = MakeItemDropZone(container, L["BAGBAR_ITEM_ID_LABEL"], cy,
@@ -429,7 +426,7 @@ local function BuildContent(container, _)
     cy = cy - blDesc:GetStringHeight() - 10
 
     local blItemBox, blAddBtn, blDrop
-    cy, blItemBox, blAddBtn, blDrop = MakeItemDropZone(container, L["BAGBAR_ADD_ITEM_ID_LABEL"], cy,
+    cy, blItemBox, blAddBtn, blDrop = MakeItemDropZone(container, L["BAGBAR_ITEM_ID_LABEL"], cy,
         function(itemID)
             local cur = GetSettings()
             cur.blacklist[itemID] = true

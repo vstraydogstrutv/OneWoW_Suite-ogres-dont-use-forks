@@ -64,12 +64,12 @@ local function GetSettings()
     return s
 end
 
---- User-authored PredicateEngine text plus hidden "!#gear" (never stored / shown in UI).
+--- User-authored PredicateEngine text plus hidden "(!#gear&!#quest)" (never stored / shown in UI)
 ---@param s table
----@return string fullExpr Always non-empty for PE:CheckItem.
+---@return string fullExpr Always non-empty for PE:CheckItem
 local function BuildBagBarEvalExpr(s)
     local user = strtrim(s.expressionFilter or "")
-    local tail = "!#gear"
+    local tail = "(!#gear&!#quest)"
     if user == "" then
         return tail
     end
