@@ -540,6 +540,7 @@ local buttons, finalY = OneWoW_GUI:CreateFitFrameButtons(parent, {
 })
 ```
 Creates N equal-width buttons that fill the available width. Auto-wraps to next row if needed.
+Each button also enforces a text-driven minimum width, so translated labels stay inside the button.
 Active button: BG_ACTIVE + BORDER_ACCENT + TEXT_ACCENT. Inactive: BTN_NORMAL + TEXT_MUTED.
 Clicking a button auto-toggles active state across all buttons.
 Use `buttons.SetActiveByValue(value)` to update selection externally.

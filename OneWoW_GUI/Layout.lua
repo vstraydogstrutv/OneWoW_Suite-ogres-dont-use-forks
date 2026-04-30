@@ -459,8 +459,15 @@ function OneWoW_GUI:CreateSelectableCard(parent, options)
     card.summary = summary
 
     if options.badgeText and options.badgeText ~= "" then
+        local badgeMeasure = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        OneWoW_GUI:SafeSetFont(badgeMeasure, OneWoW_GUI:GetFont(), 9)
+        badgeMeasure:SetText(options.badgeText)
+        local badgeWidth = math.max(options.badgeWidth or 0, badgeMeasure:GetStringWidth() + 18)
+        badgeMeasure:Hide()
+        badgeMeasure:SetParent(nil)
+
         local badge = self:CreateFrame(card, {
-            width = options.badgeWidth or 92,
+            width = badgeWidth,
             height = Constants.GUI.BADGE_HEIGHT,
             backdrop = Constants.BACKDROP_INNER_NO_INSETS,
             bgColor = "BG_TERTIARY",

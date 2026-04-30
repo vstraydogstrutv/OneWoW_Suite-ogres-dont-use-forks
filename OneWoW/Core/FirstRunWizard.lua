@@ -200,7 +200,7 @@ function FirstRun:BuildPanel(parent)
         subtitle = L["WIZARD_HERO_SUBTITLE"],
         description = L["WIZARD_HERO_DESC"],
         calloutText = L["WIZARD_HERO_CALLOUT"],
-        iconTexture = OneWoW_GUI:GetBrandIcon((OneWoW_GUI.GetSetting and OneWoW_GUI:GetSetting("minimap.theme")) or "neutral"),
+        iconTexture = OneWoW_GUI:GetBrandIcon(OneWoW_GUI:GetSetting("minimap.theme")),
         yOffset = -10,
     })
 
@@ -217,7 +217,7 @@ function FirstRun:BuildPanel(parent)
     actionBar:SetPoint("TOPLEFT", content, "TOPLEFT", 12, summary.bottomY - 8)
     actionBar:SetPoint("TOPRIGHT", content, "TOPRIGHT", -12, summary.bottomY - 8)
 
-    local presetButtons = OneWoW_GUI:CreateFitFrameButtons(actionBar, {
+    local presetButtons, presetFinalY = OneWoW_GUI:CreateFitFrameButtons(actionBar, {
         yOffset = 0,
         width = C.WIZARD_PRESET_WIDTH,
         marginX = 0,
@@ -227,6 +227,8 @@ function FirstRun:BuildPanel(parent)
             { text = L["WIZARD_PRESET_MANUAL"], value = "manual", isActive = true },
         },
     })
+    local actionHeight = math.max(C.ACTION_BAR_HEIGHT, math.abs(presetFinalY))
+    actionBar:SetHeight(actionHeight)
 
     local applyBtn = OneWoW_GUI:CreateFitTextButton(actionBar, {
         text = L["WIZARD_APPLY_RELOAD"],
@@ -236,8 +238,8 @@ function FirstRun:BuildPanel(parent)
     applyBtn:SetPoint("TOPRIGHT", actionBar, "TOPRIGHT", 0, 0)
 
     local listContainer = OneWoW_GUI:CreateLayoutFrame(content, {})
-    listContainer:SetPoint("TOPLEFT", content, "TOPLEFT", 12, summary.bottomY - C.ACTION_BAR_HEIGHT - 16)
-    listContainer:SetPoint("TOPRIGHT", content, "TOPRIGHT", -12, summary.bottomY - C.ACTION_BAR_HEIGHT - 16)
+    listContainer:SetPoint("TOPLEFT", content, "TOPLEFT", 12, summary.bottomY - actionHeight - 16)
+    listContainer:SetPoint("TOPRIGHT", content, "TOPRIGHT", -12, summary.bottomY - actionHeight - 16)
     listContainer:SetHeight(600)
 
     local cards = {}
@@ -251,8 +253,8 @@ function FirstRun:BuildPanel(parent)
     local groupOrder  = { "feature", "standalone", "utility" }
 
     local function RefreshSummary()
-        summary:SetItemValue(1, format("%d / %d", CountSelected(), #FirstRun.CATALOG))
-        summary:SetItemValue(2, format("%d", CountWantedDatastores()))
+        summary:SetItemValue(1, format(L["WIZARD_SUMMARY_SELECTED_FORMAT"], CountSelected(), #FirstRun.CATALOG))
+        summary:SetItemValue(2, format(L["WIZARD_SUMMARY_DATA_FORMAT"], CountWantedDatastores()))
         summary:SetItemValue(3, HasChanges() and L["WIZARD_SUMMARY_PENDING"] or L["WIZARD_SUMMARY_READY"])
     end
 
@@ -305,7 +307,7 @@ function FirstRun:BuildPanel(parent)
     end
 
     listContainer:SetHeight(math.max(1, rowY))
-    content:SetHeight(math.abs(summary.bottomY) + C.ACTION_BAR_HEIGHT + rowY + 60)
+    content:SetHeight(math.abs(summary.bottomY) + actionHeight + rowY + 60)
 
     presetButtons[1]:SetScript("OnClick", function()
         presetButtons.SetActiveByValue("recommended")

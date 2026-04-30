@@ -349,7 +349,7 @@ function GUI:CreatePortalsTab(parent)
 			if isAvailable then
 				OneWoW.PortalHubDetection:ApplyHousingTeleportAttributes(button, "1")
 			end
-			local icon = C_Spell.GetSpellTexture(1233637)
+			local icon = C_Spell.GetSpellTexture(1263273)
 			if icon then
 				button:SetNormalTexture(icon)
 			end

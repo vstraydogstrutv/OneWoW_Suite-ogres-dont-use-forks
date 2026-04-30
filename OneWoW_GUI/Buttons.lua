@@ -2,6 +2,7 @@ local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
 local CreateFrame = CreateFrame
+local ceil = math.ceil
 local tinsert = tinsert
 
 local Constants = OneWoW_GUI.Constants
@@ -153,12 +154,28 @@ function OneWoW_GUI:CreateFitFrameButtons(parent, options)
     local height = options.height or 26
     local gap = options.gap or 4
     local marginX = options.marginX or 12
+    local paddingX = options.paddingX or 24
     local onSelect = options.onSelect
     local availWidth = (options.width or parent:GetWidth()) - (marginX * 2)
     local n = #items
-    local bw = math.max(30, math.floor((availWidth - gap * (n - 1)) / n))
 
     local buttons = {}
+    if n == 0 then
+        return buttons, yOffset
+    end
+
+    local measure = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    measure._owBaseSize = 12
+    OneWoW_GUI:SafeSetFont(measure, OneWoW_GUI:GetFont(), 12)
+    local minTextWidth = 0
+    for _, item in ipairs(items) do
+        measure:SetText(item.text or "")
+        minTextWidth = math.max(minTextWidth, measure:GetStringWidth())
+    end
+    measure:Hide()
+    measure:SetParent(nil)
+
+    local bw = math.max(30, ceil(minTextWidth + paddingX), math.floor((availWidth - gap * (n - 1)) / n))
 
     local function applyNormal(btn)
         if btn.isActive then
