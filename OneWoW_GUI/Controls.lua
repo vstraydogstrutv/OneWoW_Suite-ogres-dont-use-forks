@@ -41,7 +41,7 @@ function OneWoW_GUI:CreateToggleRow(parent, options)
     local alignLeft = (options.align == "left")
 
     local labelFs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    labelFs._owBaseSize = 12
+    OneWoW_GUI:SetFontBaseSize(labelFs, 12)
     OneWoW_GUI:SafeSetFont(labelFs, OneWoW_GUI:GetFont(), 12)
     labelFs:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, yOffset)
     labelFs:SetJustifyH("LEFT")
@@ -88,7 +88,7 @@ function OneWoW_GUI:CreateToggleRow(parent, options)
 
     if description then
         descFs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        descFs._owBaseSize = 10
+        OneWoW_GUI:SetFontBaseSize(descFs, 10)
         OneWoW_GUI:SafeSetFont(descFs, OneWoW_GUI:GetFont(), 10)
         descFs:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, newYOffset)
         descFs:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -12, newYOffset)
@@ -145,7 +145,7 @@ function OneWoW_GUI:CreateCheckbox(parent, options)
     cb:SetChecked(checked and true or false)
 
     cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    cb.label._owBaseSize = 12
+    OneWoW_GUI:SetFontBaseSize(cb.label, 12)
     OneWoW_GUI:SafeSetFont(cb.label, OneWoW_GUI:GetFont(), 12)
     cb.label:SetPoint("LEFT", cb, "RIGHT", OneWoW_GUI:GetSpacing("XS"), 0)
     cb.label:SetText(label)
@@ -171,7 +171,7 @@ function OneWoW_GUI:CreateDropdown(parent, options)
     dropdown:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
 
     local text = dropdown:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    text._owBaseSize = 10
+    OneWoW_GUI:SetFontBaseSize(text, 10)
     OneWoW_GUI:SafeSetFont(text, OneWoW_GUI:GetFont(), 10)
     text:SetPoint("TOPLEFT", dropdown, "TOPLEFT", 8, -2)
     text:SetPoint("BOTTOMRIGHT", dropdown, "BOTTOMRIGHT", -20, 2)

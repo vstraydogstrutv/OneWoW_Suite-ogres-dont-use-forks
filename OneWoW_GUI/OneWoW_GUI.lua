@@ -151,6 +151,19 @@ function OneWoW_GUI:CreateFrame(parent, options)
     return frame
 end
 
+function OneWoW_GUI:CreateLayoutFrame(parent, options)
+    options = options or {}
+    local frame = CreateFrame("Frame", options.name, parent or UIParent)
+    if options.width and options.height then
+        frame:SetSize(options.width, options.height)
+    elseif options.width then
+        frame:SetWidth(options.width)
+    elseif options.height then
+        frame:SetHeight(options.height)
+    end
+    return frame
+end
+
 local function applyScrollBarStyle(scrollBar, container, offset)
     if not scrollBar then return end
     offset = offset or -2

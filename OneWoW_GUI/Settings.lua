@@ -327,6 +327,32 @@ local function TrySetFont(fontString, path, size, flags)
     return ok, success
 end
 
+local fontMetadata = setmetatable({}, { __mode = "k" })
+
+function OneWoW_GUI:SetFontBaseSize(fontObject, baseSize)
+    if not fontObject then return nil end
+    local metadata = fontMetadata[fontObject]
+    if not metadata then
+        metadata = {}
+        fontMetadata[fontObject] = metadata
+    end
+    metadata.baseSize = baseSize
+    return metadata
+end
+
+function OneWoW_GUI:SetFontCap(fontObject, baseSize, maxOffset)
+    local metadata = self:SetFontBaseSize(fontObject, baseSize)
+    if metadata then
+        metadata.maxOffset = maxOffset
+    end
+    return metadata
+end
+
+function OneWoW_GUI:GetFontMetadata(fontObject)
+    if not fontObject then return nil end
+    return fontMetadata[fontObject]
+end
+
 function OneWoW_GUI:SafeSetFont(fontString, fontPath, size, flags)
     if not fontString then return end
     local offset = self._settingsDB and self._settingsDB.fontSizeOffset or 0
@@ -373,26 +399,26 @@ end
 
 function OneWoW_GUI:CreateFS(parent, size, layer)
     local fs = parent:CreateFontString(nil, layer or "OVERLAY")
-    fs._owBaseSize = size or 12
+    self:SetFontBaseSize(fs, size or 12)
     self:SafeSetFont(fs, self:GetFont(), size or 12)
     return fs
 end
 
 function OneWoW_GUI:ApplyFont(fs, size)
     if not fs then return end
+    local metadata = self:GetFontMetadata(fs)
     if size then
-        fs._owBaseSize = size
-    elseif not fs._owBaseSize and fs.GetFont then
+        metadata = self:SetFontBaseSize(fs, size)
+    elseif not metadata and fs.GetFont then
         local _, currentSize = fs:GetFont()
-        fs._owBaseSize = currentSize or 13
+        metadata = self:SetFontBaseSize(fs, currentSize or 13)
     end
-    self:SafeSetFont(fs, self:GetFont(), fs._owBaseSize or 13)
+    self:SafeSetFont(fs, self:GetFont(), (metadata and metadata.baseSize) or 13)
 end
 
 function OneWoW_GUI:ApplyFontCapped(fs, size, maxOffset)
     if not fs then return end
-    fs._owBaseSize = size
-    fs._owMaxOffset = maxOffset
+    self:SetFontCap(fs, size, maxOffset)
     local fontPath = self:GetFont()
     local offset = self:GetFontSizeOffset() or 0
     local cappedSize = math.max(6, size + math.min(offset, maxOffset))
@@ -410,32 +436,34 @@ function OneWoW_GUI:ApplyFontToFrame(frame)
     local fontPath = self:GetFont()
     for _, region in ipairs({frame:GetRegions()}) do
         if region.GetFont and region.SetFont then
-            if not region._owBaseSize then
+            local metadata = self:GetFontMetadata(region)
+            if not metadata then
                 local _, sz = region:GetFont()
                 if sz and sz > 0 then
-                    region._owBaseSize = sz
+                    metadata = self:SetFontBaseSize(region, sz)
                 end
             end
-            if region._owBaseSize then
-                if region._owMaxOffset then
-                    self:ApplyFontCapped(region, region._owBaseSize, region._owMaxOffset)
+            if metadata and metadata.baseSize then
+                if metadata.maxOffset then
+                    self:ApplyFontCapped(region, metadata.baseSize, metadata.maxOffset)
                 else
-                    self:SafeSetFont(region, fontPath, region._owBaseSize)
+                    self:SafeSetFont(region, fontPath, metadata.baseSize)
                 end
             end
         end
     end
     for _, child in ipairs({frame:GetChildren()}) do
         if child:GetObjectType() == "EditBox" and child.GetFont then
-            if not child._owBaseSize then
+            local metadata = self:GetFontMetadata(child)
+            if not metadata then
                 local _, sz = child:GetFont()
                 if sz and sz > 0 then
-                    child._owBaseSize = sz
+                    metadata = self:SetFontBaseSize(child, sz)
                 end
             end
-            if child._owBaseSize then
+            if metadata and metadata.baseSize then
                 local _, _, flags = child:GetFont()
-                self:SafeSetFont(child, fontPath, child._owBaseSize, flags)
+                self:SafeSetFont(child, fontPath, metadata.baseSize, flags)
             end
         end
         if child.GetObjectType and child:GetObjectType() == "ScrollFrame" and child.GetScrollChild then
@@ -551,7 +579,8 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
     options = options or {}
     local yOffset = options.yOffset or -10
 
-    local currentLang = self:GetSetting("language") or "enUS"
+    local settingLang = self:GetSetting("language")
+    local currentLang = type(settingLang) == "string" and settingLang or "enUS"
     local currentIconTheme = self:GetSetting("minimap.theme") or DEFAULT_THEME_ICON
     local currentFontKey = self:GetSetting("font") or "default"
     local currentFontData = FONT_LOOKUP[currentFontKey]
@@ -593,6 +622,83 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
         rp:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
 
         return container, lp, rp
+    end
+
+    local function CreateThreeColumnRow(height)
+        height = height or 88
+        local container = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+        container:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, yOffset)
+        container:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, yOffset)
+        container:SetHeight(height)
+        container:SetBackdrop(panelBackdrop)
+        container:SetBackdropColor(self:GetThemeColor("BG_SECONDARY"))
+        container:SetBackdropBorderColor(self:GetThemeColor("BORDER_SUBTLE"))
+
+        local lp = CreateFrame("Frame", nil, container)
+
+        local leftDiv = container:CreateTexture(nil, "ARTWORK")
+        leftDiv:SetWidth(1)
+        leftDiv:SetColorTexture(self:GetThemeColor("BORDER_SUBTLE"))
+
+        local mp = CreateFrame("Frame", nil, container)
+
+        local rightDiv = container:CreateTexture(nil, "ARTWORK")
+        rightDiv:SetWidth(1)
+        rightDiv:SetColorTexture(self:GetThemeColor("BORDER_SUBTLE"))
+
+        local rp = CreateFrame("Frame", nil, container)
+
+        local function LayoutColumns()
+            local width = container:GetWidth()
+            if width <= 0 then return end
+
+            local colWidth = width / 3
+
+            lp:ClearAllPoints()
+            lp:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0)
+            lp:SetSize(colWidth, height)
+
+            mp:ClearAllPoints()
+            mp:SetPoint("TOPLEFT", container, "TOPLEFT", colWidth, 0)
+            mp:SetSize(colWidth, height)
+
+            rp:ClearAllPoints()
+            rp:SetPoint("TOPLEFT", container, "TOPLEFT", colWidth * 2, 0)
+            rp:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
+
+            leftDiv:ClearAllPoints()
+            leftDiv:SetPoint("TOPLEFT", container, "TOPLEFT", colWidth, -8)
+            leftDiv:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", colWidth, 8)
+
+            rightDiv:ClearAllPoints()
+            rightDiv:SetPoint("TOPLEFT", container, "TOPLEFT", colWidth * 2, -8)
+            rightDiv:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", colWidth * 2, 8)
+        end
+
+        container:SetScript("OnSizeChanged", LayoutColumns)
+        container:HookScript("OnShow", LayoutColumns)
+        LayoutColumns()
+
+        return container, lp, mp, rp
+    end
+
+    local function CreateLinkPanel(panel, title, url)
+        local titleText = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        titleText:SetPoint("TOPLEFT", panel, "TOPLEFT", 15, -12)
+        titleText:SetText(title)
+        titleText:SetTextColor(self:GetThemeColor("ACCENT_PRIMARY"))
+
+        local linkBox = self:CreateEditBox(panel, { width = 270, height = 24 })
+        linkBox:SetPoint("TOPLEFT", panel, "TOPLEFT", 15, -45)
+        linkBox:SetText(url)
+        linkBox:SetAutoFocus(false)
+        linkBox:SetScript("OnEditFocusGained", function(s) s:HighlightText() end)
+        linkBox:SetScript("OnEditFocusLost", function(s)
+            s:HighlightText(0, 0)
+            s:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+        end)
+
+        return linkBox
     end
 
     ----------------------------------------------------------------
@@ -1271,57 +1377,15 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
     yOffset = yOffset - 178
 
     ----------------------------------------------------------------
-    -- ROW 5: Discord | Buy Me A Coffee
+    -- ROW 5: Discord | Buy Me A Coffee | OneWoW Home
     ----------------------------------------------------------------
-    local _, discordPanel, coffeePanel = CreateSplitRow(120)
+    local _, discordPanel, coffeePanel, homePanel = CreateThreeColumnRow(88)
 
-    local discordTitle = discordPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    discordTitle:SetPoint("TOPLEFT", discordPanel, "TOPLEFT", 15, -12)
-    discordTitle:SetText("Discord")
-    discordTitle:SetTextColor(self:GetThemeColor("ACCENT_PRIMARY"))
+    CreateLinkPanel(discordPanel, "Discord", "https://discord.gg/6vnabDVnDu")
+    CreateLinkPanel(coffeePanel, "Buy Me A Coffee", "https://buymeacoffee.com/migugin")
+    CreateLinkPanel(homePanel, "OneWoW Home", "https://wow2.xyz/")
 
-    local discordDesc = discordPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    discordDesc:SetPoint("TOPLEFT", discordPanel, "TOPLEFT", 15, -38)
-    discordDesc:SetPoint("TOPRIGHT", discordPanel, "TOPRIGHT", -15, -38)
-    discordDesc:SetText("Join our community for support and updates.")
-    discordDesc:SetTextColor(self:GetThemeColor("TEXT_SECONDARY"))
-    discordDesc:SetJustifyH("LEFT")
-    discordDesc:SetWordWrap(true)
-
-    local discordBox = self:CreateEditBox(discordPanel, { width = 250, height = 24 })
-    discordBox:SetPoint("TOPLEFT", discordPanel, "TOPLEFT", 15, -75)
-    discordBox:SetText("https://discord.gg/6vnabDVnDu")
-    discordBox:SetAutoFocus(false)
-    discordBox:SetScript("OnEditFocusGained", function(s) s:HighlightText() end)
-    discordBox:SetScript("OnEditFocusLost", function(s)
-        s:HighlightText(0, 0)
-        s:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-    end)
-
-    local coffeeTitle = coffeePanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    coffeeTitle:SetPoint("TOPLEFT", coffeePanel, "TOPLEFT", 15, -12)
-    coffeeTitle:SetText("Buy Me A Coffee")
-    coffeeTitle:SetTextColor(self:GetThemeColor("ACCENT_PRIMARY"))
-
-    local coffeeDesc = coffeePanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    coffeeDesc:SetPoint("TOPLEFT", coffeePanel, "TOPLEFT", 15, -38)
-    coffeeDesc:SetPoint("TOPRIGHT", coffeePanel, "TOPRIGHT", -15, -38)
-    coffeeDesc:SetText("Support OneWoW development.")
-    coffeeDesc:SetTextColor(self:GetThemeColor("TEXT_SECONDARY"))
-    coffeeDesc:SetJustifyH("LEFT")
-    coffeeDesc:SetWordWrap(true)
-
-    local coffeeBox = self:CreateEditBox(coffeePanel, { width = 250, height = 24 })
-    coffeeBox:SetPoint("TOPLEFT", coffeePanel, "TOPLEFT", 15, -75)
-    coffeeBox:SetText("https://buymeacoffee.com/migugin")
-    coffeeBox:SetAutoFocus(false)
-    coffeeBox:SetScript("OnEditFocusGained", function(s) s:HighlightText() end)
-    coffeeBox:SetScript("OnEditFocusLost", function(s)
-        s:HighlightText(0, 0)
-        s:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-    end)
-
-    yOffset = yOffset - 140
+    yOffset = yOffset - 108
 
     local function refreshThemePickerLabels()
         OneWoW_GUI:ApplyTheme()

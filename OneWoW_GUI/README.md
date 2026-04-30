@@ -386,6 +386,14 @@ local frame = OneWoW_GUI:CreateFrame(parent, {
 Returns a BackdropTemplate frame with theme BG_PRIMARY + BORDER_DEFAULT.
 `backdrop` is required; use `OneWoW_GUI.Constants.BACKDROP_SOFT`, `BACKDROP_INNER_NO_INSETS`, etc.
 
+### Layout frame
+```lua
+local container = OneWoW_GUI:CreateLayoutFrame(parent, {
+    height = OneWoW_GUI.Constants.GUI.ACTION_BAR_HEIGHT,
+})
+```
+Plain invisible `Frame` for positioning child components. Use this instead of raw `CreateFrame` when addon code only needs a layout container.
+
 ### Dialog
 ```lua
 local result = OneWoW_GUI:CreateDialog({
@@ -746,6 +754,47 @@ local section = OneWoW_GUI:CreateSectionHeader(parent, {
 -- section.bottomY = yOffset below the header for continued layout
 ```
 Creates a themed bar with background, border, and accent-colored title text.
+
+### Hero panel
+```lua
+local hero = OneWoW_GUI:CreateHeroPanel(parent, {
+    title = "Build Your Setup",
+    subtitle = "Pick the tools you want.",
+    description = "Use a preset, then fine-tune each card.",
+    iconTexture = OneWoW_GUI:GetBrandIcon("neutral"),
+    calloutText = "Smart setup wizard",
+    yOffset = -10,
+})
+```
+Creates a branded accent panel for onboarding, empty states, or feature introductions. Returns `hero.bottomY` for continued vertical layout.
+
+### Summary strip
+```lua
+local summary = OneWoW_GUI:CreateSummaryStrip(parent, {
+    yOffset = hero.bottomY - 8,
+    items = {
+        { label = "Selected addons", value = "7 / 9" },
+        { label = "Data modules", value = "11" },
+        { label = "Reload state", value = "Ready" },
+    },
+})
+summary:SetItemValue(1, "8 / 9")
+```
+Creates a horizontal row of themed stat boxes. Use `SetItemValue(index, value)` for live updates.
+
+### Selectable card
+```lua
+local card = OneWoW_GUI:CreateSelectableCard(parent, {
+    title = "AltTracker",
+    summary = "Cross-character dashboard for progress, gold, professions, bank, auctions, and lockouts.",
+    badgeText = "Core Features",
+    iconTexture = "Interface\\Icons\\Achievement_Guild_ClassyDwarf",
+    checked = true,
+    onToggle = function(card, checked) end,
+})
+card:SetChecked(false)
+```
+Creates a checkbox-backed feature card with icon, badge, hover state, and selected styling. Use for setup pickers and richer checklist rows.
 
 ---
 
@@ -1111,6 +1160,10 @@ SEARCH_HEIGHT = 22      SEARCH_WIDTH = 200    CHECKBOX_SIZE = 24
 ROW1_HEIGHT = 35        ROW2_HEIGHT = 30
 LEFT_PANEL_WIDTH = 320  PANEL_GAP = 10        TAB_BUTTON_HEIGHT = 30
 TOGGLE_BUTTON_WIDTH = 50  TOGGLE_BUTTON_HEIGHT = 22
+HERO_PANEL_HEIGHT = 118  SUMMARY_STRIP_HEIGHT = 66
+SELECTABLE_CARD_HEIGHT = 68  SELECTABLE_CARD_ICON_SIZE = 38
+BADGE_HEIGHT = 18       ACTION_BAR_HEIGHT = 34
+WIZARD_DIALOG_WIDTH = 820  WIZARD_DIALOG_HEIGHT = 680
 ```
 
 ### Adding OneWoW_GUI to a new addon

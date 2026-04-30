@@ -232,6 +232,11 @@ function EscPanels:EnsurePanelsContainer(ph)
 	end
 
 	panelsContainer:Show()
+	return panelsContainer
+end
+
+function EscPanels:GetPanelsContainer()
+	return panelsContainer
 end
 
 local function EnsureStackBase(container)
@@ -676,7 +681,7 @@ function EscPanels:Build(parent)
 	end
 
 	EnsureDimOverlay()
-	self:EnsurePanelsContainer(ph)
+	local container = self:EnsurePanelsContainer(ph)
 
 	local hMode = GetPanelsHorizontalMode(ph)
 
@@ -686,29 +691,29 @@ function EscPanels:Build(parent)
 	local zoneHasContent = zoneData and ((zoneData.content and zoneData.content ~= "") or (zoneData.todos and #zoneData.todos > 0))
 	local showZone = ph.escShowZoneNotes and (not ph.escHideZoneNotesWhenEmpty or zoneHasContent)
 
-	local availH = panelsContainer:GetHeight()
+	local availH = container:GetHeight()
 	if (not availH) or availH < 80 then
 		availH = GameMenuFrame and GameMenuFrame.GetHeight and GameMenuFrame:GetHeight() or UIParent:GetHeight()
 	end
 	local flexHeight = CalculateLayout(ph, showZone, hasAlerts, availH)
 	local yOffset = -SCREEN_PAD
-	local lastPanel = EnsureStackBase(panelsContainer)
+	local lastPanel = EnsureStackBase(container)
 
 	local charPanel
 	if ph.escShowCharacterInfo ~= false then
-		charPanel = BuildCharacterInfoPanel(panelsContainer, lastPanel, hMode)
+		charPanel = BuildCharacterInfoPanel(container, lastPanel, hMode)
 		lastPanel = charPanel
 	elseif panelFrames.charInfo then
 		panelFrames.charInfo:Hide()
 	end
 
 	local instPanel
-	instPanel, yOffset = BuildInstanceToastPanel(panelsContainer, yOffset, lastPanel, hMode)
+	instPanel, yOffset = BuildInstanceToastPanel(container, yOffset, lastPanel, hMode)
 	lastPanel = instPanel
 
 	if hasAlerts then
 		local alertPanel
-		alertPanel, yOffset = BuildAlertsPanel(panelsContainer, yOffset, lastPanel, hMode)
+		alertPanel, yOffset = BuildAlertsPanel(container, yOffset, lastPanel, hMode)
 		lastPanel = alertPanel
 	elseif panelFrames.alerts then
 		panelFrames.alerts:Hide()
@@ -716,7 +721,7 @@ function EscPanels:Build(parent)
 
 	if showZone then
 		local zonePanel
-		zonePanel, yOffset = BuildZoneNotesPanel(panelsContainer, yOffset, lastPanel, flexHeight, hMode)
+		zonePanel, yOffset = BuildZoneNotesPanel(container, yOffset, lastPanel, flexHeight, hMode)
 		lastPanel = zonePanel
 	elseif panelFrames.zoneNotes then
 		panelFrames.zoneNotes:Hide()

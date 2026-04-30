@@ -82,10 +82,10 @@ local PADDING_MENU_RIGHT = 10
 function EscMenu:GetPortalEdgeOffsetFromMenu(portalsSide, panelsSide, ph)
 	local gm = GameMenuFrame
 	if not gm then return portalsSide == "left" and -PADDING_MENU_LEFT or PADDING_MENU_RIGHT end
-	local pc = _G.OneWoWEscPanelsContainer
+	local pc = OneWoW.EscPanels:GetPanelsContainer()
 	local sameSide = (portalsSide == "left" and panelsSide == "left")
 		or (portalsSide == "right" and panelsSide == "right")
-	local panelsVisible = OneWoW.EscPanels and OneWoW.EscPanels:HasVisiblePanelStack()
+	local panelsVisible = OneWoW.EscPanels:HasVisiblePanelStack()
 	local pcReady = pc and pc:IsShown()
 
 	if portalsSide == "left" then
@@ -538,9 +538,8 @@ function EscMenu:CreatePortalButton(parent, portalData, xOffset, yOffset, iconSi
 			button.text:SetText(OneWoW.PortalData:GetShortName(portalData.id))
 		end
 	elseif portalData.type == "housing" then
-		button:SetAttribute("type", "macro")
-		button:SetAttribute("macrotext", "/run local h=C_Housing.GetCurrentHouseInfo();if h and h.houseGUID then C_Housing.TeleportHome(h.neighborhoodGUID,h.houseGUID,h.plotID)end")
-		local icon = C_Spell.GetSpellTexture(1263273)
+		OneWoW.PortalHubDetection:ApplyHousingTeleportAttributes(button)
+		local icon = C_Spell.GetSpellTexture(1233637)
 		if icon then button:SetNormalTexture(icon) end
 	end
 
