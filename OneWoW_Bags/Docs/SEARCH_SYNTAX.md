@@ -164,11 +164,12 @@ These match the **Glyph** item class with a **class-specific** subclass (as in
 |---|---|---|
 | `#gear` | `#equipment`, `#equippable` | Any equippable item |
 | `#set` | `#equipmentset` | Items in an equipment set |
-| `#cosmetic` | | Cosmetic armor |
 | `#myclass` | | Equipment your class can use |
 | `#myspec` | | Equipment usable by your current spec (universal gear included) |
 | `#needsrepair` | | Current durability differs from max (requires bag/slot context; see note below) |
 | `#broken` | | Zero durability (`durability==0`; requires bag/slot context) |
+
+> **`#myclass` / `#myspec`:** Items in the **Profession** item class never match (profession tools/recipes are handled by `#myprofs` instead).
 
 > **Durability keywords:** Values come from `C_Container.GetContainerItemDurability`
 > when the item is built from a real `bagID`/`slotID`. Without that, `#needsrepair`
@@ -179,6 +180,7 @@ These match the **Glyph** item class with a **class-specific** subclass (as in
 
 | Keyword | What it matches |
 |---|---|
+| `#cosmetic` | Cosmetic armor (armor subclass) |
 | `#cloth` | Cloth armor |
 | `#leather` | Leather armor |
 | `#mail` | Mail armor |
@@ -655,12 +657,13 @@ Syntax: `property>=value`, `property<=value`, `property>value`, `property<value`
 |---|---|---|
 | `ilvl` | `itemlevel`, `level` | Item level |
 | `id` | `itemid` | Item ID |
-| `quality` | | Quality as a number (0=Poor, 1=Common, 2=Uncommon, 3=Rare, 4=Epic, 5=Legendary) |
+| `quality` | | Quality as a number (0=Poor, 1=Common, 2=Uncommon, 3=Rare, 4=Epic, 5=Legendary, 6=Artifact, 7=Heirloom) |
 | `count` | `stacks` | Stack size in the slot |
 | `vendorprice` | `price`, `unitvalue` | Vendor sell price per unit (copper; accepts `g`/`s`/`c` notation) |
 | `totalvalue` | | Vendor sell price × stack size (copper; accepts `g`/`s`/`c` notation) |
 | `maxstack` | `stacksize` | Maximum stack size |
 | `reqlevel` | `minlevel` | Required player level |
+| `mylevel` | | Current player level (`UnitLevel("player")`); useful with property-vs-property compares (e.g. `reqlevel<=mylevel`) |
 | `expansion` | `expac` | Expansion ID (0=Classic, 1=TBC, ..., 10=TWW, 11=Midnight, 12=Last Titan) |
 | `class` | `typeid` | Item class ID |
 | `subclass` | `subtypeid` | Item subclass ID |
@@ -753,6 +756,7 @@ pettype=8               Beast battle pets
 petlevel:1-10           Low-level pets
 petquality>=4           Epic or better pets
 ilvl>=reqlevel          Item level at or above required level (property vs property)
+reqlevel<=mylevel       Items the current character meets the level requirement for
 durabilitypct<100       Damaged gear (bag/slot only; see durability note above)
 #decor & decorplaced>=1 Housing decor you've placed at least once (see housing-decor notes above)
 ```
@@ -967,7 +971,8 @@ in this document; full API and extension notes are in
 | Area | What lives there (approx.) |
 |---|---|
 | Caches | `propsCache`, `tooltipCache`, `compiledCache` — keyed by expression string and `bagID:slotID` where applicable. |
-| Data / patterns | Hearthstone ID set, knowledge-study icon set, `ITEM_CONTEXT_CATEGORY` → `#raid` / `#dungeon` / etc., locale patterns for charges / tradeable / unique-equip, `CLASS_ID` (token → class id); `ResolveHousing` + `C_HousingCatalog` for decor quantity fields. |
+| Overrides | `ITEM_ID_OVERRIDES` — small hardcoded `itemID → classID/subClassID` fixes for mis-tagged recipes/items. |
+| Data / patterns | Hearthstone ID set (`HS_IDS`), knowledge-study icon set (`KNOWLEDGE_ICONS`), `ITEM_CONTEXT_CATEGORY` → `#raid` / `#dungeon` / `#delves` / `#worldquest` / `#pvp` / `#store`, locale patterns for charges / tradeable / unique-equip, `CLASS_ID` (including Evoker, for `CanClassEquip` alt checks); `ResolveHousing` + `C_HousingCatalog` for decor quantity fields. |
 | `CONSTANT_MAP` | `${POOR}` … `${HEIRLOOM}` and expansion `${CLASSIC}` … `${LASTTITAN}` for `ResolveParams` / vendor templates. |
 | `PROP_REGISTRY` | Built-in numeric and string property names and aliases (including money units on `vendorprice` / `totalvalue` and housing decor counts: `decorstorage`, `decorplaced`, `decorredeemable`, `decortotal`). Exposed to callers via `RegisterProperty` merges. |
 | `FLAG_REGISTRY` | Lowercased `IsEquipment`-style words → `props` field names (vendor-style verbose rules). |
