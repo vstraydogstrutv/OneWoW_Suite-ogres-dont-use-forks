@@ -1950,18 +1950,18 @@ function CatMgrUI:Show()
             local bagAvailable = HasBaganator()
             local tsm = OneWoW_Bags.TSMIntegration
             local tsmAvailable = tsm and tsm.IsAvailable and tsm:IsAvailable()
-
-            tinsert(items, {
-                value = "baganator_direct",
-                text  = (L["IMPORT_SRC_BAGANATOR_DIRECT"])
-                    .. (bagAvailable and "" or "  " .. (L["IMPORT_NOT_AVAILABLE_HINT"])),
-            })
-            tinsert(items, {
-                value = "tsm_direct",
-                text  = (L["IMPORT_SRC_TSM_DIRECT"])
-                    .. (tsmAvailable and "" or "  " .. (L["IMPORT_NOT_AVAILABLE_HINT"])),
-            })
-            tinsert(items, { type = "divider" })
+            local anyDirect = false
+            if bagAvailable then
+                tinsert(items, { value = "baganator_direct", text = L["IMPORT_SRC_BAGANATOR_DIRECT"] })
+                anyDirect = true
+            end
+            if tsmAvailable then
+                tinsert(items, { value = "tsm_direct", text = L["IMPORT_SRC_TSM_DIRECT"] })
+                anyDirect = true
+            end
+            if anyDirect then
+                tinsert(items, { type = "divider" })
+            end
             tinsert(items, { value = "onewow_string",    text = L["IMPORT_SRC_ONEWOW_PASTE"] })
             tinsert(items, { value = "baganator_string", text = L["IMPORT_SRC_BAGANATOR_PASTE"] })
             return items
