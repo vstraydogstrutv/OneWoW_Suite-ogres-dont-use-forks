@@ -305,6 +305,18 @@ OneWoW.SearchData = {
         navType = "module", module = "qol", subtab = "toastalerts",
         keywords = {"instance toast", "dungeon notification", "raid notification", "entering instance"},
     },
+    {
+        path     = function() return L("SRCH_PATH_OW_TOAST_RECIPES_PROF") end,
+        desc     = function() return L("SRCH_DESC_OW_TOAST_RECIPES_PROF") end,
+        addonKey = nil, addonLabel = "OneWoW",
+        navType = "module", module = "qol", subtab = "toastalerts",
+        keywords = {
+            "recipe toast", "recipe alert", "recipe notification", "recipes toast",
+            "profession toast", "professions toast", "my profession", "my professions",
+            "only my professions", "trade skill toast", "tradeskill toast", "crafting toast",
+            "recipe professions", "collection detection",
+        },
+    },
 
     -- OneWoW Core: Portals
     {

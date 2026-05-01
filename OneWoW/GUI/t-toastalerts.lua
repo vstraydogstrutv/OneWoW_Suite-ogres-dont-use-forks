@@ -1,10 +1,10 @@
-local ADDON_NAME, OneWoW = ...
-
-local GUI = OneWoW.GUI
-local L    = OneWoW.L
+local _, OneWoW = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
+
+local GUI = OneWoW.GUI
+local L    = OneWoW.L
 
 local SOUND_OPTIONS = {
     { labelKey = "TOAST_SOUND_NONE",      id = 0 },
@@ -31,7 +31,7 @@ local function CreateSoundDropdown(dsc, dbSection, yOffset)
     local section = db[dbSection]
     if not section then return yOffset end
 
-    local dropBtn, dropText = OneWoW_GUI:CreateDropdown(dsc, {
+    local dropBtn = OneWoW_GUI:CreateDropdown(dsc, {
         width = 200,
         text = GetSoundLabel(section.sound),
     })
@@ -114,12 +114,34 @@ local function AddDetectionExtras(dsc, yOffset)
         local cb = OneWoW_GUI:CreateCheckbox(dsc, { label = entry.label })
         cb:SetPoint("TOPLEFT", dsc, "TOPLEFT", 12, yOffset)
         cb:SetChecked(loot[capturedKey] ~= false)
+
+        local recipesOnlyCb = nil
+        if capturedKey == "recipes" then
+            yOffset = yOffset - 32
+            recipesOnlyCb = OneWoW_GUI:CreateCheckbox(dsc, {
+                label = L["TOAST_LOOT_RECIPES_ONLY_MY_PROFESSIONS"] or "Only my professions",
+            })
+            recipesOnlyCb:SetPoint("TOPLEFT", dsc, "TOPLEFT", 32, yOffset)
+            recipesOnlyCb:SetChecked(loot.recipesOnlyMyProfessions == true)
+            recipesOnlyCb:SetEnabled(loot.recipes ~= false)
+            recipesOnlyCb:SetScript("OnClick", function(self)
+                local tdb = GetToastsDB()
+                if tdb and tdb.loot then
+                    tdb.loot.recipesOnlyMyProfessions = self:GetChecked()
+                end
+            end)
+        end
+
         cb:SetScript("OnClick", function(self)
             local tdb = GetToastsDB()
             if tdb and tdb.loot then
                 tdb.loot[capturedKey] = self:GetChecked()
+                if recipesOnlyCb then
+                    recipesOnlyCb:SetEnabled(self:GetChecked())
+                end
             end
         end)
+
         yOffset = yOffset - 32
     end
 

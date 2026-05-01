@@ -1,4 +1,9 @@
-local ADDON_NAME, OneWoW = ...
+local _, OneWoW = ...
+
+local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+if not OneWoW_GUI then return end
+
+local PE = OneWoW_GUI.PredicateEngine
 
 local Toasts = OneWoW.Toasts
 
@@ -8,6 +13,14 @@ local TYPE_COLORS = {
     toy    = {0.70, 0.40, 1.00, 1.0},
     recipe = {1.00, 0.60, 0.20, 1.0},
     tmog   = {1.00, 0.40, 0.60, 1.0},
+}
+
+local TITLE_KEYS = {
+    mount  = "TOAST_NEW_MOUNT",
+    pet    = "TOAST_NEW_PET",
+    toy    = "TOAST_NEW_TOY",
+    recipe = "TOAST_NEW_RECIPE",
+    tmog   = "TOAST_NEW_TMOG",
 }
 
 local function GetDB()
@@ -28,23 +41,15 @@ local function GetL(key, fallback)
     return (OneWoW.L and OneWoW.L[key]) or fallback
 end
 
-local function FireLootToast(category, itemName, itemTexture, subtitle)
+local function FireLootToast(category, itemName, itemTexture, _)
     if not LootEnabled() then return end
     if not CategoryEnabled(category) then return end
     if not itemName or itemName == "" then return end
 
-    local titleKey = {
-        mount  = "TOAST_NEW_MOUNT",
-        pet    = "TOAST_NEW_PET",
-        toy    = "TOAST_NEW_TOY",
-        recipe = "TOAST_NEW_RECIPE",
-        tmog   = "TOAST_NEW_TMOG",
-    }
-
     Toasts.FireToast({
         toastType = "loot",
         category  = category,
-        title     = GetL(titleKey[category], category),
+        title     = GetL(TITLE_KEYS[category], category),
         subtitle  = itemName,
         icon      = itemTexture,
         color     = TYPE_COLORS[category],
@@ -77,14 +82,12 @@ end
 
 local function OnNewToy(itemID)
     if not LootEnabled() or not CategoryEnabled("toys") then return end
-    if not itemID or itemID <= 0 then return end
-    if not PlayerHasToy or not PlayerHasToy(itemID) then return end
 
-    local name = (C_ToyBox and C_ToyBox.GetToyInfo and C_ToyBox.GetToyInfo(itemID)) or C_Item.GetItemInfo(itemID)
-    local icon = (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID)) or select(10, C_Item.GetItemInfo(itemID))
-    if not name then return end
+    local props = PE:BuildProps(itemID)
+    if not props.isCollected then return end
+    if not props.name then return end
 
-    FireLootToast("toy", name, icon, nil)
+    FireLootToast("toy", props.nameRaw, props.icon, nil)
 end
 
 local bagCache  = {}
@@ -115,6 +118,26 @@ local function ScanBagsForCollectibles()
     if not bagReady then return end
     if not LootEnabled() then return end
 
+    local tmogsEnabled = CategoryEnabled("tmogs")
+    local recipesEnabled = CategoryEnabled("recipes")
+    if not tmogsEnabled and not recipesEnabled then return end
+
+    local tmogsCompiled = nil
+    local recipeCompiled = nil
+
+    if tmogsEnabled then
+        tmogsCompiled = PE:Compile("#transmog&!#knowntransmog")
+    end
+
+    if recipesEnabled then
+        local dbLoot = GetDB() and GetDB().loot
+        local expr = "#recipe&!#alreadyknown"
+        if dbLoot and dbLoot.recipesOnlyMyProfessions then
+            expr = expr .. "&#myprofs"
+        end
+        recipeCompiled = PE:Compile(expr)
+    end
+
     local newCache = {}
 
     for bag = 0, 4 do
@@ -126,31 +149,22 @@ local function ScanBagsForCollectibles()
                 newCache[guid] = info.itemID
 
                 if not bagCache[guid] then
-                    local itemID = info.itemID
-                    local itemName, _, _, _, _, _, _, _, _, itemTexture,
-                          _, classID, subclassID = C_Item.GetItemInfo(itemID)
+                    local props = PE:BuildProps(info.itemID, bag, slot, info)
 
-                    if itemName and itemTexture then
-                        if CategoryEnabled("tmogs") and C_TransmogCollection and C_TransmogCollection.PlayerHasTransmog then
-                            local hasTransmog = C_TransmogCollection.PlayerHasTransmog(itemID)
-                            if hasTransmog == false then
-                                local isTransmog = (classID == 4) or (classID == 2)
-                                if isTransmog then
-                                    FireLootToast("tmog", itemName, itemTexture, nil)
-                                end
+                    if props.name and props.icon then
+                        if tmogsEnabled and tmogsCompiled then
+                            local result = PE:SafeEvaluate(tmogsCompiled, props)
+
+                            if result then
+                                FireLootToast("tmog", props.nameRaw, props.icon, nil)
                             end
                         end
 
-                        if CategoryEnabled("recipes") then
-                            local isRecipe = (classID == 9)
-                            if isRecipe then
-                                local link = info.hyperlink
-                                if link then
-                                    local spellID = tonumber(link:match("enchant:(%d+)") or link:match("spell:(%d+)"))
-                                    if spellID and not C_SpellBook.IsSpellInSpellBook(spellID) then
-                                        FireLootToast("recipe", itemName, itemTexture, nil)
-                                    end
-                                end
+                        if recipesEnabled and recipeCompiled then
+                            local result = PE:SafeEvaluate(recipeCompiled, props)
+
+                            if result then
+                                FireLootToast("recipe", props.nameRaw, props.icon, nil)
                             end
                         end
                     end
@@ -168,10 +182,14 @@ lootFrame:RegisterEvent("BAG_UPDATE_DELAYED")
 lootFrame:RegisterEvent("NEW_MOUNT_ADDED")
 lootFrame:RegisterEvent("NEW_PET_ADDED")
 lootFrame:RegisterEvent("NEW_TOY_ADDED")
+lootFrame:RegisterEvent("SKILL_LINES_CHANGED")
 
-lootFrame:SetScript("OnEvent", function(self, event, arg1)
+lootFrame:SetScript("OnEvent", function(_, event, arg1)
     if event == "PLAYER_LOGIN" then
         C_Timer.After(3, BuildBagCache)
+
+    elseif event == "SKILL_LINES_CHANGED" then
+        PE:InvalidateKnownProfessions()
 
     elseif event == "BAG_UPDATE_DELAYED" then
         ScanBagsForCollectibles()

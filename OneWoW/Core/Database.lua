@@ -322,6 +322,7 @@ local DEFAULTS = {
             pets    = false,
             toys    = false,
             recipes = false,
+            recipesOnlyMyProfessions = false,
             tmogs   = false,
             sound   = SOUNDKIT.READY_CHECK,
         },

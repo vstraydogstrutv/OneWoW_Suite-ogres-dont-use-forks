@@ -1,4 +1,9 @@
-local ADDON_NAME, OneWoW = ...
+local _, OneWoW = ...
+
+local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+if not OneWoW_GUI then return end
+
+local tinsert, tremove = tinsert, tremove
 
 OneWoW.Toasts = OneWoW.Toasts or {}
 local Toasts = OneWoW.Toasts
@@ -31,8 +36,6 @@ Toasts.largePool     = {}
 Toasts.anchorFrame   = nil
 Toasts.anchorVisible = false
 
-local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
-
 local function GetDB()
     return OneWoW.db and OneWoW.db.global and OneWoW.db.global.toasts
 end
@@ -53,7 +56,6 @@ local function RepositionToasts()
     if not Toasts.anchorFrame then return end
     local anchor  = Toasts.anchorFrame
     local screenH = GetScreenHeight()
-    local anchorY = select(5, anchor:GetPoint()) or 0
     local stackUp = (anchor:GetBottom() or 0) < screenH * 0.25
 
     for i, toast in ipairs(Toasts.activeToasts) do
@@ -78,14 +80,14 @@ end
 local function ReleaseToast(toast)
     local idx = IndexOf(Toasts.activeToasts, toast)
     if idx then
-        table.remove(Toasts.activeToasts, idx)
+        tremove(Toasts.activeToasts, idx)
     end
     toast:Hide()
     toast:SetAlpha(1)
     if toast._isLarge then
-        table.insert(Toasts.largePool, toast)
+        tinsert(Toasts.largePool, toast)
     else
-        table.insert(Toasts.smallPool, toast)
+        tinsert(Toasts.smallPool, toast)
     end
     RepositionToasts()
     C_Timer.After(0, function()
@@ -257,7 +259,7 @@ end
 local function GetToast(large)
     local pool = large and Toasts.largePool or Toasts.smallPool
     if #pool > 0 then
-        return table.remove(pool)
+        return tremove(pool)
     end
     return large and CreateLargeToast() or CreateSmallToast()
 end
@@ -300,7 +302,7 @@ local function ShowSmallToast(data)
     toast:SetAlpha(0)
     toast:Show()
 
-    table.insert(Toasts.activeToasts, toast)
+    tinsert(Toasts.activeToasts, toast)
     RepositionToasts()
 
     BuildAnimations(toast, delay)
@@ -422,7 +424,7 @@ local function ShowLargeToast(data)
     toast:SetAlpha(0)
     toast:Show()
 
-    table.insert(Toasts.activeToasts, toast)
+    tinsert(Toasts.activeToasts, toast)
     RepositionToasts()
 
     BuildLargeToastAnimations(toast)
@@ -432,7 +434,7 @@ end
 function Toasts.ProcessQueue()
     if not IsEnabled() then return end
     while #Toasts.activeToasts < MAX_ACTIVE and #Toasts.pendingQueue > 0 do
-        local data = table.remove(Toasts.pendingQueue, 1)
+        local data = tremove(Toasts.pendingQueue, 1)
         if data._isLarge then
             ShowLargeToast(data)
         else
@@ -445,7 +447,7 @@ end
 function Toasts.FireToast(data)
     if not IsEnabled() then return end
     data._isLarge = (data.toastType == "instance")
-    table.insert(Toasts.pendingQueue, data)
+    tinsert(Toasts.pendingQueue, data)
     Toasts.ProcessQueue()
 end
 
@@ -596,6 +598,6 @@ end
 
 local initFrame = CreateFrame("Frame")
 initFrame:RegisterEvent("PLAYER_LOGIN")
-initFrame:SetScript("OnEvent", function(self, event)
+initFrame:SetScript("OnEvent", function()
     BuildAnchor()
 end)
