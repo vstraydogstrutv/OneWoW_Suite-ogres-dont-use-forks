@@ -29,18 +29,16 @@ local db = setmetatable({}, {
     end,
 })
 
-local PE = OneWoW_GUI.PredicateEngine
 local Categories = OneWoW_Bags.Categories
 local SD = OneWoW_Bags.SectionDefaults
 
-local random, max, floor, time = math.random, math.max, math.floor, time
+local max, floor = math.max, math.floor
 local pairs, ipairs = pairs, ipairs
 local strtrim = strtrim
+local tonumber, format = tonumber, format
+local tinsert, sort = tinsert, sort
 local C_Timer = C_Timer
 local GameTooltip = GameTooltip
-local tostring, tonumber, format = tostring, tonumber, format
-local tinsert, tremove, wipe = tinsert, tremove, wipe
-local sort = table.sort
 
 OneWoW_Bags.CategoryManagerUI = {}
 local CatMgrUI = OneWoW_Bags.CategoryManagerUI
@@ -120,41 +118,9 @@ local BUILTIN_PRIORITY = {
     ["Other"]=98,
 }
 
-local BAGANATOR_CAT_MAP = {
-    ["default_auto_recents"]      = "Recent Items",
-    ["default_weapon"]            = "Weapons",
-    ["default_armor"]             = "Armor",
-    ["default_auto_equipment_sets"]= "Equipment Sets",
-    ["default_consumable"]        = "Consumables",
-    ["default_food"]              = "Food",
-    ["default_potion"]            = "Potions",
-    ["default_reagent"]           = "Reagents",
-    ["default_tradegoods"]        = "Trade Goods",
-    ["default_profession"]        = "Tradeskill",
-    ["default_recipe"]            = "Recipes",
-    ["default_gem"]               = "Gems",
-    ["default_questitem"]         = "Quest Items",
-    ["default_toy"]               = "Toys",
-    ["default_battlepet"]         = "Battle Pets",
-    ["default_miscellaneous"]     = "Miscellaneous",
-    ["default_key"]               = "Keys",
-    ["default_keystone"]          = "Keystone",
-    ["default_junk"]              = "Junk",
-    ["default_other"]             = "Other",
-    ["default_housing"]           = "Housing",
-    ["default_container"]         = "Containers",
-    ["default_itemenhancement"]   = "Item Enhancement",
-    ["default_hearthstone"]       = "Hearthstone",
-    ["default_special_empty"]     = "Empty",
-}
-
 -- ============================================================
 -- Helpers
 -- ============================================================
-local function GetEffectiveBuiltinNamesList()
-    return SD:GetEffectiveBuiltinNames(GetDB().global)
-end
-
 local function EnsureDefaultSection()
     local sections = db.global.categorySections
     local sectOrder = db.global.sectionOrder
@@ -356,7 +322,6 @@ end
 -- ============================================================
 -- Category drag/drop (intra- and inter-section)
 -- ============================================================
-
 local ApplyMemberRowReorderVisual
 local ApplyCategoryHoverVisual
 local ClearCategoryHoverVisual
@@ -518,10 +483,10 @@ BuildSectionMemberRows = function(secRow, section, sectionID, startY)
     local cats = section.categories or {}
     for catIdx, catName in ipairs(cats) do
         local isBuiltin = BUILTIN_PRIORITY[catName] ~= nil
-        local catData, catID = nil, nil
+        local catID = nil
         if not isBuiltin then
             for id, data in pairs(customCats) do
-                if data.name == catName then catData = data; catID = id; break end
+                if data.name == catName then catID = id break end
             end
         end
         local key = isBuiltin and ("builtin:" .. catName) or catID
@@ -662,20 +627,6 @@ InlineExpandSection = function(sectionID, secRow)
     end
 end
 
-local function MoveItemToCategory(itemID, destCatID)
-    local controller = GetController()
-    if controller and controller.AddItemToCategory then
-        local ok, ownerName = controller:AddItemToCategory(destCatID, itemID)
-        if not ok then
-            if ownerName then
-                UIErrorsFrame:AddMessage(format(L["ERR_ITEM_ALREADY_MANUAL_CATEGORY"], ownerName), 1, 0, 0)
-            else
-                UIErrorsFrame:AddMessage(L["ERR_ITEM_ALREADY_MANUAL_CATEGORY_GENERIC"], 1, 0, 0)
-            end
-        end
-    end
-end
-
 -- ============================================================
 -- Static Popups
 -- ============================================================
@@ -711,11 +662,28 @@ StaticPopupDialogs["ONEWOW_BAGS_CREATE_CATEGORY"] = {
         selectedCatKey = id
         local g = GetDB().global
         local secId = prevSel and prevSel:match("^section:(.+)$")
-        if secId and secId ~= SD.SEC_ONEWOW_BAGS then
+        if secId then
             controller:SetSectionMembership(secId, name, true)
-        elseif g.categorySections[SD.SEC_ONEWOW_BAGS] then
-            SD:SyncOnewowSectionCategories(g)
-            controller:RefreshUI()
+        else
+            local anchorName = nil
+            if prevSel and prevSel:sub(1, 8) == "builtin:" then
+                anchorName = prevSel:sub(9)
+            elseif prevSel and g.customCategoriesV2[prevSel] then
+                anchorName = strtrim(g.customCategoriesV2[prevSel].name or "")
+                if anchorName == "" then anchorName = nil end
+            end
+            local placedAfterRow = false
+            if anchorName then
+                local sid, idx = controller:FindSectionIndexForCategoryName(anchorName)
+                if sid and idx then
+                    controller:SetSectionMembership(sid, name, true, idx + 1)
+                    placedAfterRow = true
+                end
+            end
+            if not placedAfterRow and g.categorySections[SD.SEC_ONEWOW_BAGS] then
+                SD:SyncOnewowSectionCategories(g)
+                controller:RefreshUI()
+            end
         end
     end,
     EditBoxOnEnterPressed = function(self)
@@ -770,7 +738,7 @@ StaticPopupDialogs["ONEWOW_BAGS_DELETE_CATEGORY"] = {
     button1 = L["POPUP_DELETE"],
     button2 = L["POPUP_CANCEL"],
     OnShow = function(self) self.Text:SetText(L["CATEGORY_DELETE_CONFIRM"]) end,
-    OnAccept = function(self, data)
+    OnAccept = function(_, data)
         if data then
             local controller = GetController()
             if controller and controller.DeleteCategory then
@@ -863,7 +831,7 @@ StaticPopupDialogs["ONEWOW_BAGS_DELETE_SECTION"] = {
     button1 = L["POPUP_DELETE"],
     button2 = L["POPUP_CANCEL"],
     OnShow = function(self) self.Text:SetText(L["SECTION_DELETE_CONFIRM"]) end,
-    OnAccept = function(self, data)
+    OnAccept = function(_, data)
         if data then
             local controller = GetController()
             if controller and controller.DeleteSection then
@@ -973,10 +941,10 @@ function CatMgrUI:RefreshRight()
         showHeaderCB:SetSize(18, 18)
         showHeaderCB:SetPoint("TOPLEFT", rightTopWrapper, "TOPLEFT", 8, -42)
         showHeaderCB:SetChecked(section.showHeader or false)
-        showHeaderCB:SetScript("OnClick", function(self)
+        showHeaderCB:SetScript("OnClick", function(myself)
             local controller = GetController()
             if controller and controller.SetSectionShowHeader then
-                controller:SetSectionShowHeader(captSectionID, self:GetChecked())
+                controller:SetSectionShowHeader(captSectionID, myself:GetChecked())
             end
         end)
         local showHeaderLbl = rightTopWrapper:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -990,10 +958,10 @@ function CatMgrUI:RefreshRight()
         local bankHeaderVal = section.showHeaderBank
         if bankHeaderVal == nil then bankHeaderVal = section.showHeader or false end
         showHeaderBankCB:SetChecked(bankHeaderVal)
-        showHeaderBankCB:SetScript("OnClick", function(self)
+        showHeaderBankCB:SetScript("OnClick", function(myself)
             local controller = GetController()
             if controller and controller.SetSectionShowHeaderBank then
-                controller:SetSectionShowHeaderBank(captSectionID, self:GetChecked())
+                controller:SetSectionShowHeaderBank(captSectionID, myself:GetChecked())
             end
         end)
         local showHeaderBankLbl = rightTopWrapper:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -1413,7 +1381,7 @@ function CatMgrUI:RefreshRight()
             end
             colorSwatch:SetBackdropColor(nr, ng, nb, 1.0)
         end
-        info.cancelFunc = function(prev)
+        info.cancelFunc = function()
             local controller = GetController()
             if controller and controller.SetCategoryColor then
                 controller:SetCategoryColor(capCatName, catMod.color)
@@ -1449,10 +1417,10 @@ function CatMgrUI:RefreshRight()
         local isApplied = not (catMod.appliesIn and catMod.appliesIn[hc.key] == false)
         cb:SetChecked(isApplied)
         local capKey = hc.key
-        cb:SetScript("OnClick", function(self)
+        cb:SetScript("OnClick", function(myself)
             local controller = GetController()
             if controller and controller.SetCategoryAppliesIn then
-                controller:SetCategoryAppliesIn(capCatName, capKey, self:GetChecked())
+                controller:SetCategoryAppliesIn(capCatName, capKey, myself:GetChecked())
             end
         end)
         local cbLbl = rightTopWrapper:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -1494,10 +1462,10 @@ function CatMgrUI:RefreshRight()
         end
 
         local capKey = hc.key
-        cb:SetScript("OnClick", function(self)
+        cb:SetScript("OnClick", function(myself)
             local controller = GetController()
             if controller and controller.SetCategoryForceOwnLine then
-                controller:SetCategoryForceOwnLine(capCatName, capKey, self:GetChecked())
+                controller:SetCategoryForceOwnLine(capCatName, capKey, myself:GetChecked())
             end
         end)
 
@@ -1782,9 +1750,9 @@ function CatMgrUI:RefreshLeft()
                 CatMgrUI:Refresh()
             end)
 
-            secRow:SetScript("OnEnter", function(self)
+            secRow:SetScript("OnEnter", function(myself)
                 if sReorder:IsActive() or (categoryReorder and categoryReorder:IsActive()) then return end
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
                 GameTooltip:SetText(section.name, 1, 1, 1)
                 GameTooltip:AddLine(" ")
                 local tr, tg, tb = OneWoW_GUI:GetThemeColor("TEXT_SECONDARY")
@@ -1895,9 +1863,9 @@ function CatMgrUI:Show()
             undoTex:SetDesaturated(true)
         end
     end
-    undoBtn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-        if self:IsEnabled() then
+    undoBtn:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_BOTTOMRIGHT")
+        if myself:IsEnabled() then
             GameTooltip:SetText(L["IMPORT_UNDO_TOOLTIP"])
         else
             GameTooltip:SetText(L["IMPORT_UNDO_TOOLTIP_DISABLED"])

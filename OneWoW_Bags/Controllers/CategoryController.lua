@@ -306,22 +306,55 @@ function CategoryController:SetSectionShowHeaderBank(id, showHeader)
     self:RefreshUI({ invalidate = false })
 end
 
-function CategoryController:SetSectionMembership(id, categoryName, isMember)
+function CategoryController:FindSectionIndexForCategoryName(categoryDisplayName)
+    if not categoryDisplayName or categoryDisplayName == "" then
+        return nil, nil
+    end
+    local g = self:GetDB().global
+    for sid, sec in pairs(g.categorySections) do
+        if sec and sec.categories then
+            for idx, nm in ipairs(sec.categories) do
+                if nm == categoryDisplayName then
+                    return sid, idx
+                end
+            end
+        end
+    end
+    return nil, nil
+end
+
+function CategoryController:SetSectionMembership(id, categoryName, isMember, insertAt)
     local db = self:GetDB()
     local section = db.global.categorySections[id]
     if not section then return end
 
     if isMember then
         removeCategoryNameFromOtherSections(db.global, categoryName, id)
-        local already = false
-        for _, existing in ipairs(section.categories) do
-            if existing == categoryName then
-                already = true
-                break
-            end
+        if not section.categories then
+            section.categories = {}
         end
-        if not already then
-            tinsert(section.categories, categoryName)
+        local cats = section.categories
+        if type(insertAt) == "number" then
+            for i = #cats, 1, -1 do
+                if cats[i] == categoryName then
+                    tremove(cats, i)
+                end
+            end
+            local maxPos = #cats + 1
+            if insertAt < 1 then insertAt = 1 end
+            if insertAt > maxPos then insertAt = maxPos end
+            tinsert(cats, insertAt, categoryName)
+        else
+            local already = false
+            for _, existing in ipairs(cats) do
+                if existing == categoryName then
+                    already = true
+                    break
+                end
+            end
+            if not already then
+                tinsert(cats, categoryName)
+            end
         end
     else
         for i, existing in ipairs(section.categories) do
