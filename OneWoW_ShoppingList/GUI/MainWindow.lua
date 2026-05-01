@@ -38,7 +38,6 @@ local contentPanel
 local settingsPanel
 local searchBox
 local searchAltsBtn
-local currentListLabel
 local statusLabel
 local searchFilter   = ""
 local searchAltsOn   = false
@@ -270,17 +269,12 @@ function MainWindow:Create()
         bgColor     = "BG_SECONDARY",
         borderColor = "BORDER_SUBTLE",
     })
-    sidebarHeader:SetHeight(30)
+    sidebarHeader:SetHeight(34)
     sidebarHeader:SetPoint("TOPLEFT",  sidebarPanel, "TOPLEFT",  0, 0)
     sidebarHeader:SetPoint("TOPRIGHT", sidebarPanel, "TOPRIGHT", 0, 0)
 
-    local sidebarTitle = OneWoW_GUI:CreateFS(sidebarHeader, 12)
-    sidebarTitle:SetPoint("LEFT", sidebarHeader, "LEFT", 8, 0)
-    sidebarTitle:SetText(L["OWSL_SIDEBAR_TITLE"])
-    sidebarTitle:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
-
     local newListBtn = OneWoW_GUI:CreateFitTextButton(sidebarHeader, { text = L["OWSL_BTN_NEW_LIST"], height = 22 })
-    newListBtn:SetPoint("RIGHT", sidebarHeader, "RIGHT", -4, 0)
+    newListBtn:SetPoint("LEFT", sidebarHeader, "LEFT", 6, 0)
     newListBtn:SetScript("OnClick", function()
         ns.Dialogs:InputDialog(L["OWSL_DIALOG_NEW_LIST"], "", function(name)
             if name == "" then
@@ -299,7 +293,7 @@ function MainWindow:Create()
     end)
 
     local sidebarScrollContainer = CreateFrame("Frame", nil, sidebarPanel)
-    sidebarScrollContainer:SetPoint("TOPLEFT",     sidebarPanel, "TOPLEFT",     0, -30)
+    sidebarScrollContainer:SetPoint("TOPLEFT",     sidebarPanel, "TOPLEFT",     0, -34)
     sidebarScrollContainer:SetPoint("BOTTOMRIGHT", sidebarPanel, "BOTTOMRIGHT", 0,   0)
 
     local sidebarScrollFrame, sidebarScrollContent = OneWoW_GUI:CreateScrollFrame(sidebarScrollContainer, {})
@@ -322,14 +316,8 @@ function MainWindow:Create()
     contentHeader:SetPoint("TOPLEFT",  contentPanel, "TOPLEFT",  0, 0)
     contentHeader:SetPoint("TOPRIGHT", contentPanel, "TOPRIGHT", 0, 0)
 
-    currentListLabel = OneWoW_GUI:CreateFS(contentHeader, 12)
-    currentListLabel:SetPoint("LEFT", contentHeader, "LEFT", 8, 0)
-    currentListLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
-
-    local btnRight = -4
-
     local importBtn = OneWoW_GUI:CreateFitTextButton(contentHeader, { text = L["OWSL_BTN_IMPORT"], height = 22 })
-    importBtn:SetPoint("RIGHT", contentHeader, "RIGHT", btnRight, 0)
+    importBtn:SetPoint("RIGHT", contentHeader, "RIGHT", -4, 0)
     importBtn:SetScript("OnClick", function()
         ns.Dialogs:ImportDialog(function(text)
             local activeList = ns.ShoppingList:GetActiveListName()
@@ -351,7 +339,6 @@ function MainWindow:Create()
             end
         end, mainFrame)
     end)
-    btnRight = btnRight - importBtn:GetWidth() - 4
 
     local scanBtn = OneWoW_GUI:CreateFitTextButton(contentHeader, { text = L["OWSL_BTN_SCAN_ALL"], height = 22 })
     scanBtn:SetPoint("RIGHT", importBtn, "LEFT", -4, 0)
@@ -399,21 +386,22 @@ function MainWindow:Create()
     end)
     searchAltsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+    local searchRightAnchor = searchAltsBtn.label or searchAltsBtn
     local shopHelpBtn
     if OneWoW_GUI.CreateKeywordHelpButton then
         shopHelpBtn = OneWoW_GUI:CreateKeywordHelpButton(contentHeader, { size = 20 })
-        shopHelpBtn:SetPoint("RIGHT", searchAltsBtn.label or searchAltsBtn, "LEFT", -6, 0)
+        shopHelpBtn:SetPoint("RIGHT", searchRightAnchor, "LEFT", -8, 0)
+        searchRightAnchor = shopHelpBtn
     end
 
-    searchBox = OneWoW_GUI:CreateEditBox(contentHeader, { name = "OWSL_SearchBox", width = 120, height = 22 })
-    if shopHelpBtn then
-        searchBox:SetPoint("RIGHT", shopHelpBtn, "LEFT", -4, 0)
-        shopHelpBtn:SetScript("OnClick", function()
-            OneWoW_GUI:ShowKeywordHelp(searchBox)
-        end)
-    else
-        searchBox:SetPoint("RIGHT", searchAltsBtn.label or searchAltsBtn, "LEFT", -6, 0)
-    end
+    local searchLabel = OneWoW_GUI:CreateFS(contentHeader, 10)
+    searchLabel:SetPoint("LEFT", contentHeader, "LEFT", 8, 0)
+    searchLabel:SetText(L["OWSL_LABEL_SEARCH"])
+    searchLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+
+    searchBox = OneWoW_GUI:CreateEditBox(contentHeader, { name = "OWSL_SearchBox", height = 22 })
+    searchBox:SetPoint("LEFT",  searchLabel,       "RIGHT", 4,  0)
+    searchBox:SetPoint("RIGHT", searchRightAnchor, "LEFT",  -8, 0)
     searchBox:SetScript("OnTextChanged", function(myself, userInput)
         if userInput then
             searchFilter = myself:GetText():lower()
@@ -424,10 +412,11 @@ function MainWindow:Create()
         OneWoW_GUI:AttachSearchTooltip(searchBox)
     end
 
-    local searchLabel = OneWoW_GUI:CreateFS(contentHeader, 10)
-    searchLabel:SetPoint("RIGHT", searchBox, "LEFT", -4, 0)
-    searchLabel:SetText(L["OWSL_LABEL_SEARCH"])
-    searchLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+    if shopHelpBtn then
+        shopHelpBtn:SetScript("OnClick", function()
+            OneWoW_GUI:ShowKeywordHelp(searchBox)
+        end)
+    end
 
     contentHeaderFrame = contentHeader
 
@@ -694,7 +683,6 @@ function MainWindow:Rebuild()
     addButtonRowFrame  = nil
     searchBox          = nil
     searchAltsBtn      = nil
-    currentListLabel   = nil
     statusLabel        = nil
     inSettingsView     = false
     listRowPool        = {}
@@ -914,14 +902,6 @@ function MainWindow:RefreshItemList()
 
     local activeList = ns.ShoppingList:GetActiveListName()
     local list       = ns.ShoppingList:GetList(activeList)
-
-    if currentListLabel then
-        local displayName = activeList
-        if list and list.isCraftOrder then
-            displayName = "Craft: " .. activeList:sub(8)
-        end
-        currentListLabel:SetText(displayName)
-    end
 
     if not list then
         scrollContent:SetHeight(1)
