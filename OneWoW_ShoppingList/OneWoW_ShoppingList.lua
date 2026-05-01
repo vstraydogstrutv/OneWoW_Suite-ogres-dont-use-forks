@@ -1,6 +1,6 @@
 local ADDON_NAME, ns = ...
 
-_G.OneWoW_ShoppingList = ns
+OneWoW_ShoppingList = ns
 
 local L = ns.L
 
@@ -10,7 +10,7 @@ local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
 local function DetectOneWoW()
-    if _G.OneWoW then
+    if OneWoW then
         ns.oneWoWHubActive = true
     end
 end
@@ -22,14 +22,7 @@ local function ApplyTheme()
 end
 
 local function ApplyLanguage()
-    local lang
-    local hub = _G.OneWoW
-    if hub and hub.db and hub.db.global then
-        lang = hub.db.global.language or GetLocale()
-    else
-        local db = _G.OneWoW_ShoppingList_DB
-        lang = (db and db.global and db.global.settings and db.global.settings.language) or GetLocale()
-    end
+    local lang = OneWoW_GUI:GetSetting("language")
     if lang == "esMX" then lang = "esES" end
     ns.SetLocale(lang)
 end
@@ -70,8 +63,8 @@ end
 local function OnPlayerLogin()
     DetectOneWoW()
 
-    if _G.OneWoW then
-        _G.OneWoW:RegisterMinimap("OneWoW_ShoppingList", (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_SL"]) or "Open Shopping List", nil, function()
+    if OneWoW then
+        OneWoW:RegisterMinimap("OneWoW_ShoppingList", (OneWoW.L and OneWoW.L["CTX_OPEN_SL"]), nil, function()
             if ns.MainWindow then ns.MainWindow:Toggle() end
         end)
     end
@@ -80,19 +73,14 @@ end
 local function OnAddonLoaded(loadedAddon)
     if loadedAddon ~= ADDON_NAME then return end
 
-    if not _G.OneWoW_ShoppingList_DB then
-        _G.OneWoW_ShoppingList_DB = {}
-    end
+    ns:InitializeDatabase()
 
-    _G.OneWoW_ShoppingList_DB = ns.Database:Initialize(_G.OneWoW_ShoppingList_DB)
-
-    local db = _G.OneWoW_ShoppingList_DB
-    local g = db and db.global or {}
-    local s = g.settings or {}
+    local g = OneWoW_ShoppingList_DB.global
+    local s = g.settings
     OneWoW_GUI:MigrateSettings({
-        theme = s.theme,
+        theme    = s.theme,
         language = s.language,
-        minimap = g.minimap,
+        minimap  = g.minimap,
     })
 
     ApplyTheme()
@@ -135,7 +123,7 @@ local function OnAddonLoaded(loadedAddon)
         end
     end)
 
-    OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", ns, function(owner, langCode)
+    OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", ns, function(_, langCode)
         ns.SetLocale(langCode)
         if ns.MainWindow then
             local wasShown = ns.MainWindow:IsShown()
@@ -151,8 +139,8 @@ local function OnAddonLoaded(loadedAddon)
     InitializeModules()
 
     local _ver = OneWoW_GUI:GetAddonVersion(ADDON_NAME)
-    if _G.OneWoW and _G.OneWoW.RegisterLoadComponent then
-        _G.OneWoW:RegisterLoadComponent("ShoppingList", _ver, "/1wsl")
+    if OneWoW and OneWoW.RegisterLoadComponent then
+        OneWoW:RegisterLoadComponent("ShoppingList", _ver, "/1wsl")
     end
 end
 
@@ -205,7 +193,7 @@ SlashCmdList["ONEWOW_SHOPPINGLIST"] = HandleSlashCommand
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
-eventFrame:SetScript("OnEvent", function(self, event, ...)
+eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "ADDON_LOADED" then
         OnAddonLoaded(...)
     elseif event == "PLAYER_LOGIN" then

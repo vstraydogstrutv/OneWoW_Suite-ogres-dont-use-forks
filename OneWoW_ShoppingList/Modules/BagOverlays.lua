@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 
 ns.BagOverlays = {}
 local BagOverlays = ns.BagOverlays
@@ -8,11 +8,7 @@ local activeOverlays = {}
 local refreshPending = false
 
 local function GetOverlaySettings()
-    local db = OneWoW_ShoppingList_DB
-    if not db or not db.global or not db.global.settings then
-        return { enabled = true, position = "BOTTOMRIGHT", scale = 1.0, alpha = 1.0 }
-    end
-    return db.global.settings.overlay or { enabled = true, position = "BOTTOMRIGHT", scale = 1.0, alpha = 1.0 }
+    return OneWoW_ShoppingList_DB.global.settings.overlay
 end
 
 local function GetOrCreateOverlay(button)

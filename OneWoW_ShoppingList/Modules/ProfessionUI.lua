@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local L = ns.L
 
 ns.ProfessionUI = {}
@@ -105,8 +105,7 @@ local function CreateButtons(schematicForm)
         local recipeName = recipeInfo.name or (string.format(L["OWSL_RECIPE_UNKNOWN"], recipeID))
         local listName   = recipeName
 
-        local db = GetDB()
-        if db and db.global.shoppingLists.lists[listName] then
+        if GetDB().global.shoppingLists.lists[listName] then
             print(string.format(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_CONFIRM_LIST_EXISTS"], listName))
             print(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_CONFIRM_LIST_EXISTS2"])
         else
@@ -145,13 +144,11 @@ local function CreateButtons(schematicForm)
     addToActiveBtn.text:SetTextColor(0.88, 0.90, 0.88, 1.0)
 
     addToActiveBtn:SetScript("OnClick", function()
-        local recipeID, recipeInfo = GetCurrentRecipeInfo()
+        local recipeID = GetCurrentRecipeInfo()
         if not recipeID then return end
 
-        local db = GetDB()
-        if not db then return end
-
-        local activeList = db.global.shoppingLists.defaultList or db.global.shoppingLists.activeList or ns.MAIN_LIST_KEY
+        local lists = GetDB().global.shoppingLists
+        local activeList = lists.defaultList or lists.activeList or ns.MAIN_LIST_KEY
         local ok, count = AddIngredientsToList(activeList, recipeID, 1)
         if ok then
             print(string.format(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_MSG_CRAFT_ORDER_UNDER"], activeList, count, count ~= 1 and "s" or "", ""))
@@ -183,15 +180,12 @@ local function CreateButtons(schematicForm)
     addToListBtn.text:SetText(L["OWSL_PROF_BTN_ADD_TO_LIST"])
     addToListBtn.text:SetTextColor(0.88, 0.90, 0.88, 1.0)
 
-    addToListBtn:SetScript("OnClick", function(self)
-        local recipeID, recipeInfo = GetCurrentRecipeInfo()
+    addToListBtn:SetScript("OnClick", function()
+        local recipeID = GetCurrentRecipeInfo()
         if not recipeID then return end
 
-        local db = GetDB()
-        if not db then return end
-
         local allLists = ns.ShoppingList:GetAllLists()
-        MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
+        MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
             rootDescription:CreateTitle(L["OWSL_TT_ADD_TO_LIST_TITLE"])
             for listName in pairs(allLists) do
                 local capturedName = listName
@@ -215,19 +209,19 @@ local function CreateButtons(schematicForm)
 end
 
 function GetDB()
-    return _G.OneWoW_ShoppingList_DB
+    return OneWoW_ShoppingList_DB
 end
 
 function ProfessionUI:Initialize()
     if not _G.ProfessionsFrame then
         local hookFrame = CreateFrame("Frame")
         hookFrame:RegisterEvent("ADDON_LOADED")
-        hookFrame:SetScript("OnEvent", function(self, event, addon)
+        hookFrame:SetScript("OnEvent", function(myself, _, addon)
             if addon == "Blizzard_Professions" then
                 C_Timer.After(0.5, function()
                     ProfessionUI:HookProfessionsFrame()
                 end)
-                self:UnregisterEvent("ADDON_LOADED")
+                myself:UnregisterEvent("ADDON_LOADED")
             end
         end)
     else
@@ -238,8 +232,7 @@ function ProfessionUI:Initialize()
 end
 
 function ProfessionUI:UpdateVisibility()
-    local db = _G.OneWoW_ShoppingList_DB
-    local show = not (db and db.global and db.global.settings.showProfessionButtons == false)
+    local show = OneWoW_ShoppingList_DB.global.settings.showProfessionButtons ~= false
     if show then
         if openBtn then openBtn:Show() end
         if makeListBtn then makeListBtn:Show() end
@@ -263,9 +256,7 @@ function ProfessionUI:HookProfessionsFrame()
     CreateButtons(schematicForm)
     ProfessionUI:UpdateVisibility()
 
-    if schematicForm.SetRecipeID then
-        hooksecurefunc(schematicForm, "SetRecipeID", function(self)
-            ProfessionUI:UpdateVisibility()
-        end)
-    end
+    hooksecurefunc(schematicForm, "Init", function()
+        ProfessionUI:UpdateVisibility()
+    end)
 end

@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 
 ns.DataAccess = {}
 local DataAccess = ns.DataAccess
@@ -9,9 +9,9 @@ local storageAPI = nil
 local qvCache    = {}
 
 function DataAccess:Initialize()
-    altStorage = _G.OneWoW_AltTracker_Storage
-    altStorageDB = _G.OneWoW_AltTracker_Storage_DB
-    storageAPI = _G.StorageAPI
+    altStorage = OneWoW_AltTracker_Storage
+    altStorageDB = OneWoW_AltTracker_Storage_DB
+    storageAPI = StorageAPI
     qvCache    = {}
 end
 

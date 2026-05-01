@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -17,7 +17,7 @@ local currentReagents = nil
 local buttonsCreated = false
 
 local function GetDB()
-    return _G.OneWoW_ShoppingList_DB
+    return OneWoW_ShoppingList_DB
 end
 
 local function HideButtons()
@@ -231,12 +231,12 @@ function CatalogIntegration:Initialize()
 
     local hookFrame = CreateFrame("Frame")
     hookFrame:RegisterEvent("ADDON_LOADED")
-    hookFrame:SetScript("OnEvent", function(self, event, addon)
+    hookFrame:SetScript("OnEvent", function(myself, _, addon)
         if addon == "OneWoW_Catalog" then
             C_Timer.After(0.5, function()
                 TryRegister()
             end)
-            self:UnregisterEvent("ADDON_LOADED")
+            myself:UnregisterEvent("ADDON_LOADED")
         end
     end)
 end

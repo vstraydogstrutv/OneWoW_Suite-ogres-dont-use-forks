@@ -803,7 +803,6 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
     themeArrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
 
     local themeMenuRef = nil
-    local themeOverlayRef = nil
     themeDropdown:SetScript("OnClick", function(btn)
         if themeMenuRef and themeMenuRef:IsShown() then
             themeMenuRef:Hide()
@@ -820,7 +819,6 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
         overlay:SetFrameLevel(0)
         overlay:EnableMouse(true)
         overlay:RegisterForClicks("AnyDown", "AnyUp")
-        themeOverlayRef = overlay
 
         local menu = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
         themeMenuRef = menu
@@ -1118,7 +1116,6 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
     UpdateStepperState(currentOffset)
 
     local fontMenuRef = nil
-    local fontOverlayRef = nil
     fontDropdown:SetScript("OnClick", function(btn)
         if fontMenuRef and fontMenuRef:IsShown() then
             fontMenuRef:Hide()
@@ -1134,7 +1131,6 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
         overlay:SetFrameLevel(0)
         overlay:EnableMouse(true)
         overlay:RegisterForClicks("AnyDown", "AnyUp")
-        fontOverlayRef = overlay
 
         local menu = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
         fontMenuRef = menu
@@ -1415,7 +1411,7 @@ end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:SetScript("OnEvent", function(self, event, loadedAddon)
+eventFrame:SetScript("OnEvent", function(self, _, loadedAddon)
     if loadedAddon == "OneWoW_GUI" then
         InitSettingsDB()
         PrewarmFonts()

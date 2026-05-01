@@ -3,15 +3,13 @@ local ADDON_NAME, ns = ...
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
-ns.Database = {}
-local Database = ns.Database
+local DB = OneWoW_GUI.DB
 
 local MAIN_LIST_KEY = "Main List"
 ns.MAIN_LIST_KEY = MAIN_LIST_KEY
 
-local DB_DEFAULTS = {
+local defaults = {
     global = {
-        schemaVersion   = 1,
         mainFramePosition = {},
         shoppingLists = {
             lists       = {},
@@ -19,11 +17,7 @@ local DB_DEFAULTS = {
             defaultList = MAIN_LIST_KEY,
         },
         settings = {
-            language              = "enUS",
-            theme                 = "green",
             enableTooltips        = true,
-            searchAlts            = true,
-            showMinimapButton     = true,
             showBagButtons        = true,
             showProfessionButtons = true,
             showOrdersButtons     = true,
@@ -39,32 +33,30 @@ local DB_DEFAULTS = {
             },
         },
         minimap = {
-            hide       = false,
-            minimapPos = 220,
-            theme      = "neutral",
+            hide  = false,
+            theme = "neutral",
         },
     },
 }
 
-function Database:Initialize(savedDB)
-    local db = savedDB
-
-    if not db.global then db.global = {} end
-
-    OneWoW_GUI.DB:MergeMissing(db.global, DB_DEFAULTS.global)
-
-    self:EnsureMainList(db)
-
-    return db
-end
-
-function Database:EnsureMainList(db)
-    if not db.global.shoppingLists.lists[MAIN_LIST_KEY] then
-        db.global.shoppingLists.lists[MAIN_LIST_KEY] = {
-            items           = {},
-            isCraftOrder    = false,
-            parentList      = nil,
-            createdAt       = time(),
+local function EnsureMainList(db)
+    local lists = db.global.shoppingLists.lists
+    if not lists[MAIN_LIST_KEY] then
+        lists[MAIN_LIST_KEY] = {
+            items        = {},
+            isCraftOrder = false,
+            parentList   = nil,
+            createdAt    = time(),
         }
     end
+end
+
+function ns:InitializeDatabase()
+    local db = DB:Init({
+        addonName = ADDON_NAME,
+        savedVar  = "OneWoW_ShoppingList_DB",
+        defaults  = defaults,
+    })
+    self.db = db
+    EnsureMainList(db)
 end

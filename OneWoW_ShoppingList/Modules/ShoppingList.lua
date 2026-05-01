@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local L = ns.L
 
 ns.ShoppingList = {}
@@ -776,7 +776,6 @@ function ShoppingList:ImportTextFormat(text, targetListName)
     end
 
     local items = {}
-    local withID = 0
 
     for line in text:gmatch("[^\n]+") do
         line = line:match("^%s*(.-)%s*$")

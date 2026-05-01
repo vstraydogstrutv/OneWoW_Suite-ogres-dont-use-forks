@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local L = ns.L
 
 ns.Alerts = {}
@@ -27,8 +27,8 @@ end
 local function HandleBagUpdate()
     if not ns.ShoppingList then return end
     local isOnList
-    for listName, list in pairs(ns.ShoppingList:GetAllLists()) do
-        for itemID in pairs(list.items or {}) do
+    for _, list in pairs(ns.ShoppingList:GetAllLists()) do
+        for _ in pairs(list.items or {}) do
             isOnList = true
             break
         end
@@ -71,17 +71,13 @@ local function HandleAHShow()
     end
 end
 
-local function GetDB()
-    return OneWoW_ShoppingList_DB
-end
-
 function Alerts:Initialize()
     local frame = CreateFrame("Frame")
     frame:RegisterEvent("BAG_UPDATE_DELAYED")
     frame:RegisterEvent("CHAT_MSG_LOOT")
     frame:RegisterEvent("AUCTION_HOUSE_SHOW")
 
-    frame:SetScript("OnEvent", function(self, event, ...)
+    frame:SetScript("OnEvent", function(_, event, ...)
         if event == "BAG_UPDATE_DELAYED" then
             C_Timer.After(0.3, HandleBagUpdate)
         elseif event == "CHAT_MSG_LOOT" then

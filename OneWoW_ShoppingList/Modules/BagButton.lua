@@ -45,15 +45,13 @@ local function CreateShoppingButton(parent, anchorPoint, anchorRelative)
 end
 
 function BagButton:CreateButtons()
-    local db = _G.OneWoW_ShoppingList_DB
-    if db and db.global and db.global.settings.showBagButtons == false then return end
+    if OneWoW_ShoppingList_DB.global.settings.showBagButtons == false then return end
     self:CreateCombinedBagsButton()
     self:CreateBackpackButton()
 end
 
 function BagButton:UpdateVisibility()
-    local db = _G.OneWoW_ShoppingList_DB
-    local show = not (db and db.global and db.global.settings.showBagButtons == false)
+    local show = OneWoW_ShoppingList_DB.global.settings.showBagButtons ~= false
     if show then
         self:CreateCombinedBagsButton()
         self:CreateBackpackButton()
@@ -63,18 +61,18 @@ function BagButton:UpdateVisibility()
                 parent._owsl_shoppingBtn:Hide()
             end
         end
-        hideBtn(_G.ContainerFrameCombinedBags)
-        hideBtn(_G.ContainerFrame1)
+        hideBtn(ContainerFrameCombinedBags)
+        hideBtn(ContainerFrame1)
     end
 end
 
 function BagButton:CreateCombinedBagsButton()
-    if not _G.ContainerFrameCombinedBags then return end
-    CreateShoppingButton(_G.ContainerFrameCombinedBags, "TOPLEFT", "TOPLEFT")
+    if not ContainerFrameCombinedBags then return end
+    CreateShoppingButton(ContainerFrameCombinedBags, "TOPLEFT", "TOPLEFT")
 end
 
 function BagButton:CreateBackpackButton()
-    local backpack = _G.ContainerFrame1
+    local backpack = ContainerFrame1
     if not backpack then return end
     CreateShoppingButton(backpack, "TOPLEFT", "TOPLEFT")
 end
@@ -84,8 +82,8 @@ local ahBtn = nil
 function BagButton:CreateAuctionHouseButton()
     if ahBtn then return end
 
-    local closeBtn = _G.AuctionHouseFrameCloseButton
-    local ahFrame = _G.AuctionHouseFrame
+    local closeBtn = AuctionHouseFrameCloseButton
+    local ahFrame = AuctionHouseFrame
     if not closeBtn and not ahFrame then return end
 
     local btn = CreateFrame("Button", nil, UIParent)
@@ -110,8 +108,8 @@ function BagButton:CreateAuctionHouseButton()
         end
     end)
 
-    btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    btn:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_LEFT")
         GameTooltip:SetText(L["OWSL_BAG_BUTTON_TOOLTIP"], 1, 1, 1)
         GameTooltip:AddLine(L["OWSL_BAG_BUTTON_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
@@ -125,9 +123,8 @@ function BagButton:CreateAuctionHouseButton()
 end
 
 function BagButton:UpdateAHVisibility()
-    local db = _G.OneWoW_ShoppingList_DB
-    local show = not (db and db.global and db.global.settings.showAHButton == false)
-    local ahFrame = _G.AuctionHouseFrame
+    local show = OneWoW_ShoppingList_DB.global.settings.showAHButton ~= false
+    local ahFrame = AuctionHouseFrame
     if show and ahFrame and ahFrame:IsShown() then
         self:CreateAuctionHouseButton()
         if ahBtn then ahBtn:Show() end
@@ -141,7 +138,7 @@ function BagButton:Initialize()
     frame:RegisterEvent("ADDON_LOADED")
     frame:RegisterEvent("AUCTION_HOUSE_SHOW")
     frame:RegisterEvent("AUCTION_HOUSE_CLOSED")
-    frame:SetScript("OnEvent", function(self, event, addon)
+    frame:SetScript("OnEvent", function(_, event, addon)
         if event == "ADDON_LOADED" then
             if addon == "Blizzard_UIParent" or addon == ADDON_NAME then
                 C_Timer.After(1, function()
@@ -149,8 +146,7 @@ function BagButton:Initialize()
                 end)
             end
         elseif event == "AUCTION_HOUSE_SHOW" then
-            local db = _G.OneWoW_ShoppingList_DB
-            if not (db and db.global and db.global.settings.showAHButton == false) then
+            if OneWoW_ShoppingList_DB.global.settings.showAHButton ~= false then
                 BagButton:CreateAuctionHouseButton()
                 if ahBtn then ahBtn:Show() end
             end
@@ -159,7 +155,7 @@ function BagButton:Initialize()
         end
     end)
 
-    if _G.ContainerFrameCombinedBags then
+    if ContainerFrameCombinedBags then
         C_Timer.After(1, function()
             BagButton:CreateButtons()
         end)

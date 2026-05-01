@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -31,7 +31,6 @@ local C = ns.Constants
 local POOL_SIZE   = 32
 local listRowPool = {}
 local itemRows    = {}
-local expandedItems = {}
 
 local mainFrame
 local sidebarPanel
@@ -48,13 +47,11 @@ local contentHeaderFrame
 local addButtonRowFrame
 
 local function GetDB()
-    return _G.OneWoW_ShoppingList_DB
+    return OneWoW_ShoppingList_DB
 end
 
 local function GetSettings()
-    local db = GetDB()
-    if db and db.global and db.global.settings then return db.global.settings end
-    return {}
+    return GetDB().global.settings
 end
 
 local function HideAllRows(pool)
@@ -157,7 +154,7 @@ local function CreateListRow(parent)
     return row
 end
 
-local function ConfigureListRow(row, listName, isSelected, isDefault, childCount, craftOrderCount)
+local function ConfigureListRow(row, listName, isSelected, isDefault, childCount)
     row:Show()
     row.data.listName   = listName
     row.data.isSelected = isSelected
@@ -223,7 +220,7 @@ function MainWindow:Create()
     })
     mainFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
     mainFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
-    if not OneWoW_GUI:RestoreWindowPosition(mainFrame, GetDB().global.mainFramePosition or {}) then
+    if not OneWoW_GUI:RestoreWindowPosition(mainFrame, GetDB().global.mainFramePosition) then
         mainFrame:SetPoint("CENTER")
     end
     mainFrame:SetFrameStrata("MEDIUM")
@@ -232,12 +229,10 @@ function MainWindow:Create()
     mainFrame:EnableMouse(true)
     mainFrame:SetClampedToScreen(true)
     mainFrame:RegisterForDrag("LeftButton")
-    mainFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    mainFrame:SetScript("OnDragStop",  function(self) self:StopMovingOrSizing() end)
+    mainFrame:SetScript("OnDragStart", function(myself) myself:StartMoving() end)
+    mainFrame:SetScript("OnDragStop",  function(myself) myself:StopMovingOrSizing() end)
     mainFrame:SetScript("OnHide", function()
-        local db = GetDB().global
-        db.mainFramePosition = db.mainFramePosition or {}
-        OneWoW_GUI:SaveWindowPosition(mainFrame, db.mainFramePosition)
+        OneWoW_GUI:SaveWindowPosition(mainFrame, GetDB().global.mainFramePosition)
     end)
     mainFrame:Hide()
 
@@ -360,19 +355,19 @@ function MainWindow:Create()
 
     local scanBtn = OneWoW_GUI:CreateFitTextButton(contentHeader, { text = L["OWSL_BTN_SCAN_ALL"], height = 22 })
     scanBtn:SetPoint("RIGHT", importBtn, "LEFT", -4, 0)
-    scanBtn:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_HOVER"))
-        self.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    scanBtn:SetScript("OnEnter", function(myself)
+        myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_HOVER"))
+        myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+        GameTooltip:SetOwner(myself, "ANCHOR_BOTTOM")
         GameTooltip:SetText(L["OWSL_TT_SCAN_ALL_TITLE"], 1, 1, 1)
         GameTooltip:AddLine(L["OWSL_TT_SCAN_ALL_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:AddLine(L["OWSL_TT_SCAN_ALL_AUTO"], 0.7, 0.7, 0.7, true)
         GameTooltip:AddLine(L["OWSL_TT_SCAN_ALL_IMPORTANT"], 1, 0.82, 0, true)
         GameTooltip:Show()
     end)
-    scanBtn:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_NORMAL"))
-        self.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+    scanBtn:SetScript("OnLeave", function(myself)
+        myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_NORMAL"))
+        myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
         GameTooltip:Hide()
     end)
     scanBtn:SetScript("OnClick", function()
@@ -389,15 +384,15 @@ function MainWindow:Create()
         searchAltsBtn.label:SetPoint("RIGHT", searchAltsBtn, "LEFT", -2, 0)
         searchAltsBtn.label:SetText(L["OWSL_LABEL_SEARCH_ALTS"])
     end
-    searchAltsBtn:SetScript("OnClick", function(self)
-        searchAltsOn = self:GetChecked()
+    searchAltsBtn:SetScript("OnClick", function(myself)
+        searchAltsOn = myself:GetChecked()
         local activeList = ns.ShoppingList:GetActiveListName()
         local list = ns.ShoppingList:GetList(activeList)
         if list then list.searchAlts = searchAltsOn end
         MainWindow:RefreshItemList()
     end)
-    searchAltsBtn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    searchAltsBtn:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_BOTTOM")
         GameTooltip:SetText(L["OWSL_TT_SEARCH_ALTS_TITLE"], 1, 1, 1)
         GameTooltip:AddLine(L["OWSL_TT_SEARCH_ALTS_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
@@ -419,9 +414,9 @@ function MainWindow:Create()
     else
         searchBox:SetPoint("RIGHT", searchAltsBtn.label or searchAltsBtn, "LEFT", -6, 0)
     end
-    searchBox:SetScript("OnTextChanged", function(self, userInput)
+    searchBox:SetScript("OnTextChanged", function(myself, userInput)
         if userInput then
-            searchFilter = self:GetText():lower()
+            searchFilter = myself:GetText():lower()
             MainWindow:RefreshItemList()
         end
     end)
@@ -534,28 +529,25 @@ function MainWindow:BuildSettingsPanel()
 
     yOff = OneWoW_GUI:CreateSettingsPanel(scrollContent, { yOffset = yOff, addonName = "OneWoW_ShoppingList" })
 
+    local curS = GetSettings()
+
     local tooltipCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_ENABLE_TOOLTIP"] })
     tooltipCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
-    local db = GetDB()
-    tooltipCb:SetChecked(db and db.global.settings.enableTooltips or true)
-    tooltipCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then dbRef.global.settings.enableTooltips = self:GetChecked() end
+    tooltipCb:SetChecked(curS.enableTooltips)
+    tooltipCb:SetScript("OnClick", function(myself)
+        GetSettings().enableTooltips = myself:GetChecked()
     end)
     yOff = yOff - 26
 
     local wrapNamesCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_WRAP_NAMES"] })
     wrapNamesCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
-    wrapNamesCb:SetChecked(db and db.global.settings.wrapItemNames ~= false)
-    wrapNamesCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then
-            dbRef.global.settings.wrapItemNames = self:GetChecked()
-            MainWindow:RefreshItemList()
-        end
+    wrapNamesCb:SetChecked(curS.wrapItemNames ~= false)
+    wrapNamesCb:SetScript("OnClick", function(myself)
+        GetSettings().wrapItemNames = myself:GetChecked()
+        MainWindow:RefreshItemList()
     end)
-    wrapNamesCb:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    wrapNamesCb:HookScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["OWSL_SETTINGS_WRAP_NAMES"], 1, 1, 1)
         GameTooltip:AddLine(L["OWSL_SETTINGS_WRAP_NAMES_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
@@ -565,54 +557,38 @@ function MainWindow:BuildSettingsPanel()
 
     local overlayCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_ENABLE_OVERLAY"] })
     overlayCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
-    local settings = db and db.global.settings or {}
-    local overlay  = settings.overlay or {}
-    overlayCb:SetChecked(overlay.enabled ~= false)
-    overlayCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then
-            dbRef.global.settings.overlay.enabled = self:GetChecked()
-            ns.BagOverlays:UpdateAllSettings()
-        end
+    overlayCb:SetChecked(curS.overlay.enabled ~= false)
+    overlayCb:SetScript("OnClick", function(myself)
+        GetSettings().overlay.enabled = myself:GetChecked()
+        ns.BagOverlays:UpdateAllSettings()
     end)
     yOff = yOff - 26
-
-    local curS = GetSettings()
 
     local bagBtnCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_SHOW_BAG_BUTTONS"] })
     bagBtnCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
     bagBtnCb:SetChecked(curS.showBagButtons ~= false)
-    bagBtnCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then
-            dbRef.global.settings.showBagButtons = self:GetChecked()
-            ns.BagButton:UpdateVisibility()
-        end
+    bagBtnCb:SetScript("OnClick", function(myself)
+        GetSettings().showBagButtons = myself:GetChecked()
+        ns.BagButton:UpdateVisibility()
     end)
     yOff = yOff - 26
 
     local profBtnCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_SHOW_PROF_BUTTONS"] })
     profBtnCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
     profBtnCb:SetChecked(curS.showProfessionButtons ~= false)
-    profBtnCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then
-            dbRef.global.settings.showProfessionButtons = self:GetChecked()
-            ns.ProfessionUI:UpdateVisibility()
-        end
+    profBtnCb:SetScript("OnClick", function(myself)
+        GetSettings().showProfessionButtons = myself:GetChecked()
+        ns.ProfessionUI:UpdateVisibility()
     end)
     yOff = yOff - 26
 
     local ordersBtnCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_SHOW_ORDERS_BUTTONS"] })
     ordersBtnCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
     ordersBtnCb:SetChecked(curS.showOrdersButtons ~= false)
-    ordersBtnCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then
-            dbRef.global.settings.showOrdersButtons = self:GetChecked()
-            if ns.OrdersUI and ns.OrdersUI.UpdateVisibility then
-                ns.OrdersUI:UpdateVisibility()
-            end
+    ordersBtnCb:SetScript("OnClick", function(myself)
+        GetSettings().showOrdersButtons = myself:GetChecked()
+        if ns.OrdersUI and ns.OrdersUI.UpdateVisibility then
+            ns.OrdersUI:UpdateVisibility()
         end
     end)
     yOff = yOff - 26
@@ -620,12 +596,9 @@ function MainWindow:BuildSettingsPanel()
     local ahBtnCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_SHOW_AH_BUTTON"] })
     ahBtnCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
     ahBtnCb:SetChecked(curS.showAHButton ~= false)
-    ahBtnCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then
-            dbRef.global.settings.showAHButton = self:GetChecked()
-            ns.BagButton:UpdateAHVisibility()
-        end
+    ahBtnCb:SetScript("OnClick", function(myself)
+        GetSettings().showAHButton = myself:GetChecked()
+        ns.BagButton:UpdateAHVisibility()
     end)
     yOff = yOff - 30
 
@@ -643,18 +616,16 @@ function MainWindow:BuildSettingsPanel()
     local confirmItemCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_CONFIRM_ITEM_DELETE"] })
     confirmItemCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
     confirmItemCb:SetChecked(curS.confirmItemDelete ~= false)
-    confirmItemCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then dbRef.global.settings.confirmItemDelete = self:GetChecked() end
+    confirmItemCb:SetScript("OnClick", function(myself)
+        GetSettings().confirmItemDelete = myself:GetChecked()
     end)
     yOff = yOff - 26
 
     local confirmListCb = OneWoW_GUI:CreateCheckbox(scrollContent, { label = L["OWSL_SETTINGS_CONFIRM_LIST_DELETE"] })
     confirmListCb:SetPoint("TOPLEFT", scrollContent, "TOPLEFT", pad, yOff)
     confirmListCb:SetChecked(curS.confirmListDelete ~= false)
-    confirmListCb:SetScript("OnClick", function(self)
-        local dbRef = GetDB()
-        if dbRef then dbRef.global.settings.confirmListDelete = self:GetChecked() end
+    confirmListCb:SetScript("OnClick", function(myself)
+        GetSettings().confirmListDelete = myself:GetChecked()
     end)
     yOff = yOff - 30
 
@@ -726,7 +697,6 @@ function MainWindow:Rebuild()
     currentListLabel   = nil
     statusLabel        = nil
     inSettingsView     = false
-    expandedItems      = {}
     listRowPool        = {}
     itemRows           = {}
 end
@@ -817,7 +787,7 @@ function MainWindow:RefreshSidebar()
         local isSelected = (listName == activeList)
         local isDefault  = (depth == 0) and (listName == defaultList)
         local childCount = childrenOf[listName] and #childrenOf[listName] or 0
-        ConfigureListRow(row, listName, isSelected, isDefault, childCount, 0)
+        ConfigureListRow(row, listName, isSelected, isDefault, childCount)
 
         local indent   = INDENT[depth]   or 40
         local height   = HEIGHT[depth]   or 24
@@ -842,7 +812,7 @@ function MainWindow:RefreshSidebar()
 
         local capturedName = listName
 
-        row:SetScript("OnClick", function(self, btn)
+        row:SetScript("OnClick", function(_, btn)
             if btn == "RightButton" then
                 MainWindow:ShowListContextMenu(capturedName)
             else
@@ -884,8 +854,7 @@ function MainWindow:RefreshSidebar()
                     {
                         showDontAskAgain = true,
                         onDontAskAgain = function()
-                            local db = GetDB()
-                            if db then db.global.settings.confirmListDelete = false end
+                            GetSettings().confirmListDelete = false
                         end,
                     }
                 )
@@ -894,20 +863,20 @@ function MainWindow:RefreshSidebar()
             row.deleteBtn:SetScript("OnClick", nil)
         end
 
-        row:SetScript("OnEnter", function(self)
-            if not self.data or not self.data.isSelected then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        row:SetScript("OnEnter", function(myself)
+            if not myself.data or not myself.data.isSelected then
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
             end
-            if self.deleteBtn and capturedName ~= ns.MAIN_LIST_KEY then
-                self.deleteBtn:Show()
+            if myself.deleteBtn and capturedName ~= ns.MAIN_LIST_KEY then
+                myself.deleteBtn:Show()
             end
         end)
-        row:SetScript("OnLeave", function(self)
-            if not self.data or not self.data.isSelected then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
+        row:SetScript("OnLeave", function(myself)
+            if not myself.data or not myself.data.isSelected then
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
             end
-            if self.deleteBtn and not MouseIsOver(self.deleteBtn) then
-                self.deleteBtn:Hide()
+            if myself.deleteBtn and not MouseIsOver(myself.deleteBtn) then
+                myself.deleteBtn:Hide()
             end
         end)
 
@@ -1062,8 +1031,8 @@ function MainWindow:RefreshItemList()
         iconTex:SetTexture(itemData.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
 
         if capturedData.itemLink then
-            iconFrame:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            iconFrame:SetScript("OnEnter", function(myself)
+                GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
                 GameTooltip:SetHyperlink(capturedData.itemLink)
                 GameTooltip:Show()
             end)
@@ -1108,8 +1077,8 @@ function MainWindow:RefreshItemList()
         removeTex:SetAtlas("common-icon-redx")
         removeBtn:SetNormalTexture(removeTex)
         removeBtn:GetNormalTexture():SetAlpha(0.5)
-        removeBtn:SetScript("OnEnter", function(self) self:GetNormalTexture():SetAlpha(1.0) end)
-        removeBtn:SetScript("OnLeave", function(self) self:GetNormalTexture():SetAlpha(0.5) end)
+        removeBtn:SetScript("OnEnter", function(myself) myself:GetNormalTexture():SetAlpha(1.0) end)
+        removeBtn:SetScript("OnLeave", function(myself) myself:GetNormalTexture():SetAlpha(0.5) end)
 
         if itemData.isUnresolved then
             nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
@@ -1124,8 +1093,8 @@ function MainWindow:RefreshItemList()
             idBox:SetPoint("LEFT", idLabel, "RIGHT", 4, 0)
             idBox:SetNumeric(true)
             idBox:SetMaxLetters(6)
-            idBox:SetScript("OnEnterPressed", function(self)
-                local idVal = tonumber(self:GetText())
+            idBox:SetScript("OnEnterPressed", function(myself)
+                local idVal = tonumber(myself:GetText())
                 if idVal and idVal > 0 then
                     local ok, name = ns.ShoppingList:ConvertUnresolvedToResolved(
                         capturedListN, capturedData.key, idVal)
@@ -1138,18 +1107,18 @@ function MainWindow:RefreshItemList()
                 else
                     print(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_MSG_ENTER_VALID_ID"])
                 end
-                self:ClearFocus()
+                myself:ClearFocus()
             end)
 
-            qtyBox:SetScript("OnEnterPressed", function(self)
-                local qty = tonumber(self:GetText()) or 0
+            qtyBox:SetScript("OnEnterPressed", function(myself)
+                local qty = tonumber(myself:GetText()) or 0
                 if qty > 0 then
                     ns.ShoppingList:UpdateUnresolvedQuantity(capturedListN, capturedData.key, qty)
-                    self:ClearFocus()
+                    myself:ClearFocus()
                     MainWindow:RefreshItemList()
                 else
-                    self:SetText(tostring(capturedData.quantity))
-                    self:ClearFocus()
+                    myself:SetText(tostring(capturedData.quantity))
+                    myself:ClearFocus()
                 end
             end)
             removeBtn:SetScript("OnClick", function()
@@ -1187,16 +1156,16 @@ function MainWindow:RefreshItemList()
             end
 
             if #locations > 0 then
-                statusBtn:SetScript("OnEnter", function(self)
+                statusBtn:SetScript("OnEnter", function(myself)
                     row:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
                     GameTooltip:SetText(capturedData.displayName, 1, 0.82, 0)
                     for _, locStr in ipairs(locations) do
                         GameTooltip:AddLine(locStr, 1, 1, 1)
                     end
                     GameTooltip:Show()
                 end)
-                statusBtn:SetScript("OnLeave", function(self)
+                statusBtn:SetScript("OnLeave", function()
                     row:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
                     GameTooltip:Hide()
                 end)
@@ -1254,15 +1223,15 @@ function MainWindow:RefreshItemList()
                 end)
             end
 
-            qtyBox:SetScript("OnEnterPressed", function(self)
-                local qty = tonumber(self:GetText()) or 0
+            qtyBox:SetScript("OnEnterPressed", function(myself)
+                local qty = tonumber(myself:GetText()) or 0
                 if qty > 0 then
                     ns.ShoppingList:UpdateItemQuantity(capturedListN, capturedData.itemID, qty)
-                    self:ClearFocus()
+                    myself:ClearFocus()
                     MainWindow:RefreshItemList()
                 else
-                    self:SetText(tostring(capturedData.quantity))
-                    self:ClearFocus()
+                    myself:SetText(tostring(capturedData.quantity))
+                    myself:ClearFocus()
                 end
             end)
             removeBtn:SetScript("OnClick", function()
@@ -1283,13 +1252,12 @@ function MainWindow:RefreshItemList()
                     {
                         showDontAskAgain = true,
                         onDontAskAgain = function()
-                            local db = GetDB()
-                            if db then db.global.settings.confirmItemDelete = false end
+                            GetSettings().confirmItemDelete = false
                         end,
                     }
                 )
             end)
-            row:SetScript("OnMouseDown", function(self, btn)
+            row:SetScript("OnMouseDown", function(_, btn)
                 if btn == "RightButton" then
                     MainWindow:ShowItemContextMenu(capturedData.itemID, capturedListN)
                 elseif btn == "LeftButton" and IsShiftKeyDown() and capturedData.itemLink then
@@ -1304,7 +1272,7 @@ function MainWindow:RefreshItemList()
                     ToggleExpanded()
                 end
             end)
-            iconFrame:SetScript("OnMouseDown", function(self, btn)
+            iconFrame:SetScript("OnMouseDown", function(_, btn)
                 if btn == "LeftButton" and IsShiftKeyDown() and capturedData.itemLink then
                     if AuctionHouseFrame and AuctionHouseFrame:IsVisible() then
                         AuctionHouseFrame.SearchBar:SetSearchText(capturedData.displayName)
@@ -1318,8 +1286,8 @@ function MainWindow:RefreshItemList()
             end)
         end
 
-        row:SetScript("OnEnter", function(self) self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER")) end)
-        row:SetScript("OnLeave", function(self) self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY")) end)
+        row:SetScript("OnEnter", function(myself) myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER")) end)
+        row:SetScript("OnLeave", function(myself) myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY")) end)
 
         row:Show()
         table.insert(itemRows, row)
@@ -1375,7 +1343,7 @@ end
 function MainWindow:ShowItemContextMenu(itemID, listName)
     local allLists = ns.ShoppingList:GetAllLists()
 
-    MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
+    MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
         rootDescription:CreateTitle(L["OWSL_TT_ITEM_TITLE"])
 
         local moveToMenu = rootDescription:CreateButton(L["OWSL_MENU_MOVE_TO"])
@@ -1422,7 +1390,7 @@ function MainWindow:ShowItemContextMenu(itemID, listName)
 end
 
 function MainWindow:ShowListContextMenu(listName)
-    MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
+    MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
         rootDescription:CreateTitle(listName)
 
         if listName ~= ns.MAIN_LIST_KEY then
@@ -1487,8 +1455,7 @@ function MainWindow:ShowListContextMenu(listName)
                     {
                         showDontAskAgain = true,
                         onDontAskAgain = function()
-                            local db = GetDB()
-                            if db then db.global.settings.confirmListDelete = false end
+                            GetSettings().confirmListDelete = false
                         end,
                     }
                 )

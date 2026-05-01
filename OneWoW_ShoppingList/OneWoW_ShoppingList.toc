@@ -8,7 +8,7 @@
 ## Category: OneWoW
 ## Group: OneWoW
 
-## SavedVariables: OneWoW_ShoppingList_DB, OneWoW_ShoppingList_MinimapLDBIconDB
+## SavedVariables: OneWoW_ShoppingList_DB
 
 ## X-Website: https://wow2.xyz/
 ## X-Category: |cFFFFD100OneWoW|r

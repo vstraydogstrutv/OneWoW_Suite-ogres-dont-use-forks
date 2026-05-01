@@ -1,15 +1,15 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local L = ns.L
 
 ns.OrdersUI = {}
 local OrdersUI = ns.OrdersUI
 
 local function GetDB()
-    return _G.OneWoW_ShoppingList_DB
+    return OneWoW_ShoppingList_DB
 end
 
 local function GetOrderDetailsFrame()
-    local pf = _G.ProfessionsFrame
+    local pf = ProfessionsFrame
     if not pf then return nil end
     local ordersPage = pf.OrdersPage
     if not ordersPage then return nil end
@@ -19,7 +19,7 @@ local function GetOrderDetailsFrame()
 end
 
 local function GetOrderViewFrame()
-    local pf = _G.ProfessionsFrame
+    local pf = ProfessionsFrame
     if not pf then return nil end
     local ordersPage = pf.OrdersPage
     if not ordersPage then return nil end
@@ -63,26 +63,14 @@ end
 local function TryReadRecipeIDFromOrdersSchematic()
     local sf = GetOrdersSchematicForm()
     if not sf then return nil end
-    if sf.GetRecipeInfo then
-        local ok, info = pcall(sf.GetRecipeInfo, sf)
-        if ok and info and info.recipeID then return info.recipeID, info end
-    end
-    if sf.GetRecipeID then
-        local ok, id = pcall(sf.GetRecipeID, sf)
-        if ok and id then return id, { recipeID = id } end
-    end
+    local info = sf:GetRecipeInfo()
+    if info and info.recipeID then return info.recipeID, info end
     return nil
 end
 
 local function GetActiveOrDefaultListName()
-    local db = GetDB()
-    if not db or not db.global or not db.global.shoppingLists then
-        return ns.MAIN_LIST_KEY or "Main List"
-    end
-    return db.global.shoppingLists.defaultList
-        or db.global.shoppingLists.activeList
-        or ns.MAIN_LIST_KEY
-        or "Main List"
+    local lists = GetDB().global.shoppingLists
+    return lists.defaultList or lists.activeList or ns.MAIN_LIST_KEY
 end
 
 local function CreateTextButton(parent, width, label)
@@ -283,7 +271,7 @@ local function BuildMissingBasicReagentsFromOrdersUI()
         requiredQty = tonumber(requiredQty) or 0
         if requiredQty <= 0 or not frame or not frame.GetRegions then return nil end
 
-        local foundHave, foundNeed
+        local foundNeed
         local sawAnyText = false
         for _, region in ipairs({ frame:GetRegions() }) do
             if region and region.GetObjectType and region:GetObjectType() == "FontString" and region.GetText then
@@ -292,14 +280,12 @@ local function BuildMissingBasicReagentsFromOrdersUI()
                     sawAnyText = true
                     local have, need = txt:match("^(%d+)%s*/%s*(%d+)$")
                     if have and need then
-                        foundHave = tonumber(have)
                         foundNeed = tonumber(need)
                         break
                     end
                     -- Some UIs include extra text like "2 / 5" or "2/5 (Customer)"
                     have, need = txt:match("(%d+)%s*/%s*(%d+)")
                     if have and need then
-                        foundHave = tonumber(have)
                         foundNeed = tonumber(need)
                     end
                 end
@@ -590,7 +576,7 @@ local function CreateButtons(details)
     addToListBtn:SetPoint("RIGHT", addToActiveBtn, "LEFT", -5, 0)
     addToListBtn:SetScript("OnClick", function()
         local allLists = ns.ShoppingList and ns.ShoppingList.GetAllLists and ns.ShoppingList:GetAllLists() or {}
-        MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
+        MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
             rootDescription:CreateTitle("Add missing reagents to...")
             for listName in pairs(allLists) do
                 local capturedName = listName
@@ -612,8 +598,7 @@ local function CreateButtons(details)
 end
 
 function OrdersUI:UpdateVisibility()
-    local db = GetDB()
-    local show = not (db and db.global and db.global.settings and db.global.settings.showOrdersButtons == false)
+    local show = GetDB().global.settings.showOrdersButtons ~= false
 
     if show then
         if openBtn then openBtn:Show() end
@@ -663,15 +648,15 @@ function OrdersUI:HookOrdersPage()
 end
 
 function OrdersUI:Initialize()
-    if not _G.ProfessionsFrame then
+    if not ProfessionsFrame then
         local hookFrame = CreateFrame("Frame")
         hookFrame:RegisterEvent("ADDON_LOADED")
-        hookFrame:SetScript("OnEvent", function(self, event, addon)
+        hookFrame:SetScript("OnEvent", function(myself, _, addon)
             if addon == "Blizzard_Professions" then
                 C_Timer.After(0.5, function()
                     OrdersUI:HookOrdersPage()
                 end)
-                self:UnregisterEvent("ADDON_LOADED")
+                myself:UnregisterEvent("ADDON_LOADED")
             end
         end)
     else

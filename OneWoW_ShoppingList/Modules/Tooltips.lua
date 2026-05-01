@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local L = ns.L
 
 ns.Tooltips = {}
@@ -7,9 +7,7 @@ local Tooltips = ns.Tooltips
 local function AddShoppingListTooltip(tooltip, itemID)
     if not itemID then return end
 
-    local db = OneWoW_ShoppingList_DB
-    if not db or not db.global or not db.global.settings then return end
-    if not db.global.settings.enableTooltips then return end
+    if not OneWoW_ShoppingList_DB.global.settings.enableTooltips then return end
 
     local isOnList, lists = ns.ShoppingList:IsOnAnyList(itemID)
     if not isOnList then return end
@@ -38,11 +36,11 @@ function Tooltips:Initialize()
             AddShoppingListTooltip(tooltip, data.id)
         end)
     else
-        GameTooltip:HookScript("OnTooltipSetItem", function(self)
-            local _, link = self:GetItem()
+        GameTooltip:HookScript("OnTooltipSetItem", function(myself)
+            local _, link = myself:GetItem()
             if not link then return end
             local itemID = tonumber(link:match("item:(%d+)"))
-            if itemID then AddShoppingListTooltip(self, itemID) end
+            if itemID then AddShoppingListTooltip(myself, itemID) end
         end)
     end
 end

@@ -1,4 +1,4 @@
-local ADDON_NAME, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -16,7 +16,7 @@ local function CloseActive()
     end
 end
 
-function Dialogs:InputDialog(labelText, defaultVal, onConfirm, parent)
+function Dialogs:InputDialog(labelText, defaultVal, onConfirm, _)
     CloseActive()
 
     local result = OneWoW_GUI:CreateDialog({
@@ -66,7 +66,7 @@ function Dialogs:InputDialog(labelText, defaultVal, onConfirm, parent)
     return result.frame
 end
 
-function Dialogs:ConfirmDialog(titleText, bodyText, onConfirm, confirmLabel, parent, opts)
+function Dialogs:ConfirmDialog(titleText, bodyText, onConfirm, confirmLabel, _, opts)
     CloseActive()
 
     local showDontAsk = opts and opts.showDontAskAgain
@@ -102,7 +102,7 @@ function Dialogs:ConfirmDialog(titleText, bodyText, onConfirm, confirmLabel, par
     return result.frame
 end
 
-function Dialogs:ExportDialog(title, exportText, parent)
+function Dialogs:ExportDialog(title, exportText, _)
     CloseActive()
 
     local result = OneWoW_GUI:CreateDialog({
@@ -133,7 +133,7 @@ function Dialogs:ExportDialog(title, exportText, parent)
     editContainer:SetPoint("TOPLEFT",     instrLabel,          "BOTTOMLEFT",  0,   -6)
     editContainer:SetPoint("BOTTOMRIGHT", result.contentFrame, "BOTTOMRIGHT", -8,   6)
 
-    local scrollFrame, editBox = OneWoW_GUI:CreateScrollEditBox(editContainer, {
+    local _, editBox = OneWoW_GUI:CreateScrollEditBox(editContainer, {
         fontSize = 11,
     })
     editBox:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
@@ -149,7 +149,7 @@ function Dialogs:ExportDialog(title, exportText, parent)
     return result.frame
 end
 
-function Dialogs:ImportDialog(onImport, parent)
+function Dialogs:ImportDialog(onImport, _)
     CloseActive()
 
     local result = OneWoW_GUI:CreateDialog({
@@ -189,7 +189,7 @@ function Dialogs:ImportDialog(onImport, parent)
     editContainer:SetPoint("TOPLEFT",     formatLabel,         "BOTTOMLEFT",  0,  -6)
     editContainer:SetPoint("BOTTOMRIGHT", result.contentFrame, "BOTTOMRIGHT", -8,  6)
 
-    local scrollFrame, editBox = OneWoW_GUI:CreateScrollEditBox(editContainer, {
+    local _, editBox = OneWoW_GUI:CreateScrollEditBox(editContainer, {
         fontSize = 11,
     })
     editBox:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
@@ -210,7 +210,7 @@ function Dialogs:ImportDialog(onImport, parent)
     return result.frame
 end
 
-function Dialogs:RecipeSelectDialog(recipes, knownByData, onSelect, parent)
+function Dialogs:RecipeSelectDialog(recipes, knownByData, onSelect, _)
     CloseActive()
 
     local result = OneWoW_GUI:CreateDialog({
@@ -229,7 +229,7 @@ function Dialogs:RecipeSelectDialog(recipes, knownByData, onSelect, parent)
     })
     activeDialogResult = result
 
-    local scrollFrame, scrollContent = OneWoW_GUI:CreateScrollFrame(result.contentFrame, {})
+    local _, scrollContent = OneWoW_GUI:CreateScrollFrame(result.contentFrame, {})
 
     local yOffset = 0
     for _, recipe in ipairs(recipes) do
@@ -267,22 +267,22 @@ function Dialogs:RecipeSelectDialog(recipes, knownByData, onSelect, parent)
         knownText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
 
         local capturedRecipe = recipe
-        btn:SetScript("OnMouseDown", function(self)
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_PRESSED"))
+        btn:SetScript("OnMouseDown", function(myself)
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_PRESSED"))
         end)
-        btn:SetScript("OnMouseUp", function(self, btnName)
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_NORMAL"))
-            if btnName == "LeftButton" and self:IsMouseOver() then
+        btn:SetScript("OnMouseUp", function(myself, btnName)
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_NORMAL"))
+            if btnName == "LeftButton" and myself:IsMouseOver() then
                 result.frame:Hide()
                 activeDialogResult = nil
                 if onSelect then onSelect(capturedRecipe) end
             end
         end)
-        btn:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_HOVER"))
+        btn:SetScript("OnEnter", function(myself)
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_HOVER"))
         end)
-        btn:SetScript("OnLeave", function(self)
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_NORMAL"))
+        btn:SetScript("OnLeave", function(myself)
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_NORMAL"))
         end)
 
         yOffset = yOffset - 44
@@ -294,7 +294,7 @@ function Dialogs:RecipeSelectDialog(recipes, knownByData, onSelect, parent)
     return result.frame
 end
 
-function Dialogs:CraftablesDialog(craftableItems, listName, onCraft, parent)
+function Dialogs:CraftablesDialog(craftableItems, listName, onCraft, _)
     CloseActive()
 
     local result = OneWoW_GUI:CreateDialog({
@@ -322,9 +322,7 @@ function Dialogs:CraftablesDialog(craftableItems, listName, onCraft, parent)
     listContainer:SetPoint("TOPLEFT",     countLabel,          "BOTTOMLEFT",  0, -6)
     listContainer:SetPoint("BOTTOMRIGHT", result.contentFrame, "BOTTOMRIGHT", -4, 4)
 
-    local scrollFrame, scrollContent = OneWoW_GUI:CreateScrollFrame(listContainer, {})
-
-    local BACKDROP_INNER = OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS
+    local _, scrollContent = OneWoW_GUI:CreateScrollFrame(listContainer, {})
     local yOffset = 0
 
     for _, itemInfo in ipairs(craftableItems) do
