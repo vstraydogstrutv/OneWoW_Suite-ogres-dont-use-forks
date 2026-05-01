@@ -25,9 +25,8 @@ local strlower, strfind, strmatch, strtrim, strsplit = string.lower, string.find
 local rawset, rawget, setmetatable = rawset, rawget, setmetatable
 local pcall, select = pcall, select
 local Enum = Enum
-local C_Item = C_Item
+local C_Item, C_NewItems = C_Item, C_NewItems
 local C_Container = C_Container
-local C_NewItems = C_NewItems
 local C_TooltipInfo = C_TooltipInfo
 local C_ToyBox, PlayerHasToy = C_ToyBox, PlayerHasToy
 local C_MountJournal, C_PetJournal = C_MountJournal, C_PetJournal
@@ -36,6 +35,7 @@ local C_TradeSkillUI = C_TradeSkillUI
 local C_HousingCatalog = C_HousingCatalog
 local GetSpecialization, GetSpecializationInfo = GetSpecialization, GetSpecializationInfo
 local BattlePetToolTip_UnpackBattlePetLink = BattlePetToolTip_UnpackBattlePetLink
+local UnitLevel = UnitLevel
 
 -- ============================================================================
 -- SECTION 2: CACHES
@@ -299,6 +299,8 @@ RegisterPropAlias("speed",                      "statSpeed")
 RegisterPropAlias("leech",                      "statLeech")
 RegisterPropAlias("avoidance",                  "statAvoidance")
 
+RegisterPropAlias("mylevel",    "playerLevel")
+
 -- String properties
 RegisterPropAlias("name",       "name",           "string")
 RegisterPropAlias("equiploc",   "equipLoc",       "string")
@@ -339,7 +341,6 @@ local FLAG_REGISTRY = {
     isquestitem             = "isQuestItem",
     istierset               = "isTierSet",
     isappearancecollected   = "isAppearanceCollected",
-    isunknownappearance     = "isUnknownAppearance",
     hasappearance           = "hasAppearance",
     isupgradeable           = "isUpgradeable",
     isfullyupgraded         = "isFullyUpgraded",
@@ -906,7 +907,7 @@ RegisterKeyword("pettradeable",    function(p) return p.isPetTradeable end)
 -- ---- 7.17  Transmog keywords ----
 RegisterKeyword("transmog",         function(p) return p.hasAppearance end)
 RegisterKeyword("knowntransmog",    function(p) return p.isAppearanceCollected end)
-RegisterKeyword("unknowntransmog",  function(p) return p.isUnknownAppearance end)
+RegisterKeyword("unknowntransmog",  function(p) return not p.isAppearanceCollected end)
 RegisterKeyword("catalyst",         function(p) return p.isCatalyst end)
 RegisterKeyword("catalystupgrade",  function(p) return p.isCatalystUpgrade end)
 
@@ -1705,8 +1706,6 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
     local cacheKey = GetItemCacheKey(itemID, bagID, slotID, hyperlink)
     if propsCache[cacheKey] then return propsCache[cacheKey] end
 
-    local petData = GetBattlePetData(itemID, hyperlink)
-
     local props = {
         id        = itemID,
         _bagID    = bagID,
@@ -1735,6 +1734,9 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
         _, itemType, itemSubType, itemEquipLoc, itemTexture, classID, subclassID = C_Item.GetItemInfoInstant(itemID)
     end
 
+    local petData = GetBattlePetData(itemID, hyperlink)
+
+    props.playerLevel = UnitLevel("player")
     props.nameRaw     = itemName or (C_Item.GetItemNameByID(itemID) or "")
     props.name        = strlower(props.nameRaw)
     props.quality     = itemQuality or -1 -- don't use 0 since that == "poor" and causes bad matches
@@ -1904,16 +1906,24 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
 
     -- ---- Transmog / appearance ----
     props.hasAppearance         = false
-    props.isAppearanceCollected = false
-    props.isUnknownAppearance  = false
+    props.isAppearanceCollected = C_TransmogCollection.PlayerHasTransmog(itemID)
 
     if hyperlink then
         local _, sourceID = C_TransmogCollection.GetItemInfo(hyperlink)
         if sourceID then
             props.hasAppearance = true
-            local collected = C_TransmogCollection.PlayerHasTransmogItemModifiedAppearance(sourceID)
-            props.isAppearanceCollected = collected == true
-            props.isUnknownAppearance   = not collected
+
+            if not props.isAppearanceCollected then
+                local collected = C_TransmogCollection.PlayerHasTransmogItemModifiedAppearance(sourceID)
+                props.isAppearanceCollected = collected == true
+            end
+        end
+    elseif itemLocation then
+        local transmogInfo = C_Item.GetBaseItemTransmogInfo(itemLocation)
+        local canTransmog = C_Item.CanItemTransmogAppearance(itemLocation)
+
+        if canTransmog or (transmogInfo and transmogInfo.appearanceID) then
+            props.hasAppearance = true
         end
     end
 
