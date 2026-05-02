@@ -15,9 +15,6 @@
 ## X-Category: |cFFFFD100OneWoW|r
 ## X-BugGrabber-Display: OneWow
 
-# Bindings
-# Bindings.xml
-
 # Locales
 Locales\enUS.lua
 Locales\esES.lua

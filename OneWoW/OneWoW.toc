@@ -20,9 +20,6 @@
 ## X-Category: |cFFFFD100OneWoW|r
 ## X-BugGrabber-Display: OneWow
 
-# Bindings
-# Bindings.xml
-
 # Libraries
 Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 

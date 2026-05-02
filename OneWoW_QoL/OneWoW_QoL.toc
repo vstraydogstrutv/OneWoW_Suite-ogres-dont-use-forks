@@ -14,9 +14,6 @@
 ## X-Category: |cFFFFD100OneWoW|r
 ## X-BugGrabber-Display: OneWow
 
-# Bindings
-# Bindings.xml
-
 # Localization (MUST load immediately after libs)
 Locales\LocaleManager.lua
 Locales\enUS.lua
@@ -207,4 +204,3 @@ Modules\external\map_world_tools\map_world_tools-battlefield.lua
 Modules\external\map_world_tools\map_world_tools-engine.lua
 Modules\external\map_world_tools\map_world_tools-ui.lua
 Modules\external\map_world_tools\data.lua
-

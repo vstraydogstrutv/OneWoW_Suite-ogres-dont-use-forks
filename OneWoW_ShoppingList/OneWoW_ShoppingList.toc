@@ -14,9 +14,6 @@
 ## X-Category: |cFFFFD100OneWoW|r
 ## X-BugGrabber-Display: OneWow
 
-# Bindings
-# Bindings.xml
-
 # Core (must load before locales)
 Core\Constants.lua
 
