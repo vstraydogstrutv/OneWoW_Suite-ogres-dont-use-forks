@@ -14,7 +14,7 @@ local hooksecurefunc = hooksecurefunc
 local C_Timer = C_Timer
 local C_Bank = C_Bank
 
-_G.OneWoW_Bags = OneWoW_Bags
+OneWoW_Bags = OneWoW_Bags
 
 OneWoW_Bags.oneWoWHubActive = false
 OneWoW_Bags.bankOpen = false
@@ -25,7 +25,7 @@ OneWoW_Bags.inventoryPresentationState = {
 }
 
 local function DetectOneWoW()
-    if _G.OneWoW then
+    if OneWoW then
         OneWoW_Bags.oneWoWHubActive = true
     end
 end
@@ -248,10 +248,6 @@ function OneWoW_Bags:RequestWindowReset(target)
     end)
 end
 
-local function GetAddonDisplayName()
-    return "OneWoW " .. L["ADDON_TITLE"]
-end
-
 local function RefreshGUI(owner)
     local gui = owner.GUI
     if not gui then return end
@@ -293,21 +289,21 @@ function OneWoW_Bags:OnAddonLoaded(loadedAddon)
     self:RegisterSlashCommands()
     self:RegisterRuntimeEvents()
 
-    OneWoW_GUI:RegisterSettingsCallback("OnThemeChanged", self, function(owner, newTheme)
+    OneWoW_GUI:RegisterSettingsCallback("OnThemeChanged", self, function(owner, _)
         ApplyTheme()
         RefreshGUI(owner)
     end)
 
-    OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", self, function(owner, newLang)
+    OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", self, function(owner, _)
         ApplyLanguage()
         RefreshGUI(owner)
     end)
 
-    OneWoW_GUI:RegisterSettingsCallback("OnFontChanged", self, function(owner, newFont)
+    OneWoW_GUI:RegisterSettingsCallback("OnFontChanged", self, function(owner, _)
         RefreshGUI(owner)
     end)
 
-    OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", self, function(owner, newIconTheme)
+    OneWoW_GUI:RegisterSettingsCallback("OnIconThemeChanged", self, function(owner, _)
         RefreshGUI(owner)
     end)
 
@@ -324,16 +320,16 @@ function OneWoW_Bags:OnAddonLoaded(loadedAddon)
     end)
 
     local _ver = OneWoW_GUI:GetAddonVersion(ADDON_NAME)
-    if _G.OneWoW and _G.OneWoW.RegisterLoadComponent then
-        _G.OneWoW:RegisterLoadComponent("Bags", _ver, "/1wb")
+    if OneWoW and OneWoW.RegisterLoadComponent then
+        OneWoW:RegisterLoadComponent("Bags", _ver, "/1wb")
     end
 end
 
 function OneWoW_Bags:OnPlayerLogin()
     DetectOneWoW()
 
-    if _G.OneWoW and _G.OneWoW.RegisterMinimap then
-        _G.OneWoW:RegisterMinimap("OneWoW_Bags", (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_BAGS"]), nil, function()
+    if OneWoW and OneWoW.RegisterMinimap then
+        OneWoW:RegisterMinimap("OneWoW_Bags", (OneWoW.L and OneWoW.L["CTX_OPEN_BAGS"]), nil, function()
             if self.GUI then self.GUI:Toggle() end
         end)
     end
@@ -811,8 +807,8 @@ end
 
 function OneWoW_Bags:OnCooldownUpdate()
     if not self.BagSet.isBuilt then return end
-    for bagID, bagSlots in pairs(self.BagSet.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.BagSet.slots) do
+        for _, button in pairs(bagSlots) do
             if button.owb_hasItem then
                 button:OWB_RefreshCooldown()
             end
@@ -825,7 +821,7 @@ function OneWoW_Bags:RegisterSlashCommands()
     SLASH_ONEWOW_BAGS2 = "/onewowbags"
     SLASH_ONEWOW_BAGS3 = "/1wbags"
 
-    SlashCmdList["ONEWOW_BAGS"] = function(msg)
+    SlashCmdList["ONEWOW_BAGS"] = function()
         self.GUI:Toggle()
     end
 
@@ -860,34 +856,19 @@ function OneWoW_Bags:HookBlizzardBags()
         OneWoW_Bags.GUI:Show()
     end
 
-    local function CloseOurBags(source)
-        if source == "auto" then
-            if IsMerchantVisible() then
-                return
-            end
-            if OneWoW_Bags.vendorInteractionActive then
-                return
-            end
-            if OneWoW_Bags.vendorCloseGuardActive then
-                return
-            end
-        end
-        OneWoW_Bags.GUI:Hide()
-    end
-
-    local function ToggleOurBags(source)
+    local function ToggleOurBags()
         OneWoW_Bags.GUI:Toggle()
     end
 
     local bindingFrame = CreateFrame("Button", "OneWoW_BagsBindingFrame")
     bindingFrame:RegisterForClicks("AnyDown")
     bindingFrame:SetScript("OnClick", function()
-        ToggleOurBags("explicit")
+        ToggleOurBags()
     end)
     self.bindingFrame = bindingFrame
 
     local function SetupBindingOverrides()
-        if _G.InCombatLockdown() then
+        if InCombatLockdown() then
             bindingFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
             return
         end
@@ -915,7 +896,7 @@ function OneWoW_Bags:HookBlizzardBags()
         end
     end
 
-    bindingFrame:SetScript("OnEvent", function(self, event)
+    bindingFrame:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_REGEN_ENABLED" or event == "UPDATE_BINDINGS" then
             SetupBindingOverrides()
         end
@@ -926,16 +907,16 @@ function OneWoW_Bags:HookBlizzardBags()
     for i = 1, 13 do
         local frame = _G["ContainerFrame" .. i]
         if frame then
-            frame:HookScript("OnShow", function(self) self:Hide() end)
+            frame:HookScript("OnShow", function(myself) myself:Hide() end)
         end
     end
 
     if ContainerFrameCombinedBags then
-        ContainerFrameCombinedBags:HookScript("OnShow", function(self) self:Hide() end)
+        ContainerFrameCombinedBags:HookScript("OnShow", function(myself) myself:Hide() end)
     end
 
     hooksecurefunc("OpenBackpack", function() OpenOurBags("auto") end)
-    hooksecurefunc("ToggleAllBags", function() ToggleOurBags("auto") end)
+    hooksecurefunc("ToggleAllBags", function() ToggleOurBags() end)
     hooksecurefunc("OpenAllBags", function() OpenOurBags("auto") end)
 
     hooksecurefunc("PickupGuildBankItem", function(tabID, slotID)
@@ -958,7 +939,7 @@ function OneWoW_Bags:HookBlizzardBags()
             self:TrackGuildBankTransferSource(tabID, slotID)
         end
     end)
-    hooksecurefunc("SplitGuildBankItem", function(tabID, slotID)
+    hooksecurefunc("SplitGuildBankItem", function(tabID, _)
         self:TrackGuildBankTransferTab(tabID)
     end)
     hooksecurefunc(C_Container, "PickupContainerItem", function()
@@ -1195,7 +1176,7 @@ local runtimeEventHandlers = {
     PLAYER_EQUIPMENT_CHANGED = function(...)
         Events:OnPredicateInvalidation(...)
     end,
-    GET_ITEM_INFO_RECEIVED = function(itemID, ...)
+    GET_ITEM_INFO_RECEIVED = function(itemID)
         Events:OnItemInfoReceived(itemID)
     end,
     SKILL_LINES_CHANGED = function(...)
@@ -1213,7 +1194,7 @@ function OneWoW_Bags:RegisterRuntimeEvents()
     end
 end
 
-eventFrame:SetScript("OnEvent", function(self, event, ...)
+eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "ADDON_LOADED" then
         local loadedAddon = ...
         OneWoW_Bags:OnAddonLoaded(loadedAddon)
