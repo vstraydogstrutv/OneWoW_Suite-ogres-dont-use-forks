@@ -37,7 +37,7 @@ repos:
           Forbids `_G.SomeGlobal` (literal field access on _G).
           Allowed: bare global name, or `_G[expr]` for computed keys.
           See .cursor/rules/OneWoW-Lua-Conventions.mdc.
-        entry: python scripts/check_no_g_literal.py
+        entry: python bin/check_no_g_literal.py
         language: python
         types: [lua]
         # Mirror .luarc.json workspace.ignoreDir — these are reference / vendored / generated.
