@@ -8,7 +8,7 @@
 ## Category: OneWoW
 ## Group: OneWoW
 
-## SavedVariables: OneWoW_DirectDeposit_DB, OneWoW_DirectDeposit_MinimapLDBIconDB
+## SavedVariables: OneWoW_DirectDeposit_DB
 ## SavedVariablesPerCharacter: OneWoW_DirectDeposit_CharDB
 
 ## X-Website: https://wow2.xyz/

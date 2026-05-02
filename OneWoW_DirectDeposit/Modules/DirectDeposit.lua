@@ -18,18 +18,7 @@ DirectDeposit.progressCallback = nil
 
 function DirectDeposit:Initialize()
     self:RegisterEvents()
-    self:MigrateItemBankTypes()
     self.initialized = true
-end
-
-function DirectDeposit:MigrateItemBankTypes()
-    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList
-    if not itemList then return end
-    for _, itemData in pairs(itemList) do
-        if itemData and not itemData.bankType then
-            itemData.bankType = "personal"
-        end
-    end
 end
 
 function DirectDeposit:RegisterEvents()
@@ -39,7 +28,7 @@ function DirectDeposit:RegisterEvents()
     eventFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
     eventFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_HIDE")
 
-    eventFrame:SetScript("OnEvent", function(self, event, ...)
+    eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "BANKFRAME_OPENED" then
             if not DirectDeposit.guildBankOpen then
                 DirectDeposit.currentOpenBankType = "personal"
@@ -84,11 +73,7 @@ function DirectDeposit:IsEnabled()
 end
 
 function DirectDeposit:GetCharacterSettings()
-    local charSettings = OneWoW_DirectDeposit.db.char.directDeposit or {}
-    if charSettings.useAccountSettings == nil then
-        charSettings.useAccountSettings = true
-    end
-    return charSettings
+    return OneWoW_DirectDeposit.db.char.directDeposit
 end
 
 function DirectDeposit:GetActiveSettings()
@@ -103,7 +88,7 @@ end
 
 function DirectDeposit:GetTargetGold()
     local settings = self:GetActiveSettings()
-    return settings.targetGold or 0
+    return settings.targetGold
 end
 
 function DirectDeposit:OnBankOpened()
@@ -132,7 +117,7 @@ function DirectDeposit:SweepWarboundItems()
         return
     end
 
-    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList or {}
+    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList
     local itemsToDeposit = {}
 
     for bagID = 0, 5 do
@@ -235,7 +220,7 @@ function DirectDeposit:DepositItemsToBank(manualTrigger)
         return
     end
 
-    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList or {}
+    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList
 
     if not next(itemList) then
         if manualTrigger then
@@ -572,7 +557,7 @@ function DirectDeposit:AddItemToList(itemID, bankType)
         return false, "Invalid item ID or bank type"
     end
 
-    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList or {}
+    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList
 
     if itemList[tostring(itemID)] then
         return false, "Item already in list"
@@ -606,10 +591,6 @@ function DirectDeposit:RemoveItemFromList(itemID)
 
     local itemIDStr = tostring(itemID)
 
-    if not OneWoW_DirectDeposit.db.global.directDeposit.itemList then
-        return false
-    end
-
     local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList
 
     if itemList[itemIDStr] then
@@ -626,7 +607,7 @@ function DirectDeposit:RemoveItemFromList(itemID)
 end
 
 function DirectDeposit:GetItemList()
-    return OneWoW_DirectDeposit.db.global.directDeposit.itemList or {}
+    return OneWoW_DirectDeposit.db.global.directDeposit.itemList
 end
 
 function OneWoW_DirectDeposit:GetAvailableItemIDs()
@@ -643,7 +624,7 @@ function DirectDeposit:UpdateItemBankType(itemID, newBankType)
         return false
     end
 
-    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList or {}
+    local itemList = OneWoW_DirectDeposit.db.global.directDeposit.itemList
 
     if itemList[tostring(itemID)] then
         itemList[tostring(itemID)].bankType = newBankType

@@ -244,6 +244,8 @@
     "OneWoW_Catalog",
     "OneWoW_CatalogData_Quests_DB",
     "OneWoW_CatalogData_Vendors_DB",
+    "OneWoW_DirectDeposit_DB",
+    "OneWoW_DirectDeposit_CharDB",
     "OneWoWMainWindow",
     "OneWoW_NotesMainFrame",
     "OneWoW_QoLDevHelpDialog",

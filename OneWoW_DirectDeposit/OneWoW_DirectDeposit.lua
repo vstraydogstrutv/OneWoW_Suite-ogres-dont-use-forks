@@ -20,13 +20,7 @@ local function ApplyTheme()
 end
 
 local function ApplyLanguage()
-    local lang
-    local hub = _G.OneWoW
-    if hub and hub.db and hub.db.global then
-        lang = hub.db.global.language or "enUS"
-    else
-        lang = OneWoW_DirectDeposit.db and OneWoW_DirectDeposit.db.global.language or "enUS"
-    end
+    local lang = OneWoW_GUI:GetSetting("language") or "enUS"
     if lang == "esMX" then lang = "esES" end
     local localeData = OneWoW_DirectDeposit.Locales[lang] or OneWoW_DirectDeposit.Locales["enUS"]
     local fallback = OneWoW_DirectDeposit.Locales["enUS"]
@@ -39,8 +33,7 @@ end
 OneWoW_DirectDeposit.ApplyTheme = ApplyTheme
 OneWoW_DirectDeposit.ApplyLanguage = ApplyLanguage
 
-function OneWoW_DirectDeposit:ReinitForLanguage(langCode)
-    self.db.global.language = langCode
+function OneWoW_DirectDeposit:ReinitForLanguage(_)
     ApplyLanguage()
     if self.GUI and self.GUI.FullReset then
         local mw = self.GUI:GetMainWindow()
@@ -54,43 +47,12 @@ function OneWoW_DirectDeposit:ReinitForLanguage(langCode)
     end
 end
 
-function OneWoW_DirectDeposit:ValidateAndCleanItemList()
-    local itemList = self.db.global.directDeposit.itemList
-    if not itemList then return true end
-
-    local L = OneWoW_DirectDeposit.L
-    local cleanedList = {}
-    local removedCount = 0
-
-    for key, itemData in pairs(itemList) do
-        local isStringKey = type(key) == "string"
-        local itemIDNum = tonumber(key)
-
-        if itemData and itemIDNum and itemIDNum > 0 then
-            local cleanKey = tostring(itemIDNum)
-            cleanedList[cleanKey] = itemData
-            if not isStringKey then
-                removedCount = removedCount + 1
-            end
-        else
-            removedCount = removedCount + 1
-        end
-    end
-
-    if removedCount > 0 then
-        print(L["ADDON_CHAT_PREFIX"] .. " Cleaned " .. removedCount .. " invalid entries from itemList")
-        self.db.global.directDeposit.itemList = cleanedList
-    end
-
-    return true
-end
-
 function OneWoW_DirectDeposit:OnAddonLoaded(loadedAddon)
     if loadedAddon ~= ADDON_NAME then return end
 
     self:InitializeDatabase()
 
-    local g = self.db and self.db.global or {}
+    local g = self.db.global
     OneWoW_GUI:MigrateSettings({
         theme = g.theme,
         language = g.language,
@@ -172,7 +134,7 @@ function OneWoW_DirectDeposit:AddHoveredItemToList(bankType)
         return
     end
 
-    local itemList = self.db.global.directDeposit.itemList or {}
+    local itemList = self.db.global.directDeposit.itemList
     local existing = itemList[tostring(itemID)]
 
     local function bankName(bt)
@@ -220,13 +182,11 @@ function OneWoW_DirectDeposit:InitTooltipHook()
             id           = "directdeposit",
             order        = 50,
             tooltipTypes = { "item" },
-            callback     = function(tooltip, context)
+            callback     = function(_, context)
                 if not context.itemID then return nil end
-                if not self.db or not self.db.global.directDeposit.tooltipEnabled then return nil end
+                if not self.db.global.directDeposit.tooltipEnabled then return nil end
 
                 local itemList = self.db.global.directDeposit.itemList
-                if not itemList then return nil end
-
                 local itemData = itemList[tostring(context.itemID)]
                 if not itemData then return nil end
 
@@ -246,12 +206,10 @@ function OneWoW_DirectDeposit:InitTooltipHook()
         })
     else
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-            if not self.db or not self.db.global.directDeposit.tooltipEnabled then return end
+            if not self.db.global.directDeposit.tooltipEnabled then return end
             if not data or not data.id then return end
 
             local itemList = self.db.global.directDeposit.itemList
-            if not itemList then return end
-
             local itemData = itemList[tostring(data.id)]
             if not itemData then return end
 
@@ -283,14 +241,14 @@ function OneWoW_DirectDeposit:RegisterSlashCommands()
         SLASH_ONEWOW_DIRECTDEPOSIT2 = "/directdep"
     end
 
-    SlashCmdList["ONEWOW_DIRECTDEPOSIT"] = function(msg)
+    SlashCmdList["ONEWOW_DIRECTDEPOSIT"] = function()
         if OneWoW_DirectDeposit.GUI then
             OneWoW_DirectDeposit.GUI:Toggle()
         end
     end
 
     SLASH_ONEWOW_DD_TOGGLE1 = "/1wdd"
-    SlashCmdList["ONEWOW_DD_TOGGLE"] = function(msg)
+    SlashCmdList["ONEWOW_DD_TOGGLE"] = function()
         if OneWoW_DirectDeposit.GUI then
             OneWoW_DirectDeposit.GUI:Toggle()
         end
@@ -304,9 +262,6 @@ function OneWoW_DirectDeposit:RegisterSlashCommands()
             if not OneWoW_DirectDeposit.DirectDeposit:StopDeposit() then
                 print(OneWoW_DirectDeposit.L["ADDON_CHAT_PREFIX"] .. " |cFFFF8800No deposit in progress.|r")
             end
-        elseif lowerMsg == "clean" then
-            OneWoW_DirectDeposit:ValidateAndCleanItemList()
-            print(OneWoW_DirectDeposit.L["ADDON_CHAT_PREFIX"] .. " |cFF00FF00Item list cleaned and validated.|r")
         else
             OneWoW_DirectDeposit.DirectDeposit:ManualDeposit()
         end
@@ -317,7 +272,7 @@ local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 
-eventFrame:SetScript("OnEvent", function(self, event, ...)
+eventFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "ADDON_LOADED" then
         local loadedAddon = ...
         OneWoW_DirectDeposit:OnAddonLoaded(loadedAddon)
