@@ -15,6 +15,7 @@ Load on demand for deep references — these replace what used to live in this r
 - `wow-tooltip-system` — TooltipDataProcessor, C_TooltipInfo, line types, bind detection
 - `onewow-gui-ui` — component API, theme colors, backdrops, constants/localization
 - `wow-api-specialist` — broader WoW/Blizzard API verification via Cursor's indexed docs
+- `wow-frame-script-pitfalls` — frame scripts, event handlers, or widget callbacks
 
 ---
 
@@ -200,100 +201,6 @@ SlashCmdList["MYADDON"] = function(msg)
 end
 ```
 
-### 4.6 Backdrop & Positioning
-
-**SetBackdrop resets colors:** With `BackdropTemplate`, **`Frame:SetBackdrop(backdrop)` resets backdrop colors to defaults** (typically white). You must re-apply colors after any `SetBackdrop` call.
-
-```lua
--- BAD: background will appear white after SetBackdrop
-frame:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-
--- GOOD: always pair SetBackdrop with color calls
-frame:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-frame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
-frame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
-```
-
-This applies even when replacing a backdrop set by a factory (e.g. `OneWoW_GUI:CreateFrame`). Calling `SetBackdrop(nil)` and re-setting does not help — you must call `SetBackdropColor` and `SetBackdropBorderColor` after `SetBackdrop`.
-
-**Overriding SetPoint:** To override a frame's existing anchor, call **`ClearAllPoints()`** before `SetPoint()`. Otherwise the new `SetPoint` may be ignored or conflict with prior anchors.
-
-```lua
--- BAD: may not override existing anchor
-divider:SetPoint("TOPLEFT", parent, "TOPLEFT", 1, -29)
-
--- GOOD: clear first when changing anchors
-divider:ClearAllPoints()
-divider:SetPoint("TOPLEFT", parent, "TOPLEFT", 1, -29)
-```
-
-### 4.7 Popup / Dropdown Dismiss — OnUpdate Hybrid Pattern
-
-WoW has no click-through or event-bubbling for sibling frames.
-A fullscreen overlay **above** the host catches all clicks but **consumes** them (two-click to activate a control). An overlay **below** the host lets controls receive clicks but never fires for in-host dismiss.
-
-**Solution — OnUpdate watcher:** WoW processes input (OnClick, OnMouseDown) **before** running OnUpdate scripts in the same frame.
-Use an `OnUpdate` on the popup that detects `IsMouseButtonDown` transitions while `IsMouseOver()` is false: the clicked control fires first, then OnUpdate hides the popup.
-
-```lua
--- On the popup/menu frame, after creation:
-local wasDown = IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")
-menu:SetScript("OnUpdate", function(self)
-    local isDown = IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")
-    if isDown and not wasDown then
-        if not self:IsMouseOver() then
-            self:Hide()
-        end
-    end
-    wasDown = isDown
-end)
-```
-
-Pair with a **game-world overlay** (fullscreen `UIParent` Button) at `hostLevel - 2` (below the host, same strata) to block 3D viewport interaction while the popup is open.
-The overlay only catches clicks in areas not covered by the host window.
-
-**Key rules:**
-- Initialize `wasDown` from current button state so a popup opened mid-click doesn't immediately self-close.
-- `IsMouseOver()` checks the frame's bounding rect; all children within those bounds (search box, scroll frame, items) are covered.
-- Do **not** use a fullscreen overlay above the host for dismiss — it consumes the click and forces a second click to activate controls.
-- Do **not** sprinkle explicit close calls at every navigation boundary (tab switches, list selections). The OnUpdate handles this automatically.
-
-### 4.8 FontString Local Overrides & SetFontObject
-
-`SetFontObject(fontObj)` on a FontString sets the inheritance source but does **NOT** clear local property overrides created by explicit setter calls.
-Once you call `SetJustifyH("RIGHT")` (or `SetTextColor`, `SetFont`, etc.) directly on a FontString, that local override **persists across all subsequent `SetFontObject()` calls** — the font object's inherited value is shadowed.
-
-```lua
--- BAD: local override from SetJustifyH persists across SetFontObject changes
-fs:SetFontObject(RightAlignedFont)   -- justify = RIGHT (from font object)
-fs:SetJustifyH("RIGHT")             -- creates local override "RIGHT"
-fs:SetFontObject(CenterAlignedFont)  -- font object says CENTER, but...
-print(fs:GetJustifyH())              -- "RIGHT" — stale local override!
-```
-
-**Key rules:**
-- `GetJustifyH()` on FontString returns the **local override** if one exists, otherwise the font object's inherited value. You cannot distinguish which source provided the value.
-- `GetJustifyH()` on a **Font object** always returns correct effective value (including values inherited from parent fonts in the XML chain).
-- **Reusing a FontString** to display different font objects over time will accumulate stale local overrides from previous selections. This causes properties from previous font to "stick" to next one.
-- **Preferred pattern:** When FontString must cycle through different font objects (e.g. a font preview/browser), **recreate the FontString** each time rather than reusing it. This guarantees a clean slate with no local overrides.
-Examples:
-
-  ```lua
-  -- Recreate to ensure no stale overrides from previous font
-  if tab.previewFS then tab.previewFS:Hide() end
-  tab.previewFS = parent:CreateFontString(nil, "ARTWORK")
-  tab.previewFS:SetFontObject(newFontObj)  -- sole authority for all properties
-  ```
-
-- If recreating is not feasible, read property values from the **Font object** (not the FontString) and re-apply them explicitly every time:
-
-  ```lua
-  fs:SetFontObject(fontObj)
-  -- Read from Font object — always returns correct inherited value
-  fs:SetJustifyH(fontObj:GetJustifyH())
-  -- Do NOT read from fs:GetJustifyH() — may return stale local override
-  ```
-
 ---
 
 ## 5. Secure Execution & Taint
@@ -397,61 +304,6 @@ MenuUtil.CreateContextMenu(ownerFrame, function(ownerRegion, rootDescription)
 end)
 ```
 
-### 6.6 Closures & Frame Scripts
-
-Pitfalls when writing frame scripts and event handlers in WoW addons.
-
-**Closure variable order:** Variables captured by closures (e.g. `OnClick` handlers) must be **declared and initialized before** the handler is defined.
-If declared after, the closure can reference `nil` at runtime.
-
-```lua
--- BAD: customRefreshCallbacks is nil when OnClick runs
-toggleBtn:SetScript("OnClick", function()
-    for _, fn in ipairs(customRefreshCallbacks) do fn() end  -- error: nil
-end)
-local customRefreshCallbacks = {}
-
--- GOOD: declare and init first
-local customRefreshCallbacks = {}
-local function registerRefresh(fn) tinsert(customRefreshCallbacks, fn) end
-toggleBtn:SetScript("OnClick", function()
-    for _, fn in ipairs(customRefreshCallbacks) do fn() end
-end)
-```
-
-**Stale upvalue sync:** When a callback updates state that closures depend on, reassign the upvalue in that callback so the closure sees the new value.
-
-```lua
-local isEnabled = false
-local function refresh(enabled, ...)
-    isEnabled = enabled  -- keep closure's upvalue in sync
-    for _, btn in ipairs(toggleBtnSets) do
-        btn:EnableMouse(enabled)
-        -- ...
-    end
-end
-```
-
-**Button event order:** For Button widgets: OnMouseDown → OnMouseUp → PreClick → OnClick → PostClick. OnMouseUp runs **before** OnClick.
-
-**Radio-style / active-state buttons:** Buttons created with `CreateButton` (or similar) use default OnEnter/OnLeave handlers that revert to BTN_NORMAL when the mouse leaves. For radio-style buttons where one option stays visually "active" after selection, that OnLeave overwrites your custom active styling.
-
-**Fix:** Use `HookScript("OnLeave", UpdateStyling)` instead of `SetScript`. The hook runs after the default handler, so your refresh reapplies the correct styling based on the active state.
-
-**SetScript vs HookScript:**
-
-- `SetScript` — replaces the handler.
-- `HookScript` — appends to the existing handler. Use when layering behavior on top of Blizzard or other addon handlers.
-
-**Modular UI refresh:** When a parent action (e.g. main Enable/Disable) must refresh child UI in custom modules, use a `registerRefresh` pattern so modules can register callbacks that the parent invokes.
-
-```lua
-local customRefreshCallbacks = {}
-local function registerRefresh(fn) tinsert(customRefreshCallbacks, fn) end
--- Pass registerRefresh to CreateCustomDetail; modules call registerRefresh(UpdateRow)
--- Parent's toggle handler: for _, fn in ipairs(customRefreshCallbacks) do fn() end
-```
-
 ## Common Mistakes to Avoid
 
 1. **Using removed/deprecated APIs.** For WoW addon dev before Dragonflight, many APIs have moved to `C_*` namespaces or been removed entirely. See `wow-api-specialist` skill.
@@ -465,17 +317,13 @@ local function registerRefresh(fn) tinsert(customRefreshCallbacks, fn) end
 9. **Writing to global table keys carelessly.** Every addon shares the same global environment. A stray `count = 0` at file scope clobbers (and taints) any other addon's `count` global.
 10. **Assuming SavedVariables exist on first load.** They're `nil` until the player has logged out at least once with your addon enabled.
 11. **Calling API functions too early.** Many APIs return nil before `PLAYER_LOGIN`. Don't query unit info or map data at file load time.
-12. **Closure/upvalue pitfalls in frame scripts.** Event handlers capture variables by reference. Declare and initialize variables used by closures _before_ defining the handler. When a callback updates state that closures depend on, reassign the upvalue in that callback (e.g. `isEnabled = enabled`).
-13. **Fixed-width buttons.** Buttons must auto-size to text for localization. Use `CreateFitTextButton` (or equivalent) — fixed widths cause truncation in other languages.
-14. **Static strings in UI code.** See `onewow-gui-ui` skill.
-15. **Fullscreen overlay above host for popup dismiss.** A `UIParent`-parented overlay above the host window catches clicks but **consumes** them — forcing a second click to activate the control underneath. Use the OnUpdate hybrid pattern instead: OnUpdate detects `IsMouseButtonDown` transitions while `IsMouseOver()` is false. Input fires before OnUpdate in the same frame, so both the control action and the dismiss happen on a single click.
-16. **Reusing FontStrings across different FontObjects.** `SetFontObject()` does not clear local overrides from explicit setter calls (`SetJustifyH`, `SetTextColor`, `SetFont`, etc.). Properties from a previous font "stick" to subsequent selections. Recreate the FontString or read values from the Font object directly.
-17. **Defensive nil-chain guards on DB-initialized keys.** See `onewow-database-api` skill.
+12. **Fixed-width buttons.** Buttons must auto-size to text for localization. Use `CreateFitTextButton` (or equivalent) — fixed widths cause truncation in other languages.
+13. **Static strings in UI code.** See `onewow-gui-ui` skill.
+14. **Defensive nil-chain guards on DB-initialized keys.** See `onewow-database-api` skill.
 
 ## Reference Links
 
 - **Events list:** https://warcraft.wiki.gg/wiki/Events
-- **TOC format:** https://warcraft.wiki.gg/wiki/TOC_format
 - **Secure execution / taint:** https://warcraft.wiki.gg/wiki/Secure_Execution_and_Tainting
 - **UI technical details:** https://warcraft.wiki.gg/wiki/Category:UI_technical_details
 - **EventRegistry:** https://warcraft.wiki.gg/wiki/EventRegistry
