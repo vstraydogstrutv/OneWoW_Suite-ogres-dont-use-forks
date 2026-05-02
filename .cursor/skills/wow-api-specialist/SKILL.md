@@ -1,6 +1,6 @@
 ---
 name: wow-api-specialist
-description: Use this skill when writing or debugging WoW addon code requiring specific API functions, FrameXML constants, or Event handling.
+description: Use this skill when writing or debugging WoW addon code requiring specific TOC references, Lua functions and syntax, API functions, FrameXML constants, or Event handling.
 ---
 
 # WoW API Specialist Skill

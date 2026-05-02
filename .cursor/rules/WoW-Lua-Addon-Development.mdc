@@ -20,18 +20,7 @@ Load on demand for deep references — these replace what used to live in this r
 
 ## 1. Lua Language & Runtime
 
-- WoW uses a **Lua 5.1 subset**. Do NOT use features from Lua 5.2+:
-  - No `goto`, `\z` string escapes, `__len` on tables, bitwise ops from 5.3 (WoW includes Lua bitlib library), `utf8` lib, or `table.pack`/`table.unpack` (use `unpack()`).
-  - `setfenv`/`getfenv` have taint implications; modifying a function's environment taints it. Errors if modifying a protected environment (e.g. Blizzard secure code). [API_setfenv](https://warcraft.wiki.gg/wiki/API_setfenv).
-  - `loadstring()` avoid executing untrusted user input. Use `setfenv` with restricted environment when sandboxing. [API_loadstring](https://warcraft.wiki.gg/wiki/API_loadstring).
-  - `coroutine.*` use sparingly (memory cost).
-  - `table.wipe(t)` and `wipe(t)` are WoW-specific additions (clear table in-place). Prefer them over creating new tables in hot paths.
-  - `strsplit`, `strtrim`, `strjoin`, `tinsert`, `tremove`, `tContains`, `tInvert`, `tFilter`, `CopyTable`, `MergeTable` are available globally.
-  - String matching uses Lua patterns (`%d`, `%a`, etc.), NOT regex.
-  - `format()` is global alias for `string.format()`.
-- **No file I/O: `os.*`, `io.*`, `require()`, `dofile()`.** File loading is controlled by TOC and XML includes.
-
-**Authoritative source:** [warcraft.wiki.gg/wiki/Lua_functions](https://warcraft.wiki.gg/wiki/Lua_functions)
+Use `wow-api-specialist` skill.
 
 ---
 
@@ -39,35 +28,7 @@ Load on demand for deep references — these replace what used to live in this r
 
 ### 2.1 TOC File
 
-```
-## Interface: 120000
-## Title: MyAddon
-## Notes: Short description
-## Author: YourName
-## Version: 1.0.0
-## SavedVariables: MyAddonDB
-## SavedVariablesPerCharacter: MyAddonCharDB
-## Dependencies: SomeRequiredAddon
-## OptionalDeps: Ace3
-## Group: OneWoW
-
-# Load order matters — libraries first, then core, then modules
-libs\LibStub\LibStub.lua
-libs\AceAddon-3.0\AceAddon-3.0.lua
-libs\AceDB-3.0\AceDB-3.0.lua
-
-Core.lua
-Modules\SomeModule.lua
-```
-
-- TOC filename **must** match the addon folder name exactly.
-- `## Interface:` accepts comma-separated values for multi-flavor support (e.g., `120000, 120005`). For Retail-only addons, use `120000` minimum.
-- `## SavedVariables:` names become global tables persisted across sessions. They are loaded _before_ your addon code runs.
-- Use `## Category:` for the addon list category (added in 11.1.0).
-- Backslashes `\` are recommended for subdirectory paths in file listings.
-- Lines starting with `#` (no second `#`) are comments.
-
-**Authoritative source:** https://warcraft.wiki.gg/wiki/TOC_format
+See `.wow_docs\general\TOC Format.md`
 
 ### 2.2 Addon Namespace
 
@@ -121,6 +82,8 @@ local name = GetMapNameByID(mapID)
 Common namespaces: `C_Item`, `C_Spell`, `C_Map`, `C_Timer`, `C_ChatInfo`, `C_AddOns`, `C_ClassTalents`, `C_UnitAuras`, `C_Container`, `C_CurrencyInfo`, `C_MountJournal`, `C_QuestLog`, `C_GossipInfo`, `C_AchievementInfo`, `C_EncounterJournal`, `C_LFGList`, `C_Minimap`, `C_TooltipInfo`.
 
 **Authoritative Source:** [World of Warcraft API](https://warcraft.wiki.gg/wiki/World_of_Warcraft_API)
+
+Use `wow-api-specialist` skill.
 
 ### 3.2 Enum Values
 
@@ -490,13 +453,13 @@ local function registerRefresh(fn) tinsert(customRefreshCallbacks, fn) end
 
 ## Common Mistakes to Avoid
 
-1. **Using removed/deprecated APIs.** If you learned WoW addon dev before Dragonflight, many APIs you knew have moved to `C_*` namespaces or been removed entirely. See `wow-api-specialist` skill.
-2. **Modifying secure frames in combat.** This will silently fail or throw taint errors. Gate all secure frame modifications behind `not InCombatLockdown()`.
+1. **Using removed/deprecated APIs.** For WoW addon dev before Dragonflight, many APIs have moved to `C_*` namespaces or been removed entirely. See `wow-api-specialist` skill.
+2. **Modifying secure frames in combat.** Will silently fail or throw taint errors. Gate all secure frame modifications behind `not OneWoW_GUI:IsAddonRestricted()`.
 3. **Hardcoding spell/item IDs without fallbacks.** IDs can change between patches. Prefer name-based lookups with ID as cache keys, and always nil-check returns.
 4. **Forgetting that CLEU doesn't pass event args via `...`.** You MUST call `CombatLogGetCurrentEventInfo()` inside the handler.
 5. **Creating frames in a loop without pooling.** Use `CreateFramePool` or manually pool/recycle frames.
-6. **Using `UIDropDownMenu` in new code.** It's deprecated; use `MenuUtil`.
-7. **Using `OnTooltipSetItem` / `OnTooltipSetSpell` hooks.** These were removed in 10.0.2. See `wow-tooltip-system` skill.
+6. **Using `UIDropDownMenu` in new code.** Deprecated; use `MenuUtil`.
+7. **Using `OnTooltipSetItem` / `OnTooltipSetSpell` hooks.** Removed in 10.0.2. See `wow-tooltip-system` skill.
 8. **Not testing inside instances.** Secret value restrictions often only apply in instanced content. Your addon may work in the open world and break in dungeons/raids.
 9. **Writing to global table keys carelessly.** Every addon shares the same global environment. A stray `count = 0` at file scope clobbers (and taints) any other addon's `count` global.
 10. **Assuming SavedVariables exist on first load.** They're `nil` until the player has logged out at least once with your addon enabled.
