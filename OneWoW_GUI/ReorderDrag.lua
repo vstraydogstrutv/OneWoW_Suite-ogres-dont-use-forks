@@ -475,12 +475,12 @@ function ControllerMethods:Attach(item, index)
     if not item then return end
     item:EnableMouse(true)
     local controller = self
-    item._oneWoWReorderOnMouseDown = function(self, button)
+    item._oneWoWReorderOnMouseDown = function(myself, button)
         if button ~= "LeftButton" then return end
         local list = controller.getItems and controller.getItems()
-        local idx = index or IndexOf(list, self)
+        local idx = index or IndexOf(list, myself)
         if not idx then return end
-        BeginDrag(controller, self, idx)
+        BeginDrag(controller, myself, idx)
     end
     item:HookScript("OnMouseDown", item._oneWoWReorderOnMouseDown)
 end
