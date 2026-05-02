@@ -17,6 +17,15 @@ Load on demand for deep references — these replace what used to live in this r
 - `wow-api-specialist` — broader WoW/Blizzard API verification via Cursor's indexed docs
 - `wow-frame-script-pitfalls` — frame scripts, event handlers, or widget callbacks
 
+## File Encoding
+
+All files in this repo use LF line endings (`\n`), enforced by `.gitattributes`
+and a pre-commit hook. When writing or editing files, emit LF only. CRLF
+(`\r\n`) on Windows produces a working-tree state where Git records LF in the
+index but the file on disk has CRLF — this triggers the `mixed-line-ending`
+pre-commit hook, breaks the commit flow in Cursor's source-control panel, and
+forces a manual re-stage. Always use LF.
+
 ---
 
 ## 1. Lua Language & Runtime
