@@ -28,7 +28,8 @@ Use `wow-api-specialist` skill.
 
 ### 2.1 TOC File
 
-See `.wow_docs\general\TOC Format.md`
+See `.wow_docs\general\TOC Format.md`.
+`Bindings.xml` does not need to be loaded by the TOC.
 
 ### 2.2 Addon Namespace
 
