@@ -14,6 +14,8 @@ local hooksecurefunc = hooksecurefunc
 local C_Timer = C_Timer
 local C_Bank = C_Bank
 
+-- DO NOT change this _G reference. Right side is local namespace table. Confusing as they're named the same.
+-- We use _G[""] form since _G.OneWoW_Bags would get caught in pre-commit hook.
 _G["OneWoW_Bags"] = OneWoW_Bags
 
 OneWoW_Bags.oneWoWHubActive = false
