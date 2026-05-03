@@ -1,7 +1,33 @@
-local ADDON_NAME, OneWoW = ...
+local _, OneWoW = ...
 
 OneWoW.PortalHubDetection = OneWoW.PortalHubDetection or {}
 local Detection = OneWoW.PortalHubDetection
+
+local ENGINEERING_TOYS = {
+	[18984] = true,
+	[18986] = true,
+	[30542] = true,
+	[30544] = true,
+	[48933] = true,
+	[87215] = true,
+	[112059] = true,
+	[151652] = true,
+	[168807] = true,
+	[168808] = true,
+	[172924] = true,
+	[198156] = true,
+	[212337] = true,
+	[221966] = true,
+	[248485] = true,
+	[251662] = true,
+	[412555] = true,
+}
+
+local ENGINEERING_ITEMS = {
+	[132523] = true,
+	[144341] = true,
+	[167075] = true,
+}
 
 local housingHouse = nil
 local housingRequested = false
@@ -104,6 +130,74 @@ function Detection:IsAvailable(type, id)
 	return false
 end
 
+local function IsKnownItemPortalUsable(portalType, id)
+	local itemData = OneWoW.PortalData.Items
+	local groups = {
+		itemData.rings,
+		itemData.cloaks,
+		itemData.tabards,
+		itemData.consumables,
+		itemData.special,
+	}
+
+	for _, group in ipairs(groups) do
+		for _, portal in ipairs(group) do
+			if portal.id == id and portal.type == portalType then
+				if portal.condition and not portal.condition() then
+					return false
+				end
+				if portalType == "toy" then
+					return PlayerHasToy(id) and C_ToyBox.IsToyUsable(id)
+				end
+				if portalType == "item" then
+					return C_Item.GetItemCount(id) > 0
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
+function Detection:IsPortalUsable(portalType, id)
+	if portalType == "toy" and ENGINEERING_TOYS[id] then
+		return self:HasProfession("Engineering") and PlayerHasToy(id) and C_ToyBox.IsToyUsable(id)
+	end
+
+	if portalType == "item" and ENGINEERING_ITEMS[id] then
+		return self:HasProfession("Engineering") and C_Item.GetItemCount(id) > 0
+	end
+
+	local hearthstoneCondition = OneWoW.PortalData_Hearthstones.List[id]
+	if hearthstoneCondition then
+		if id == 6948 then
+			return C_Item.GetItemCount(id) > 0
+		end
+		if not PlayerHasToy(id) then
+			return false
+		end
+		if type(hearthstoneCondition) == "function" then
+			return hearthstoneCondition() == true
+		end
+		return hearthstoneCondition == true
+	end
+
+	if portalType == "toy" and id == 140192 then
+		return PlayerHasToy(id) and C_QuestLog.IsQuestFlaggedCompleted(44663)
+	end
+
+	if portalType == "toy" and id == 110560 then
+		return PlayerHasToy(id) and C_QuestLog.IsQuestFlaggedCompleted(34378)
+	end
+
+	local knownItemUsable = IsKnownItemPortalUsable(portalType, id)
+	if knownItemUsable ~= nil then
+		return knownItemUsable
+	end
+
+	return self:IsAvailable(portalType, id)
+end
+
 function Detection:HasProfession(professionName)
 	local prof1, prof2 = GetProfessions()
 
@@ -141,8 +235,8 @@ function Detection:GetMageTeleports(showAll)
 
 	if numSlots then
 		for i = 1, numSlots do
-			local spellID, _, isKnown = GetFlyoutSlotInfo(flyoutID, i)
-			if spellID and (isKnown or showAll) then
+			local spellID, _, slotKnown = GetFlyoutSlotInfo(flyoutID, i)
+			if spellID and (slotKnown or showAll) then
 				table.insert(portals, {type = "spell", id = spellID})
 			end
 		end
@@ -168,8 +262,8 @@ function Detection:GetMagePortals(showAll)
 
 	if numSlots then
 		for i = 1, numSlots do
-			local spellID, _, isKnown = GetFlyoutSlotInfo(flyoutID, i)
-			if spellID and (isKnown or showAll) then
+			local spellID, _, slotKnown = GetFlyoutSlotInfo(flyoutID, i)
+			if spellID and (slotKnown or showAll) then
 				table.insert(portals, {type = "spell", id = spellID})
 			end
 		end
@@ -478,7 +572,7 @@ function Detection:GetSpecialPortals(showAll)
 	return portals
 end
 
-function Detection:GetHousingPortal(showAll)
+function Detection:GetHousingPortal()
 	if C_Housing and C_Housing.HasHousingExpansionAccess() then
 		return {type = "housing", id = 1233637}
 	end

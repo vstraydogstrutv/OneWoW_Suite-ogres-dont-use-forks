@@ -432,7 +432,7 @@ function GUI:CreatePortalsTab(parent)
 			if portal.type == "header" then
 				table.insert(available, portal)
 			else
-				local isAvailable = OneWoW.PortalHubDetection:IsAvailable(portal.type, portal.id)
+				local isAvailable = OneWoW.PortalHubDetection:IsPortalUsable(portal.type, portal.id)
 				portal.available = isAvailable
 
 				if isAvailable then
@@ -566,7 +566,7 @@ function GUI:CreatePortalsTab(parent)
 
 		local portals = OneWoW.PortalHubModule:GetPortalsForCategory(category.id, false)
 		for _, portal in ipairs(portals) do
-			if portal.type ~= "header" and OneWoW.PortalHubDetection:IsAvailable(portal.type, portal.id) then
+			if portal.type ~= "header" and OneWoW.PortalHubDetection:IsPortalUsable(portal.type, portal.id) then
 				return true
 			end
 		end

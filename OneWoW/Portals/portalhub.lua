@@ -1,4 +1,4 @@
-local ADDON_NAME, OneWoW = ...
+local _, OneWoW = ...
 local L = OneWoW.L
 
 OneWoW.PortalHubModule = OneWoW.PortalHubModule or {}
@@ -142,7 +142,7 @@ function PortalHub:GetFavorites()
 			type = fav.type,
 			id = fav.id,
 			name = fav.name,
-			available = OneWoW.PortalHubDetection:IsAvailable(fav.type, fav.id)
+			available = OneWoW.PortalHubDetection:IsPortalUsable(fav.type, fav.id)
 		})
 	end
 
