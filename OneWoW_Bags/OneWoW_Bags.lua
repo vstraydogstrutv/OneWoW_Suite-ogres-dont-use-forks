@@ -14,7 +14,7 @@ local hooksecurefunc = hooksecurefunc
 local C_Timer = C_Timer
 local C_Bank = C_Bank
 
-OneWoW_Bags = OneWoW_Bags
+_G["OneWoW_Bags"] = OneWoW_Bags
 
 OneWoW_Bags.oneWoWHubActive = false
 OneWoW_Bags.bankOpen = false
