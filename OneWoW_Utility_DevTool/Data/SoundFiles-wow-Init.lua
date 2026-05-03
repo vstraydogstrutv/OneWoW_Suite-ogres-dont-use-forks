@@ -2,8 +2,8 @@
 -- https://wago.tools/
 local _, Addon = ...
 
-local dataVersion = { "12.0.1.66527", "12.0.1.66562", "12.0.1.66709" }
-if not Addon.ValidateDataBuildGameBuild(dataVersion) then
+Addon.soundDataVersionLIVE = { "12.0.5.67314" }
+if not Addon.ValidateDataBuildGameBuild("Sound", Addon.soundDataVersionLIVE) then
 	return
 end
 
@@ -12,7 +12,7 @@ tinsert(Addon._SoundDataLoaders, function()
 	Addon._SoundFilesVersion = dataVersion
 	Addon._SoundEntryDelimiter = ";"
 	Addon._SoundEntries = {}
-	Addon._SoundSlices = 
+	Addon._SoundSlices =
 	{
 		["ambience"] = {
 			["gluescreen"] = { 1, 5 },

@@ -50,14 +50,16 @@ local function devToolDataVersionMatches(gameVersion, expectedVersion)
 	return gameVersion == expectedVersion
 end
 
-function Addon.ValidateDataBuildGameBuild(expectedVersion)
+function Addon.ValidateDataBuildGameBuild(dataType, expectedVersion, verbose)
 	local buildVersion, buildNumber = GetBuildInfo()
 	local gameVersion = buildVersion .. "." .. buildNumber
 	if type(expectedVersion) == "string" then
 		if devToolDataVersionMatches(gameVersion, expectedVersion) then
 			return true
 		end
-		print(format("Game version %s doesn't match Data version %s", gameVersion, expectedVersion))
+		if verbose then
+			print(format("Game version %s doesn't match Data version %s (%s)", gameVersion, expectedVersion, dataType))
+		end
 		return false
 	end
 	if type(expectedVersion) == "table" then
@@ -71,11 +73,15 @@ function Addon.ValidateDataBuildGameBuild(expectedVersion)
 			end
 		end
 		if #allowed > 0 then
-			print(format("Game version %s doesn't match Data versions %s", gameVersion, table_concat(allowed, ", ")))
+			if verbose then
+				print(format("Game version %s doesn't match Data versions %s (%s)", gameVersion, table_concat(allowed, ", "), dataType))
+			end
 			return false
 		end
 	end
-	print(format("Game version %s doesn't match Data version %s", gameVersion, tostring(expectedVersion)))
+	if verbose then
+		print(format("Game version %s doesn't match Data version %s (%s)", gameVersion, tostring(expectedVersion), dataType))
+	end
 	return false
 end
 

@@ -38,6 +38,7 @@ OneWoW_Utility_DevTool.lua
 # Texture Atlas Data, Font Catalog, SoundFile Paths
 Data\Core.lua
 
+# These AllowLoadGameType lines don't work - all of them load on Mainline; loading handled in files.
 Data\AtlasInfo-wow.lua [AllowLoadGameType mainline]
 Data\AtlasInfo-wowt.lua [AllowLoadGameType mainline-test]
 
