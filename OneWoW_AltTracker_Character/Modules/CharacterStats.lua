@@ -6,6 +6,15 @@ if not OneWoW_GUI then return end
 ns.CharacterStats = {}
 local Module = ns.CharacterStats
 
+-- Stat APIs can return secret tokens in instanced / restricted contexts (12.x).
+-- Never use secrets in arithmetic, truthiness tests, or persistence-bound tables.
+---@param value any
+---@return number|nil
+local function publicNumberOrNil(value)
+    if OneWoW_GUI:IsSecret(value) then return nil end
+    return value
+end
+
 local HeroSpecs = {
     -- Priest
     [18] = "Voidweaver",
@@ -67,21 +76,33 @@ function Module:CollectData(charKey, charData)
 
     local stats = {}
 
-    stats.strength = UnitStat("player", 1)
-    stats.agility = UnitStat("player", 2)
-    stats.stamina = UnitStat("player", 3)
-    stats.intellect = UnitStat("player", 4)
+    stats.strength = publicNumberOrNil(UnitStat("player", 1))
+    stats.agility = publicNumberOrNil(UnitStat("player", 2))
+    stats.stamina = publicNumberOrNil(UnitStat("player", 3))
+    stats.intellect = publicNumberOrNil(UnitStat("player", 4))
 
     local baseArmor, effectiveArmor = UnitArmor("player")
-    stats.armor = effectiveArmor or baseArmor
+    local effArmor = publicNumberOrNil(effectiveArmor)
+    local baseArmorPub = publicNumberOrNil(baseArmor)
+    if effArmor ~= nil then
+        stats.armor = effArmor
+    else
+        stats.armor = baseArmorPub
+    end
 
-    local attackPower = UnitAttackPower("player")
-    stats.attackPower = attackPower
+    stats.attackPower = publicNumberOrNil(UnitAttackPower("player"))
 
-    stats.critChance = GetCritChance()
-    stats.haste = GetHaste()
-    stats.mastery = GetMastery()
-    stats.versatility = GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE) + GetVersatilityBonus(CR_VERSATILITY_DAMAGE_DONE)
+    stats.critChance = publicNumberOrNil(GetCritChance())
+    stats.haste = publicNumberOrNil(GetHaste())
+    stats.mastery = publicNumberOrNil(GetMastery())
+
+    local versRating = publicNumberOrNil(GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE))
+    local versExtra = publicNumberOrNil(GetVersatilityBonus(CR_VERSATILITY_DAMAGE_DONE))
+    if versRating ~= nil and versExtra ~= nil then
+        stats.versatility = versRating + versExtra
+    else
+        stats.versatility = nil
+    end
 
     local specID = GetSpecialization()
     if specID then
