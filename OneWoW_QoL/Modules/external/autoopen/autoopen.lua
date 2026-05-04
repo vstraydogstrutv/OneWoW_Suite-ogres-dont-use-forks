@@ -1,7 +1,4 @@
--- OneWoW_QoL Addon File
--- OneWoW_QoL/Modules/external/autoopen/autoopen.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -29,7 +26,7 @@ local AutoOpenModule = {
 local AO = AutoOpenModule
 
 local function GetBlacklist()
-    local addon = _G.OneWoW_QoL
+    local addon = OneWoW_QoL
     if not addon or not addon.db then return {} end
     local mods = addon.db.global.modules
     if not mods["autoopen"] then mods["autoopen"] = {} end
@@ -89,7 +86,7 @@ end
 function AutoOpenModule:OnEnable()
     if not self._frame then
         self._frame = CreateFrame("Frame", "OneWoW_QoL_AutoOpen")
-        self._frame:SetScript("OnEvent", function(frame, event, ...)
+        self._frame:SetScript("OnEvent", function(_, event)
             if event == "BAG_UPDATE_DELAYED" then
                 AO:ScanAndOpen()
             elseif event == "PLAYER_ENTERING_WORLD" then
@@ -137,10 +134,10 @@ function AutoOpenModule:OnDisable()
     self._atCrafting = false
 end
 
-function AutoOpenModule:OnToggle(toggleId, value)
+function AutoOpenModule:OnToggle()
 end
 
-function AutoOpenModule:CreateCustomDetail(detailScrollChild, yOffset, isEnabled, registerRefresh)
+function AutoOpenModule:CreateCustomDetail(detailScrollChild, yOffset, _, registerRefresh)
     local L = ns.L
 
     local blHeader = detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
