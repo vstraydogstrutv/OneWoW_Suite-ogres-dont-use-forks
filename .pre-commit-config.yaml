@@ -48,6 +48,5 @@ repos:
             | \.wow_docs/
             | \.vscode/
             | \.releases/
-            | OneWoW_Utility_DevTool/Data/(AtlasInfo|SoundFiles)
-            | OneWoW_CatalogData_Journal/Data/BurningCrusade-tables\.lua
+            | OneWoW_Bags/API/Examples/
           )

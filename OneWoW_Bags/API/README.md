@@ -5,7 +5,7 @@ Welcome! This folder contains everything you need to integrate your addon with O
 ## Quick Navigation
 
 - **[START HERE](./INTEGRATION_GUIDE.md)** - How to integrate with OneWoW Bags
-- **[API Reference](./ITEM_BUTTON_API.md)** - Complete API documentation
+- **[API Reference](../Docs/ITEM_BUTTON.md)** - Complete API documentation
 - **[Examples](./Examples/)** - Working code examples
 
 ## What is This?

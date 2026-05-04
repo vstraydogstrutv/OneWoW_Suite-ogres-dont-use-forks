@@ -24,7 +24,8 @@ if _G.OneWoW_Bags then
     }
 
     function YourAddon_ApplyColorOverlay(overlayFrame, itemLink, containerInfo)
-        if not overlayFrame or not containerInfo then
+        if not overlayFrame then return end
+        if not containerInfo then
             overlayFrame:Hide()
             return
         end

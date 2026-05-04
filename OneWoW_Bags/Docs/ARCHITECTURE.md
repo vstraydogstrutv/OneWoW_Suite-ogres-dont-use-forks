@@ -584,7 +584,7 @@ After `GUI:RefreshLayout`, visible inventory buttons fire registered callbacks (
 
 ### `API/` (documentation only)
 
-The addon folder includes `API/` (`README.md`, `ITEM_BUTTON_API.md`, `INTEGRATION_GUIDE.md`, and `Examples/*.lua`). These files are **not** listed in the TOC; they document `RegisterItemButtonCallback` and related integration patterns for other authors.
+The addon folder includes `API/` (`README.md`, `INTEGRATION_GUIDE.md`, `INDEX.md`, and `Examples/*.lua`) and the canonical reference at [`Docs/ITEM_BUTTON.md`](ITEM_BUTTON.md). These files are **not** listed in the TOC; they document `RegisterItemButtonCallback` and related integration patterns for other authors.
 
 ---
 

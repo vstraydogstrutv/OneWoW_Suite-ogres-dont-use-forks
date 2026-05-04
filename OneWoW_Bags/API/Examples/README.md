@@ -5,7 +5,7 @@ Ready-to-use examples for integrating your addon with OneWoW Bags.
 ## Quick Guide
 
 1. **[Basic.lua](#basiclua)** - Start here if you're new
-2. **[TransmogLootHelper.lua](#transmogloothelplua)** - Real-world working example
+2. **[TransmogLootHelper.lua](#transmogloothelperlua)** - Real-world working example
 3. **[ColorOverlay.lua](#coloroverlaylua)** - Add colored overlays to items
 4. **[TextBadge.lua](#textbadgelua)** - Display text badges on items
 
@@ -173,6 +173,12 @@ Buttons passed to callbacks are **always visible**. You can safely assume:
 
 You don't need to check visibility in your callback.
 
+**Exception:** when the user has **Strip Junk Overlays** enabled, OneWoW Bags
+intentionally skips callbacks for junk-classified slots and clears existing
+overlays via the OneWoW `OverlayEngine`. Your overlay will not appear on
+those slots until the user disables that setting or Alt-Show is active. See
+[Docs/ITEM_BUTTON.md#junk-strip-suppression](../../Docs/ITEM_BUTTON.md#junk-strip-suppression).
+
 ### Hiding Empty Slots
 
 ```lua
@@ -196,10 +202,14 @@ end
 
 ### Debugging
 
-Add debug prints to trace execution:
+Add debug prints to trace execution. Use the `bagID` / `slotID` arguments;
+do not read internal `owb_*` fields off the button (they are implementation
+details and may change):
 ```lua
 function YourAddon_UpdateItemButton(button, bagID, slotID)
-    print(string.format("Button: bag=%d, slot=%d, hasItem=%s", bagID, slotID, tostring(button.hasItem)))
+    local itemLocation = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
+    local hasItem = C_Item.DoesItemExist(itemLocation)
+    print(string.format("Button: bag=%d, slot=%d, hasItem=%s", bagID, slotID, tostring(hasItem)))
     -- Rest of code
 end
 ```
@@ -227,7 +237,7 @@ Button
 1. Choose the example that matches your needs
 2. Copy it to your addon
 3. Customize for your use case
-4. Read [ITEM_BUTTON_API.md](../ITEM_BUTTON_API.md) for detailed API info
+4. Read [ITEM_BUTTON.md](../../Docs/ITEM_BUTTON.md) for detailed API info
 5. Read [INTEGRATION_GUIDE.md](../INTEGRATION_GUIDE.md) for best practices
 
 Happy integrating!

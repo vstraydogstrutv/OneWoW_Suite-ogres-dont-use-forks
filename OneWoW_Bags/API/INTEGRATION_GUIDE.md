@@ -44,7 +44,7 @@ YourAddon/
 In your addon's `.toc` file, add the integration file:
 
 ```
-## Interface: 120000, 120001
+## Interface: 120005, 120007
 ## Title: Your Addon Name
 ## Version: 1.0
 
@@ -131,15 +131,24 @@ end
 
 ### 1. Error Handling
 
-Always use `pcall()` to prevent your callback from breaking OneWoW Bags:
+OneWoW Bags already wraps every callback invocation in `pcall`, so an error
+thrown from your callback will not break OneWoW Bags or other integrations.
+**Do not add another `pcall` around your code** — the dispatcher silently
+swallows errors, so an extra layer just buries them deeper.
+
+If you want visibility into your own failures, hand the error to your own
+logger or to `geterrorhandler()`:
 
 ```lua
 function MyAddon_UpdateItemButton(button, bagID, slotID)
     if not button then return end
 
-    pcall(function()
+    local ok, err = pcall(function()
         -- Your code here
     end)
+    if not ok then
+        geterrorhandler()(err)
+    end
 end
 ```
 
@@ -206,7 +215,7 @@ See [Examples](./Examples/) for more.
 
 ## API Reference
 
-See [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md) for:
+See [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md) for:
 - Complete API reference
 - Callback parameters
 - When callbacks fire
@@ -220,10 +229,12 @@ See [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md) for:
 - Check that OneWoW Bags is installed and enabled
 
 **My overlay doesn't appear:**
-- Is the button visible? Check `button:IsVisible()`
 - Is the overlay being created? Add a print statement to debug
 - Is the overlay frame sized correctly? Use `SetAllPoints()`
 - Is the frame level high enough? Use `GetFrameLevel() + 1`
+- The user has **Strip Junk Overlays** enabled and the slot is junk —
+  callbacks are intentionally skipped in that case (see
+  [Docs/ITEM_BUTTON.md#junk-strip-suppression](../Docs/ITEM_BUTTON.md#junk-strip-suppression))
 
 **Items aren't updating:**
 - Make sure you're getting the right bagID and slotID
@@ -235,6 +246,6 @@ See [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md) for:
 1. Copy `Examples/Basic.lua` to your addon
 2. Modify it with your custom logic
 3. Test by opening OneWoW Bags
-4. Read [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md) for detailed API info
+4. Read [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md) for detailed API info
 
 Happy integrating!

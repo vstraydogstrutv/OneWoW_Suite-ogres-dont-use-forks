@@ -13,7 +13,7 @@ Welcome to the OneWoW Bags integration API! This folder contains everything you 
 **Ready to code?**
 
 1. Copy an example file to your addon
-2. Reference [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md) while coding
+2. Reference [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md) while coding
 3. Test by opening OneWoW Bags
 
 ## File Overview
@@ -24,7 +24,7 @@ Welcome to the OneWoW Bags integration API! This folder contains everything you 
 |------|---------|-----------|
 | [README.md](./README.md) | Overview, quick start, common use cases | 5 min |
 | [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md) | Step-by-step setup and implementation guide | 15 min |
-| [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md) | Complete API reference and troubleshooting | Reference |
+| [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md) | Complete API reference and troubleshooting | Reference |
 | [INDEX.md](./INDEX.md) | This file - Navigation guide | 5 min |
 
 ### Examples
@@ -82,7 +82,7 @@ end
 1. Read [README.md](./README.md) - 5 minutes
 2. Copy [Examples/Basic.lua](./Examples/Basic.lua) to your addon
 3. Follow the comments and customize
-4. Reference [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md) as needed
+4. Reference [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md) as needed
 
 **Total time: 20-30 minutes**
 
@@ -99,14 +99,14 @@ end
 
 1. Copy [Examples/TransmogLootHelper.lua](./Examples/TransmogLootHelper.lua)
 2. Update function names to match your addon
-3. Reference [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md) section "Working with Items"
+3. Reference [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md#working-with-items) section "Working with Items"
 4. Test with OneWoW Bags
 
 **Total time: 10-15 minutes**
 
 ### Path 4: I Need Help
 
-1. Check [ITEM_BUTTON_API.md - Troubleshooting](./ITEM_BUTTON_API.md#troubleshooting)
+1. Check [ITEM_BUTTON.md - Troubleshooting](../Docs/ITEM_BUTTON.md#troubleshooting)
 2. Look for a similar example in [Examples/](./Examples/)
 3. Read [INTEGRATION_GUIDE.md - Best Practices](./INTEGRATION_GUIDE.md#best-practices)
 4. Debug using the patterns in [Examples/README.md](./Examples/README.md#tips--tricks)
@@ -123,11 +123,11 @@ Check [Examples/](./Examples/) folder. It has four ready-to-use examples for dif
 
 ### What API functions are available?
 
-See [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md#api-functions) for the complete API reference.
+See [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md#functions) for the complete API reference.
 
 ### How do I debug if something doesn't work?
 
-See [ITEM_BUTTON_API.md - Troubleshooting](./ITEM_BUTTON_API.md#troubleshooting) for common issues and solutions.
+See [ITEM_BUTTON.md - Troubleshooting](../Docs/ITEM_BUTTON.md#troubleshooting) for common issues and solutions.
 
 ### Can I add multiple overlays?
 
@@ -158,7 +158,6 @@ Callbacks fire whenever OneWoW Bags updates item buttons, which is frequently as
 API/
 ├── README.md                          (Overview, start here)
 ├── INTEGRATION_GUIDE.md               (Step-by-step guide)
-├── ITEM_BUTTON_API.md                 (API reference)
 ├── INDEX.md                           (This file)
 └── Examples/
     ├── README.md                      (Example descriptions)
@@ -174,7 +173,7 @@ Choose your path above and get started! You'll have a working integration in 15-
 
 ## Need Help?
 
-- **API questions?** → [ITEM_BUTTON_API.md](./ITEM_BUTTON_API.md)
+- **API questions?** → [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md)
 - **Setup questions?** → [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md)
 - **Example questions?** → [Examples/README.md](./Examples/README.md)
 - **General questions?** → [README.md](./README.md)

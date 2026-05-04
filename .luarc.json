@@ -7,6 +7,7 @@
     "OneWoW_Utility_DevTool/Data/AtlasInfo*.lua",
     "OneWoW_Utility_DevTool/Data/SoundFiles*.lua",
     "OneWoW_CatalogData_Journal/Data/BurningCrusade-tables.lua",
+    "OneWoW_Bags/API/Examples",
     "Libs/"
   ],
   "runtime.version": "Lua 5.1",

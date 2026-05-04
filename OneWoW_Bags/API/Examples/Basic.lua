@@ -15,7 +15,8 @@ local ADDON_NAME = ...
 if _G.OneWoW_Bags then
 
     function YourAddon_ApplyOverlay(overlayFrame, itemLink, containerInfo)
-        if not overlayFrame or not itemLink then
+        if not overlayFrame then return end
+        if not itemLink then
             overlayFrame:Hide()
             return
         end

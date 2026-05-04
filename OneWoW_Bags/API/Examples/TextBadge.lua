@@ -32,7 +32,8 @@ if _G.OneWoW_Bags then
     end
 
     function YourAddon_ApplyTextBadge(overlayFrame, itemLink, containerInfo)
-        if not overlayFrame or not itemLink then
+        if not overlayFrame then return end
+        if not itemLink then
             overlayFrame:Hide()
             return
         end
