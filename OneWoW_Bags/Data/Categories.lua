@@ -312,7 +312,7 @@ function Categories:GetItemCategory(bagID, slotID, itemInfo)
 
     if itemID and hyperlink then
         if db.global.enableUpgradeCategory and not disabled["1W Upgrades"] and CategoryAppliesTo("1W Upgrades", containerType, catMods) then
-            local UD = _G.OneWoW and _G.OneWoW.UpgradeDetection
+            local UD = OneWoW and OneWoW.UpgradeDetection
             if UD and UD.CheckItemUpgrade then
                 local itemLocation = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
                 if itemLocation and C_Item.DoesItemExist(itemLocation) then
@@ -328,7 +328,7 @@ function Categories:GetItemCategory(bagID, slotID, itemInfo)
         end
     end
 
-    if not disabled["Recent Items"] and CategoryAppliesTo("Recent Items", containerType, catMods) and itemID and self:SlotMatchesRecent(itemID, bagID, slotID, itemInfo) then
+    if not disabled["Recent Items"] and CategoryAppliesTo("Recent Items", containerType, catMods) and itemID and self:SlotMatchesRecent(itemID, bagID, slotID) then
         return "Recent Items"
     end
 
@@ -467,7 +467,7 @@ function Categories:SortCategories(categoryList, sortMode)
     end
 end
 
-function Categories:SlotMatchesRecent(itemID, bagID, slotID, itemInfo)
+function Categories:SlotMatchesRecent(itemID, bagID, slotID)
     if not itemID or not bagID or not slotID then return false end
     local itemLocation = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
     if itemLocation and itemLocation:IsValid() and C_Item.DoesItemExist(itemLocation) then
@@ -769,10 +769,5 @@ end
 
 PE:RegisterKeyword("recent", function(p)
     if not p.id then return false end
-    local itemInfo = {
-        hyperlink = p.hyperlink,
-        quality = p.quality,
-        count = p.count,
-    }
-    return Categories:SlotMatchesRecent(p.id, p._bagID, p._slotID, itemInfo)
+    return Categories:SlotMatchesRecent(p.id, p._bagID, p._slotID)
 end)

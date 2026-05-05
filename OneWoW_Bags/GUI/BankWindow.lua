@@ -14,11 +14,10 @@ local BankBar = OneWoW_Bags.BankBar
 local BankTabView = OneWoW_Bags.BankTabView
 local ListView = OneWoW_Bags.ListView
 
-local ipairs, pairs, pcall = ipairs, pairs, pcall
+local ipairs, pcall = ipairs, pcall
 
 local C_Bank = C_Bank
 local C_Timer = C_Timer
-local C_PlayerInteractionManager = C_PlayerInteractionManager
 local InCombatLockdown = InCombatLockdown
 local max = math.max
 
@@ -276,11 +275,11 @@ function BankGUI:EnsurePurchasePrompt()
     tabCost:SetText(COSTS_LABEL)
     tabCostFrame.TabCost = tabCost
 
-    promptFrame:SetScript("OnShow", function(self)
-        self:RegisterEvent("PLAYER_MONEY")
+    promptFrame:SetScript("OnShow", function(myself)
+        myself:RegisterEvent("PLAYER_MONEY")
     end)
-    promptFrame:SetScript("OnHide", function(self)
-        self:UnregisterEvent("PLAYER_MONEY")
+    promptFrame:SetScript("OnHide", function(myself)
+        myself:UnregisterEvent("PLAYER_MONEY")
     end)
     promptFrame:SetScript("OnEvent", function()
         if MainWindow and MainWindow:IsShown() then
@@ -552,7 +551,7 @@ function BankGUI:RefreshLayout()
     })
 end
 
-function BankGUI:OnSearchChanged(text)
+function BankGUI:OnSearchChanged()
     self:RefreshLayout()
 end
 

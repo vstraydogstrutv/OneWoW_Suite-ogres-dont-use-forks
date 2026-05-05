@@ -50,20 +50,20 @@ function BankBar:Create(parent)
 
     local withdrawBtn = OneWoW_GUI:CreateFitTextButton(bagsBarFrame, { text = BANK_WITHDRAW_MONEY_BUTTON_LABEL, height = 22 })
     withdrawBtn:SetPoint("RIGHT", bagsBarFrame, "RIGHT", -rightInsetCreate, ROW1_Y)
-    withdrawBtn:SetScript("OnClick", function(self)
+    withdrawBtn:SetScript("OnClick", function(myself)
         local controller = GetController()
         if controller and controller.ShowWithdrawMoney then
-            controller:ShowWithdrawMoney(self)
+            controller:ShowWithdrawMoney(myself)
         end
     end)
     bagsBarFrame.withdrawBtn = withdrawBtn
 
     local depositGoldBtn = OneWoW_GUI:CreateFitTextButton(bagsBarFrame, { text = BANK_DEPOSIT_MONEY_BUTTON_LABEL, height = 22 })
     depositGoldBtn:SetPoint("RIGHT", withdrawBtn, "LEFT", -4, 0)
-    depositGoldBtn:SetScript("OnClick", function(self)
+    depositGoldBtn:SetScript("OnClick", function(myself)
         local controller = GetController()
         if controller and controller.ShowDepositMoney then
-            controller:ShowDepositMoney(self)
+            controller:ShowDepositMoney(myself)
         end
     end)
     bagsBarFrame.depositGoldBtn = depositGoldBtn
@@ -84,11 +84,11 @@ function BankBar:Create(parent)
     warbandBtn:SetPoint("RIGHT", bagsBarFrame, "RIGHT", -rightInsetCreate, ROW2_Y)
     warbandBtn._defaultEnter = warbandBtn:GetScript("OnEnter")
     warbandBtn._defaultLeave = warbandBtn:GetScript("OnLeave")
-    warbandBtn:SetScript("OnEnter", function(self)
-        if not self._isActive and self._defaultEnter then self._defaultEnter(self) end
+    warbandBtn:SetScript("OnEnter", function(myself)
+        if not myself._isActive and myself._defaultEnter then myself._defaultEnter(myself) end
     end)
-    warbandBtn:SetScript("OnLeave", function(self)
-        if not self._isActive and self._defaultLeave then self._defaultLeave(self) end
+    warbandBtn:SetScript("OnLeave", function(myself)
+        if not myself._isActive and myself._defaultLeave then myself._defaultLeave(myself) end
     end)
     warbandBtn:SetScript("OnClick", function()
         local controller = GetController()
@@ -102,11 +102,11 @@ function BankBar:Create(parent)
     personalBtn:SetPoint("RIGHT", warbandBtn, "LEFT", -4, 0)
     personalBtn._defaultEnter = personalBtn:GetScript("OnEnter")
     personalBtn._defaultLeave = personalBtn:GetScript("OnLeave")
-    personalBtn:SetScript("OnEnter", function(self)
-        if not self._isActive and self._defaultEnter then self._defaultEnter(self) end
+    personalBtn:SetScript("OnEnter", function(myself)
+        if not myself._isActive and myself._defaultEnter then myself._defaultEnter(myself) end
     end)
-    personalBtn:SetScript("OnLeave", function(self)
-        if not self._isActive and self._defaultLeave then self._defaultLeave(self) end
+    personalBtn:SetScript("OnLeave", function(myself)
+        if not myself._isActive and myself._defaultLeave then myself._defaultLeave(myself) end
     end)
     personalBtn:SetScript("OnClick", function()
         local controller = GetController()
@@ -208,15 +208,15 @@ function BankBar:CreateTabButton(parent, bagID, tabIndex, isPurchased)
     btn._skinnedIcon = icon
     OneWoW_GUI:SkinIconFrame(btn, { preset = "clean" })
 
-    btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        if self.isPurchased then
-            local tabData = BankBar:GetTabData(self.bagID, self.tabIndex)
-            local tabName = (tabData and tabData.name and tabData.name ~= "") and tabData.name or GUILDBANK_TAB_NUMBER:format(self.tabIndex)
+    btn:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
+        if myself.isPurchased then
+            local tabData = BankBar:GetTabData(myself.bagID, myself.tabIndex)
+            local tabName = (tabData and tabData.name and tabData.name ~= "") and tabData.name or GUILDBANK_TAB_NUMBER:format(myself.tabIndex)
             GameTooltip:SetText(tabName, 1, 1, 1)
-            if BankSet.slots[self.bagID] then
+            if BankSet.slots[myself.bagID] then
                 local usedSlots, totalSlots = 0, 0
-                for _, button in pairs(BankSet.slots[self.bagID]) do
+                for _, button in pairs(BankSet.slots[myself.bagID]) do
                     totalSlots = totalSlots + 1
                     if button.owb_hasItem then usedSlots = usedSlots + 1 end
                 end
@@ -261,7 +261,7 @@ function BankBar:CreateTabButton(parent, bagID, tabIndex, isPurchased)
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     btn:SetAttribute("overrideBankType", nil)
     btn.GetBankTypeForTabPurchase = nil
-    btn:SetScript("OnClick", function(self, mouseButton)
+    btn:SetScript("OnClick", function(myself, mouseButton)
         if OneWoW_Bags.BankGUI and OneWoW_Bags.BankGUI.ClearForcedPurchasePrompt then
             OneWoW_Bags.BankGUI:ClearForcedPurchasePrompt()
         end
@@ -269,11 +269,11 @@ function BankBar:CreateTabButton(parent, bagID, tabIndex, isPurchased)
         if mouseButton == "RightButton" and OneWoW_Bags.bankOpen then
             local showWarband = db.global.bankShowWarband
             local bType = showWarband and Enum.BankType.Account or Enum.BankType.Character
-            local tabData = BankBar:GetTabData(self.bagID, self.tabIndex)
+            local tabData = BankBar:GetTabData(myself.bagID, myself.tabIndex)
             if BankFrame and BankFrame.BankPanel then BankFrame.BankPanel:SetBankType(bType) end
             local menu = BankBar:GetTabSettingsMenu()
             if menu then
-                local capturedBagID = self.bagID
+                local capturedBagID = myself.bagID
                 local capturedTabData = tabData
                 local dataFunc = function()
                     return {
@@ -290,14 +290,14 @@ function BankBar:CreateTabButton(parent, bagID, tabIndex, isPurchased)
                 end
                 menu.GetBankPanel = dataFunc
                 menu.GetBankFrame = dataFunc
-                menu:OnOpenTabSettingsRequested(self.bagID)
+                menu:OnOpenTabSettingsRequested(myself.bagID)
             end
             return
         end
 
         local controller = GetController()
         if controller and controller.ToggleSelectedTab then
-            controller:ToggleSelectedTab(self.bagID)
+            controller:ToggleSelectedTab(myself.bagID)
         end
     end)
 
@@ -318,7 +318,7 @@ function BankBar:GetTabSettingsMenu()
     return bagsBarFrame._tabSettingsMenu
 end
 
-function BankBar:GetTabData(bagID, tabIndex)
+function BankBar:GetTabData(_, tabIndex)
     local db = GetDB()
     local showWarband = db.global.bankShowWarband
     local bankType = showWarband and Enum.BankType.Account or Enum.BankType.Character

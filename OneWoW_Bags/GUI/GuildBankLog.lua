@@ -84,7 +84,7 @@ function GuildBankLog:Init()
     textContent = CreateFrame("Frame", scrollName .. "Content", scrollFrame)
     textContent:SetHeight(1)
     scrollFrame:SetScrollChild(textContent)
-    scrollFrame:HookScript("OnSizeChanged", function(self, w)
+    scrollFrame:HookScript("OnSizeChanged", function(_, w)
         textContent:SetWidth(w)
         if logText then
             logText:SetWidth(w - 8)
@@ -102,7 +102,7 @@ function GuildBankLog:Init()
         eventFrame = CreateFrame("Frame")
     end
     eventFrame:RegisterEvent("GUILDBANKLOG_UPDATE")
-    eventFrame:SetScript("OnEvent", function(self, event)
+    eventFrame:SetScript("OnEvent", function()
         if logFrame and logFrame:IsShown() then
             GuildBankLog:Refresh()
         end

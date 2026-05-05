@@ -15,7 +15,7 @@ local ListView = OneWoW_Bags.ListView
 local GuildBankLog = OneWoW_Bags.GuildBankLog
 
 local pcall, print = pcall, print
-local pairs, ipairs = pairs, ipairs
+local ipairs = ipairs
 local InCombatLockdown = InCombatLockdown
 local C_Timer = C_Timer
 local C_PlayerInteractionManager = C_PlayerInteractionManager
@@ -219,7 +219,7 @@ function GuildBankGUI:RefreshLayout()
     })
 end
 
-function GuildBankGUI:OnSearchChanged(text)
+function GuildBankGUI:OnSearchChanged()
     self:RefreshLayout()
 end
 

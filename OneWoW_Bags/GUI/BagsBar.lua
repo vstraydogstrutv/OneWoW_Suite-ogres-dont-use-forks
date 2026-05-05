@@ -3,7 +3,7 @@ local _, OneWoW_Bags = ...
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
-local StorageAPI = _G.StorageAPI
+local StorageAPI = StorageAPI
 
 local Constants = OneWoW_Bags.Constants
 local L = OneWoW_Bags.L
@@ -212,15 +212,15 @@ function BagsBar:Create(parent)
     addTrackerBtn:SetScript("OnClick", function()
         ShowTrackerDialog()
     end)
-    addTrackerBtn:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    addTrackerBtn:HookScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
         GameTooltip:SetText(L["TRACKER_ADD"], 1, 1, 1)
         GameTooltip:AddLine(L["TRACKER_ADD_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
     addTrackerBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
     addTrackerBtn:RegisterForDrag("LeftButton")
-    addTrackerBtn:SetScript("OnReceiveDrag", function(self)
+    addTrackerBtn:SetScript("OnReceiveDrag", function()
         local cursorType, itemID, itemLink = GetCursorInfo()
         if cursorType ~= "item" then return end
         local id = itemID
@@ -252,8 +252,8 @@ function BagsBar:Create(parent)
             controller:SortBags()
         end
     end)
-    cleanupBagsBtn:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    cleanupBagsBtn:HookScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
         GameTooltip:SetText(L["CLEANUP"], 1, 1, 1)
         GameTooltip:Show()
     end)
@@ -272,8 +272,8 @@ function BagsBar:Create(parent)
             controller:ToggleCategoryManager()
         end
     end)
-    categoriesBtn:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    categoriesBtn:HookScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
         GameTooltip:SetText(L["CATEGORY_MANAGER_BTN"], 1, 1, 1)
         GameTooltip:Show()
     end)
@@ -290,8 +290,8 @@ function BagsBar:Create(parent)
     BagsBar:UpdateGoldDisplay()
 
     goldBtn:SetWidth(max(goldText:GetStringWidth() + 4, 60))
-    goldBtn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    goldBtn:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
         BagsBar:ShowGoldTooltip()
         GameTooltip:Show()
     end)
@@ -330,7 +330,7 @@ end
 function BagsBar:ShowGoldTooltip()
     local personalCopper = GetMoney()
 
-    if not _G.OneWoW_AltTracker_Character_API then
+    if not OneWoW_AltTracker_Character_API then
         GameTooltip:SetText(L["GOLD_TOOLTIP_PERSONAL"], 1, 0.82, 0)
         GameTooltip:AddLine(OneWoW_GUI:FormatGold(personalCopper), 1, 1, 1)
         GameTooltip:AddLine(" ")
@@ -600,9 +600,9 @@ function BagsBar:CreateTrackerFrame(parentFrame, index, entry)
     local capturedIdx = index
     local reorder = EnsureTrackerReorder()
     tf:EnableMouse(true)
-    tf:SetScript("OnMouseDown", function(self, button)
+    tf:SetScript("OnMouseDown", function(myself, button)
         if button == "RightButton" then
-            MenuUtil.CreateContextMenu(self, function(_, rootDescription)
+            MenuUtil.CreateContextMenu(myself, function(_, rootDescription)
                 rootDescription:CreateButton(L["TRACKER_MENU_REMOVE"], function()
                     local controller = GetController()
                     if controller and controller.RemoveTrackedEntry then
@@ -615,11 +615,11 @@ function BagsBar:CreateTrackerFrame(parentFrame, index, entry)
     reorder:Attach(tf, capturedIdx)
 
     if entry.type == "item" then
-        tf:SetScript("OnEnter", function(self)
+        tf:SetScript("OnEnter", function(myself)
             if reorder:IsActive() then
                 return
             end
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetOwner(myself, "ANCHOR_TOP")
             GameTooltip:SetItemByID(entry.id)
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine(L["TRACKER_HINT_DRAG_REORDER"], 0.7, 0.7, 0.7, true)
@@ -627,11 +627,11 @@ function BagsBar:CreateTrackerFrame(parentFrame, index, entry)
             GameTooltip:Show()
         end)
     elseif entry.type == "currency" then
-        tf:SetScript("OnEnter", function(self)
+        tf:SetScript("OnEnter", function(myself)
             if reorder:IsActive() then
                 return
             end
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetOwner(myself, "ANCHOR_TOP")
             GameTooltip:SetCurrencyByID(entry.id)
             GameTooltip:AddLine(" ")
             GameTooltip:AddLine(L["TRACKER_HINT_DRAG_REORDER"], 0.7, 0.7, 0.7, true)
@@ -756,20 +756,20 @@ function BagsBar:CreateBagButton(parent, bagIndex, xOffset)
     btn:SetPoint("LEFT", parent, "LEFT", xOffset, 0)
     btn.bagIndex = bagIndex
 
-    btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    btn:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
         local controller = GetController()
         local selected = controller and controller.GetSelectedBag and controller:GetSelectedBag() or nil
-        if self.bagIndex == 0 then
+        if myself.bagIndex == 0 then
             GameTooltip:SetText(BACKPACK_TOOLTIP or L["BAG_BACKPACK"], 1.0, 1.0, 1.0)
         else
-            local invID = C_Container.ContainerIDToInventoryID(self.bagIndex)
+            local invID = C_Container.ContainerIDToInventoryID(myself.bagIndex)
             if invID then
                 GameTooltip:SetInventoryItem("player", invID)
             end
         end
-        if selected == self.bagIndex then
-            GameTooltip:AddLine(L["BAG_FILTER_ACTIVE"]:format(L["BAG_" .. self.bagIndex] or ("Bag " .. self.bagIndex)), 0.5, 1, 0.5, true)
+        if selected == myself.bagIndex then
+            GameTooltip:AddLine(L["BAG_FILTER_ACTIVE"]:format(L["BAG_" .. myself.bagIndex] or ("Bag " .. myself.bagIndex)), 0.5, 1, 0.5, true)
             GameTooltip:AddLine(L["BAG_SHOW_ALL"], 0.7, 0.7, 0.7, true)
         else
             GameTooltip:AddLine(L["BAG_SHOW_ONLY"], 0.7, 0.7, 0.7, true)
@@ -777,10 +777,10 @@ function BagsBar:CreateBagButton(parent, bagIndex, xOffset)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    btn:SetScript("OnClick", function(self)
+    btn:SetScript("OnClick", function(myself)
         local controller = GetController()
         if controller and controller.ToggleSelectedBag then
-            controller:ToggleSelectedBag(self.bagIndex)
+            controller:ToggleSelectedBag(myself.bagIndex)
         end
     end)
 

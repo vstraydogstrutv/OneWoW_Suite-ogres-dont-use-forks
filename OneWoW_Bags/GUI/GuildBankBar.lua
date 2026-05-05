@@ -43,20 +43,20 @@ function GuildBankBar:Create(parent)
 
     local withdrawBtn = OneWoW_GUI:CreateFitTextButton(bagsBarFrame, { text = BANK_WITHDRAW_MONEY_BUTTON_LABEL, height = 22 })
     withdrawBtn:SetPoint("RIGHT", bagsBarFrame, "RIGHT", -rightInsetCreate, ROW1_Y)
-    withdrawBtn:SetScript("OnClick", function(self)
+    withdrawBtn:SetScript("OnClick", function(myself)
         local controller = GetController()
         if controller and controller.ShowWithdrawMoney then
-            controller:ShowWithdrawMoney(self)
+            controller:ShowWithdrawMoney(myself)
         end
     end)
     bagsBarFrame.withdrawBtn = withdrawBtn
 
     local depositBtn = OneWoW_GUI:CreateFitTextButton(bagsBarFrame, { text = BANK_DEPOSIT_MONEY_BUTTON_LABEL, height = 22 })
     depositBtn:SetPoint("RIGHT", withdrawBtn, "LEFT", -4, 0)
-    depositBtn:SetScript("OnClick", function(self)
+    depositBtn:SetScript("OnClick", function(myself)
         local controller = GetController()
         if controller and controller.ShowDepositMoney then
-            controller:ShowDepositMoney(self)
+            controller:ShowDepositMoney(myself)
         end
     end)
     bagsBarFrame.depositBtn = depositBtn
@@ -149,7 +149,6 @@ function GuildBankBar:BuildTabButtons()
 end
 
 function GuildBankBar:CreateTabButton(parent, tabID, tabName, tabIcon, isViewable)
-    local db = GetDB()
     local btn = CreateFrame("Button", "OneWoW_GuildBankTab" .. tabID, parent)
     btn:SetSize(26, 26)
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -173,12 +172,12 @@ function GuildBankBar:CreateTabButton(parent, tabID, tabName, tabIcon, isViewabl
     btn._skinnedIcon = icon
     OneWoW_GUI:SkinIconFrame(btn, { preset = "clean" })
 
-    btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        local tName = self.tabName or format(GUILDBANK_TAB_NUMBER, self.tabID)
+    btn:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
+        local tName = myself.tabName or format(GUILDBANK_TAB_NUMBER, self.tabID)
         GameTooltip:SetText(tName, 1, 1, 1)
-        if self.isViewable then
-            local _, _, _, _, _, remainingWithdrawals = GetGuildBankTabInfo(self.tabID)
+        if myself.isViewable then
+            local _, _, _, _, _, remainingWithdrawals = GetGuildBankTabInfo(myself.tabID)
             if remainingWithdrawals == -1 then
                 GameTooltip:AddLine(L["GUILD_BANK_WITHDRAWALS_UNLIMITED"], 0.4, 1, 0.4)
             elseif remainingWithdrawals and remainingWithdrawals > 0 then
@@ -187,10 +186,10 @@ function GuildBankBar:CreateTabButton(parent, tabID, tabName, tabIcon, isViewabl
                 GameTooltip:AddLine(L["GUILD_BANK_WITHDRAWALS_NONE"], 1, 0.4, 0.4)
             end
             local GBSet = OneWoW_Bags.GuildBankSet
-            if GBSet and GBSet.slots[self.tabID] then
+            if GBSet and GBSet.slots[myself.tabID] then
                 local usedSlots = 0
-                local totalSlots = #GBSet.slots[self.tabID]
-                for _, button in pairs(GBSet.slots[self.tabID]) do
+                local totalSlots = #GBSet.slots[myself.tabID]
+                for _, button in pairs(GBSet.slots[myself.tabID]) do
                     if button.owb_hasItem then usedSlots = usedSlots + 1 end
                 end
                 GameTooltip:AddLine(format(L["GUILD_BANK_SLOTS_FORMAT"], usedSlots, totalSlots), 0.7, 0.7, 0.7)
@@ -200,27 +199,27 @@ function GuildBankBar:CreateTabButton(parent, tabID, tabName, tabIcon, isViewabl
     end)
     btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    btn:SetScript("OnClick", function(self, mouseButton)
-        if not self.isViewable then return end
+    btn:SetScript("OnClick", function(myself, mouseButton)
+        if not myself.isViewable then return end
 
         if mouseButton == "RightButton" and OneWoW_Bags.guildBankOpen then
             local controller = GetController()
             if controller and controller.OpenTabEditor then
-                controller:OpenTabEditor(self.tabID)
+                controller:OpenTabEditor(myself.tabID)
             end
             return
         end
 
         local controller = GetController()
         if controller and controller.ToggleSelectedTab then
-            controller:ToggleSelectedTab(self.tabID)
+            controller:ToggleSelectedTab(myself.tabID)
         end
     end)
 
     return btn
 end
 
-function GuildBankBar:OpenTabEditor(tabID)
+function GuildBankBar:OpenTabEditor()
     if not GuildBankPopupFrame then return end
     if not CanEditGuildBankTabInfo() then return end
     GuildBankPopupFrame:Hide()

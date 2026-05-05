@@ -58,7 +58,7 @@ SettingsController.appliers = {
         self.addon:RequestLayoutRefresh("all")
         self.addon.CategoryManagerUI:Refresh()
     end,
-    showKeywordsInTooltips = function(self, db, value)
+    showKeywordsInTooltips = function(_, db, value)
         db.global.showKeywordsInTooltips = value
     end,
     moveRecentToTop = function(self, db, value)
@@ -91,10 +91,10 @@ SettingsController.appliers = {
         db.global.showNewItems = value
         self.addon:RequestVisualRefresh("bags")
     end,
-    overlaysEnabled = function(self, db, value)
-        if not _G.OneWoW or not _G.OneWoW.SettingsFeatureRegistry then return end
-        _G.OneWoW.SettingsFeatureRegistry:SetEnabled("overlays", "general", value)
-        _G.OneWoW.OverlayEngine:Refresh()
+    overlaysEnabled = function(_, _, value)
+        if not OneWoW or not OneWoW.SettingsFeatureRegistry then return end
+        OneWoW.SettingsFeatureRegistry:SetEnabled("overlays", "general", value)
+        OneWoW.OverlayEngine:Refresh()
     end,
     showScrollBar = function(self, db, value)
         db.global.hideScrollBar = not value
@@ -177,19 +177,19 @@ SettingsController.appliers = {
         db.global.stripJunkOverlays = value
         self.addon:RequestVisualRefresh("bags")
     end,
-    altToShow = function(self, db, value)
+    altToShow = function(_, db, value)
         db.global.altToShow = value
     end,
-    autoOpen = function(self, db, value)
+    autoOpen = function(_, db, value)
         db.global.autoOpen = value
     end,
-    autoClose = function(self, db, value)
+    autoClose = function(_, db, value)
         db.global.autoClose = value
     end,
-    autoOpenWithBank = function(self, db, value)
+    autoOpenWithBank = function(_, db, value)
         db.global.autoOpenWithBank = value
     end,
-    locked = function(self, db, value)
+    locked = function(_, db, value)
         db.global.locked = value
     end,
     enableBankUI = function(self, db, value)
@@ -274,7 +274,7 @@ SettingsController.appliers = {
             self.addon:RequestLayoutRefresh("bank")
         end)
     end,
-    bankLocked = function(self, db, value)
+    bankLocked = function(_, db, value)
         db.global.bankLocked = value
     end,
     warbandBankRarityColor = function(self, db, value)
