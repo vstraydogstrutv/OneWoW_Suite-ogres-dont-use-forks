@@ -1,4 +1,7 @@
-local ADDON_NAME, OneWoW = ...
+local _, OneWoW = ...
+
+local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+if not OneWoW_GUI then return end
 
 local ID_LABELS = {
     itemID           = "ItemID",
@@ -49,31 +52,11 @@ local ID_ORDER = {
     "vignetteID", "visualID",
 }
 
-local EXPANSION_FALLBACKS = {
-    [0]  = "Classic Era",
-    [1]  = "The Burning Crusade",
-    [2]  = "Wrath of the Lich King",
-    [3]  = "Cataclysm",
-    [4]  = "Mists of Pandaria",
-    [5]  = "Warlords of Draenor",
-    [6]  = "Legion",
-    [7]  = "Battle for Azeroth",
-    [8]  = "Shadowlands",
-    [9]  = "Dragonflight",
-    [10] = "The War Within",
-    [11] = "Midnight",
-    [12] = "The Last Titan",
-}
-
 local EXPANSION_VERSIONS = {
     [0] = "v1", [1] = "v2", [2] = "v3", [3] = "v4", [4] = "v5",
     [5] = "v6", [6] = "v7", [7] = "v8", [8] = "v9", [9] = "v10",
     [10] = "v11", [11] = "v12", [12] = "v13",
 }
-
-local function GetExpansionName(id)
-    return _G["EXPANSION_NAME" .. id] or EXPANSION_FALLBACKS[id]
-end
 
 local function GetExpansionVersion(id)
     return EXPANSION_VERSIONS[id]
@@ -82,7 +65,7 @@ end
 local GetItemLinkByGUID = C_Item and C_Item.GetItemLinkByGUID
 local GetItemGem = C_Item and C_Item.GetItemGem
 
-local function ExtractItemIDs(itemID, tooltip, data, itemLinkFromTooltip)
+local function ExtractItemIDs(itemID, _, data, itemLinkFromTooltip)
     local detectedIDs = {}
 
     if itemID then
@@ -182,7 +165,7 @@ local function FormatIDLine(idKey, idValue)
     end
 
     if idKey == "expansionID" then
-        local expName = GetExpansionName(idValue)
+        local expName = OneWoW_GUI:GetExpansionName(idValue)
         local expVersion = GetExpansionVersion(idValue)
         if expName then
             return {
@@ -283,7 +266,7 @@ local function TechnicalIDsProvider(tooltip, context)
 
     elseif context.type == "currency" and context.currencyID then
         detectedIDs.currencyID = context.currencyID
-        
+
     elseif context.type == "pet" and context.petID then
         detectedIDs.petID = context.petID
         local _, iconID, _, npcID = C_PetJournal.GetPetInfoBySpeciesID(context.petID)
@@ -409,8 +392,7 @@ local function AddHookIDBlock(tooltip, idPairs)
     local hasSection = OneWoW.TooltipEngine:TooltipHasOneWoWSection(tooltip)
     if not hasSection then
         tooltip:AddLine(" ")
-        local _gui = LibStub and LibStub("OneWoW_GUI-1.0", true)
-        local iconTheme = (_gui and _gui:GetSetting("minimap.theme")) or "neutral"
+        local iconTheme = OneWoW_GUI:GetSetting("minimap.theme") or "neutral"
         local addonIcon = CreateTextureMarkup("Interface\\AddOns\\OneWoW\\Media\\OneWoWMini-" .. iconTheme, 64, 64, 16, 16, 0, 1, 0, 1)
         local hc = TOOLTIP_CONFIG.headerColor or {0.2, 1.0, 0.2}
         tooltip:AddLine(addonIcon .. " OneWoW", hc[1], hc[2], hc[3])
@@ -507,16 +489,15 @@ if VignettePinMixin then
 end
 
 -- Quest list (side of map) and quest POIs on map
-if C_QuestLog and C_QuestLog.GetQuestIDForLogIndex then
-    hook(_G, "QuestMapLogTitleButton_OnEnter", function(btn)
-        if btn and btn.questLogIndex then
-            local questID = C_QuestLog.GetQuestIDForLogIndex(btn.questLogIndex)
-            if questID then
-                AddHookIDBlock(GameTooltip, { questID = questID })
-            end
+hook(_G, "QuestMapLogTitleButton_OnEnter", function(btn)
+    if btn and btn.questLogIndex then
+        local questID = C_QuestLog.GetQuestIDForLogIndex(btn.questLogIndex)
+        if questID then
+            AddHookIDBlock(GameTooltip, { questID = questID })
         end
-    end)
-end
+    end
+end)
+
 hook(_G, "TaskPOI_OnEnter", function(btn)
     if btn and btn.questID then
         AddHookIDBlock(GameTooltip, { questID = btn.questID })
@@ -524,20 +505,18 @@ hook(_G, "TaskPOI_OnEnter", function(btn)
 end)
 
 -- Companion pet (SetCompanionPet = pet instance ID)
-if C_PetJournal and C_PetJournal.GetPetInfoByPetID then
-    hook(GameTooltip, "SetCompanionPet", function(tooltip, petId)
-        if not petId then return end
-        local speciesId = select(1, C_PetJournal.GetPetInfoByPetID(petId))
-        local ids = { companionID = petId }
-        if speciesId and C_PetJournal.GetPetInfoBySpeciesID then
-            ids.petID = speciesId
-            local _, iconID, _, npcID = C_PetJournal.GetPetInfoBySpeciesID(speciesId)
-            if npcID then ids.npcID = npcID end
-            if iconID then ids.iconID = iconID end
-        end
-        AddHookIDBlock(tooltip, ids)
-    end)
-end
+hook(GameTooltip, "SetCompanionPet", function(tooltip, petId)
+    if not petId then return end
+    local speciesId = select(1, C_PetJournal.GetPetInfoByPetID(petId))
+    local ids = { companionID = petId }
+    if speciesId then
+        ids.petID = speciesId
+        local _, iconID, _, npcID = C_PetJournal.GetPetInfoBySpeciesID(speciesId)
+        if npcID then ids.npcID = npcID end
+        if iconID then ids.iconID = iconID end
+    end
+    AddHookIDBlock(tooltip, ids)
+end)
 
 -- Action bar: pets/macros on action bar (GetActionInfo returns type, id)
 if GetActionInfo then
@@ -560,20 +539,17 @@ if GetActionInfo then
 end
 
 -- Artifact
-if C_ArtifactUI and C_ArtifactUI.GetPowerInfo then
-    hook(GameTooltip, "SetArtifactPowerByID", function(tooltip, powerID)
-        if not powerID then return end
-        local powerInfo = C_ArtifactUI.GetPowerInfo(powerID)
-        local ids = { artifactPowerID = powerID }
-        if powerInfo and powerInfo.spellID then ids.spellID = powerInfo.spellID end
-        AddHookIDBlock(tooltip, ids)
-    end)
-end
+hook(GameTooltip, "SetArtifactPowerByID", function(tooltip, powerID)
+    if not powerID then return end
+    local powerInfo = C_ArtifactUI.GetPowerInfo(powerID)
+    local ids = { artifactPowerID = powerID }
+    if powerInfo and powerInfo.spellID then ids.spellID = powerInfo.spellID end
+    AddHookIDBlock(tooltip, ids)
+end)
 
 -- Wardrobe (Blizzard_Collections)
 local function hookWardrobe()
-    if not CollectionWardrobeUtil or not CollectionWardrobeUtil.SetAppearanceTooltip then return end
-    hooksecurefunc(CollectionWardrobeUtil, "SetAppearanceTooltip", function(frame, sources)
+    hooksecurefunc(CollectionWardrobeUtil, "SetAppearanceTooltip", function(_, sources)
         if not sources or #sources == 0 then return end
         local visualIDs, sourceIDs, itemIDs = {}, {}, {}
         for i = 1, #sources do
@@ -597,7 +573,8 @@ local function hookWardrobe()
         if next(ids) then AddHookIDBlock(GameTooltip, ids) end
     end)
 end
-if C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_Collections") then
+
+if C_AddOns.IsAddOnLoaded("Blizzard_Collections") then
     hookWardrobe()
 else
     local frame = CreateFrame("Frame")
@@ -612,8 +589,7 @@ end
 
 -- Achievement criteria (Blizzard_AchievementUI)
 local function hookAchievementCriteria()
-    if not AchievementTemplateMixin then return end
-    local objectiveFrame = AchievementTemplateMixin.GetObjectiveFrame and AchievementTemplateMixin:GetObjectiveFrame()
+    local objectiveFrame = AchievementTemplateMixin:GetObjectiveFrame()
     if not objectiveFrame then return end
     local hooked = {}
     local function hookCriteria(index)
@@ -626,8 +602,8 @@ local function hookAchievementCriteria()
                 if not btn or not btn.id then return end
                 local achievementId = btn.id
                 local idx = criteriaFrame.___index or index
-                if GetAchievementNumCriteria and idx > GetAchievementNumCriteria(achievementId) then return end
-                local criteriaId = GetAchievementCriteriaInfo and select(10, GetAchievementCriteriaInfo(achievementId, idx))
+                if idx > GetAchievementNumCriteria(achievementId) then return end
+                local criteriaId = select(10, GetAchievementCriteriaInfo(achievementId, idx))
                 if criteriaId then
                     if not GameTooltip:IsVisible() then
                         GameTooltip:SetOwner(btn:GetParent(), "ANCHOR_NONE")
@@ -664,7 +640,7 @@ local function hookAchievementCriteria()
         end)
     end
 end
-if C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_AchievementUI") then
+if C_AddOns.IsAddOnLoaded("Blizzard_AchievementUI") then
     hookAchievementCriteria()
 else
     local frame = CreateFrame("Frame")
@@ -678,15 +654,14 @@ else
 end
 
 -- AbilityID (Pet battles, Garrison)
-if C_PetBattles and C_PetBattles.GetAbilityInfo then
-    hook(_G, "PetBattleAbilityButton_OnEnter", function(btn)
-        if not btn or btn:GetEffectiveAlpha() <= 0 then return end
-        local petIndex = C_PetBattles.GetActivePet and C_PetBattles.GetActivePet(LE_BATTLE_PET_ALLY)
-        if not petIndex then return end
-        local id = select(1, C_PetBattles.GetAbilityInfo(LE_BATTLE_PET_ALLY, petIndex, btn:GetID()))
-        if id then AddHookIDBlock(PetBattlePrimaryAbilityTooltip or GameTooltip, { abilityID = id }) end
-    end)
-end
+hook(_G, "PetBattleAbilityButton_OnEnter", function(btn)
+    if not btn or btn:GetEffectiveAlpha() <= 0 then return end
+    local petIndex = C_PetBattles.GetActivePet(LE_BATTLE_PET_ALLY)
+    if not petIndex then return end
+    local id = select(1, C_PetBattles.GetAbilityInfo(LE_BATTLE_PET_ALLY, petIndex, btn:GetID()))
+    if id then AddHookIDBlock(PetBattlePrimaryAbilityTooltip or GameTooltip, { abilityID = id }) end
+end)
+
 local function hookGarrisonAbility()
     if AddAutoCombatSpellToTooltip then
         hook(_G, "AddAutoCombatSpellToTooltip", function(tooltip, info)
@@ -696,7 +671,7 @@ local function hookGarrisonAbility()
         end)
     end
 end
-if C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_GarrisonUI") then
+if C_AddOns.IsAddOnLoaded("Blizzard_GarrisonUI") then
     hookGarrisonAbility()
 else
     local frame = CreateFrame("Frame")
