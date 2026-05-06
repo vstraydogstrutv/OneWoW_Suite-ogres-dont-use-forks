@@ -1,15 +1,6 @@
 {
   "wow_docs_root": ".",
   "sources": {
-    "blizzard-interface-resources": {
-      "url": "https://github.com/Ketho/BlizzardInterfaceResources.git",
-      "branch": "live",
-      "scan_roots": [
-        "Resources"
-      ],
-      "last_synced_commit": "df7396513cf05fdb56e90a47967d03cf534092a0",
-      "last_synced_date": "2026-05-02"
-    },
     "wow-ui-source": {
       "url": "https://github.com/Gethe/wow-ui-source.git",
       "branch": "live",
@@ -17,7 +8,16 @@
         "Interface/AddOns"
       ],
       "last_synced_commit": "ff2d0be9ca06c50c14d0bb811f182fa15b4eec3c",
-      "last_synced_date": "2026-05-02"
+      "last_synced_date": "2026-05-06"
+    },
+    "blizzard-interface-resources": {
+      "url": "https://github.com/Ketho/BlizzardInterfaceResources.git",
+      "branch": "live",
+      "scan_roots": [
+        "Resources"
+      ],
+      "last_synced_commit": "df7396513cf05fdb56e90a47967d03cf534092a0",
+      "last_synced_date": "2026-05-06"
     }
   },
   "default_source": "wow-ui-source",
@@ -51,6 +51,7 @@
     "general/Constants.lua": "Interface/AddOns/Blizzard_FrameXMLBase/Constants.lua",
     "general/CursorConstDocumentation.lua": "Interface/AddOns/Blizzard_APIDocumentationGenerated/CursorConstDocumentation.lua",
     "general/CursorDocumentation.lua": "Interface/AddOns/Blizzard_APIDocumentationGenerated/CursorDocumentation.lua",
+    "general/ExpansionUtil.lua": "Interface/AddOns/Blizzard_FrameXMLUtil/Mainline/ExpansionUtil.lua",
     "general/FormattingUtil.lua": "Interface/AddOns/Blizzard_SharedXML/FormattingUtil.lua",
     "general/GameCursorDocumentation.lua": "Interface/AddOns/Blizzard_APIDocumentationGenerated/GameCursorDocumentation.lua",
     "general/GlobalStrings.lua": {
