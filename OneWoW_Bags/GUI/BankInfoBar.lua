@@ -14,7 +14,6 @@ OneWoW_Bags.BankInfoBar = OneWoW_Bags.InfoBarFactory:Create({
         { mode = "tab",      labelKey = "VIEW_BAG" },
     },
     expacFilter = {
-        bagSetKey  = "BankSet",
         filterKey  = "activeBankExpansionFilter",
         settingFn  = function() return OneWoW_Bags.BankController:Get("expansionFilter") == true end,
     },

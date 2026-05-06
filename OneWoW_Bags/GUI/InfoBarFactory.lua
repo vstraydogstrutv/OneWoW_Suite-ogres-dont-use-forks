@@ -8,8 +8,8 @@ local L = OneWoW_Bags.L
 local WH = OneWoW_Bags.WindowHelpers
 
 local floor = math.floor
-local ipairs, pairs = ipairs, pairs
-local tinsert, sort = tinsert, sort
+local ipairs = ipairs
+local tinsert = tinsert
 
 OneWoW_Bags.InfoBarFactory = {}
 
@@ -172,27 +172,12 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             OneWoW_GUI:AttachFilterMenu(expacDropdown, {
                 searchable = false,
                 buildItems = function()
-                    local BagSet = OneWoW_Bags[ef.bagSetKey]
                     local items = { { text = L["EXPAC_FILTER_ALL"], value = "ALL" } }
-                    if not BagSet or not BagSet.isBuilt or not WH then return items end
-                    local found = {}
-                    for _, btn in ipairs(BagSet:GetAllButtons()) do
-                        if btn.owb_hasItem and btn.owb_itemInfo and btn.owb_itemInfo.itemID then
-                            local expansionID = WH:ResolveExpansionID(btn.owb_itemInfo, btn.owb_bagID, btn.owb_slotID)
-                            if expansionID ~= -1 then
-                                found[expansionID] = true
-                            end
+                    for _, id in ipairs(WH:GetKnownExpansionIDs()) do
+                        local expansionName = OneWoW_GUI:GetExpansionName(id)
+                        if expansionName then
+                            tinsert(items, { text = expansionName, value = id })
                         end
-                    end
-                    local ids = {}
-                    for id in pairs(found) do tinsert(ids, id) end
-                    if #ids == 0 then
-                        ids = WH:GetKnownExpansionIDs()
-                    else
-                        sort(ids)
-                    end
-                    for _, id in ipairs(ids) do
-                        tinsert(items, { text = WH:GetExpansionName(id) or L["EXPANSION_FALLBACK"]:format(id), value = id })
                     end
                     return items
                 end,
@@ -378,7 +363,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
                 if activeFilter == nil then
                     infoBarFrame.expacText:SetText(L["EXPAC_FILTER_BTN"])
                 else
-                    local expName = WH and WH:GetExpansionName(activeFilter) or tostring(activeFilter)
+                    local expName = OneWoW_GUI:GetExpansionName(activeFilter)
                     infoBarFrame.expacText:SetText(expName)
                 end
             end

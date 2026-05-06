@@ -94,19 +94,19 @@ function WH:CreateWindowShell(config)
     mainWindow:EnableMouse(true)
     mainWindow:RegisterForDrag("LeftButton")
     mainWindow:SetScript("OnDragStart", mainWindow.StartMoving)
-    mainWindow:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        WH:SnapFrameToPixel(self)
-        OneWoW_GUI:SaveWindowPosition(self, position)
-        if config.onDragStop then config.onDragStop(self) end
+    mainWindow:SetScript("OnDragStop", function(myself)
+        myself:StopMovingOrSizing()
+        WH:SnapFrameToPixel(myself)
+        OneWoW_GUI:SaveWindowPosition(myself, position)
+        if config.onDragStop then config.onDragStop(myself) end
     end)
     mainWindow:SetClampedToScreen(true)
     mainWindow:SetClampRectInsets(0, 0, 0, 0)
     mainWindow:SetFrameStrata(config.frameStrata or "MEDIUM")
     mainWindow:SetToplevel(true)
     mainWindow:SetScript("OnHide", config.onHide)
-    mainWindow:HookScript("OnShow", function(self)
-        WH:SnapFrameToPixel(self)
+    mainWindow:HookScript("OnShow", function(myself)
+        WH:SnapFrameToPixel(myself)
     end)
     mainWindow:Hide()
 
@@ -140,8 +140,8 @@ function WH:CreateWindowTitleBar(mainWindow, config)
             end
             settingsBtn:SetScript("OnClick", config.onSettings)
             local settingsTooltipTitle = config.settingsText
-            settingsBtn:HookScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            settingsBtn:HookScript("OnEnter", function(myself)
+                GameTooltip:SetOwner(myself, "ANCHOR_TOP")
                 GameTooltip:SetText(settingsTooltipTitle, 1, 1, 1)
                 GameTooltip:Show()
             end)
@@ -169,12 +169,12 @@ function WH:AttachShoppingListCartButton(titleBar, settingsBtn)
         cartBtn:SetHighlightAtlas("Perks-ShoppingCart")
         cartBtn:GetHighlightTexture():SetAlpha(0.5)
         cartBtn:SetScript("OnClick", function()
-            if _G.OneWoW_ShoppingList and _G.OneWoW_ShoppingList.MainWindow then
-                _G.OneWoW_ShoppingList.MainWindow:Toggle()
+            if OneWoW_ShoppingList and OneWoW_ShoppingList.MainWindow then
+                OneWoW_ShoppingList.MainWindow:Toggle()
             end
         end)
-        cartBtn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        cartBtn:SetScript("OnEnter", function(myself)
+            GameTooltip:SetOwner(myself, "ANCHOR_TOP")
             GameTooltip:SetText(L["SHOPPING_LIST"], 1, 1, 1)
             GameTooltip:AddLine(L["SHOPPING_LIST_DESC"], 0.8, 0.8, 0.8, true)
             GameTooltip:Show()
@@ -189,7 +189,7 @@ function WH:AttachShoppingListCartButton(titleBar, settingsBtn)
         end
     end
 
-    if _G.OneWoW_ShoppingList then
+    if OneWoW_ShoppingList then
         createCart()
     else
         local f = CreateFrame("Frame")
@@ -234,15 +234,15 @@ function WH:CreateScrollScaffold(config)
     local contentFrame = CreateFrame("Frame", config.scrollName .. "Content", scrollFrame)
     contentFrame:SetHeight(1)
     scrollFrame:SetScrollChild(contentFrame)
-    scrollFrame:HookScript("OnSizeChanged", function(self, width)
+    scrollFrame:HookScript("OnSizeChanged", function(_, width)
         contentFrame:SetWidth(width)
     end)
 
     local rawSetVerticalScroll = scrollFrame.SetVerticalScroll
-    scrollFrame.SetVerticalScroll = function(self, value)
-        local scale = self:GetEffectiveScale()
+    scrollFrame.SetVerticalScroll = function(myself, value)
+        local scale = myself:GetEffectiveScale()
         local snapped = PixelUtil.GetNearestPixelSize(value or 0, scale, 0)
-        rawSetVerticalScroll(self, snapped)
+        rawSetVerticalScroll(myself, snapped)
     end
 
     return scrollFrame, contentFrame
@@ -273,22 +273,11 @@ function WH:RegisterDeferredCleanup(config)
     return eventFrame
 end
 
-function WH:GetExpansionName(expansionID)
-    if expansionID == nil then
-        return nil
-    end
-    return _G["EXPANSION_NAME" .. expansionID]
-end
-
 function WH:GetKnownExpansionIDs()
-    local expansionEnum = Enum and Enum.ExpansionLevel
     local ids = {}
     local seen = {}
-    if type(expansionEnum) ~= "table" then
-        return ids
-    end
 
-    for _, expansionID in pairs(expansionEnum) do
+    for _, expansionID in pairs(Enum.ExpansionLevel) do
         if type(expansionID) == "number" and not seen[expansionID] then
             seen[expansionID] = true
             tinsert(ids, expansionID)
@@ -375,12 +364,12 @@ function WH:SetupResizeButton(mainWindow, gui, positionDBKey)
     resizeBtn:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
     resizeBtn:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
     resizeBtn:SetFrameLevel(mainWindow:GetFrameLevel() + 10)
-    resizeBtn:SetScript("OnMouseDown", function(self, button)
+    resizeBtn:SetScript("OnMouseDown", function(_, button)
         if button == "LeftButton" then
             mainWindow:StartSizing("BOTTOM")
         end
     end)
-    resizeBtn:SetScript("OnMouseUp", function(self)
+    resizeBtn:SetScript("OnMouseUp", function()
         local db = OneWoW_Bags:GetDB()
         mainWindow:StopMovingOrSizing()
         WH:SnapFrameToPixel(mainWindow)

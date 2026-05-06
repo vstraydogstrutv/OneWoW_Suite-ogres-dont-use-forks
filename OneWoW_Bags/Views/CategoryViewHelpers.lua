@@ -305,7 +305,6 @@ function H.GetSectionedLayout(itemsByCategory, containerType)
         return H.GetSortedCategoryNames(itemsByCategory)
     end
 
-    local catMods = db.global.categoryModifications
     local g = db.global
     local disabled = g.disabledCategories
     local function IsCategoryVisible(catName)
@@ -578,7 +577,7 @@ function H.FilterItems(categoryName, itemsByCategory, filterSet, catMods, sortBu
     return items
 end
 
-function H.GroupItemsBy(items, groupBy, PE, L)
+function H.GroupItemsBy(items, groupBy, PE)
     local groups = {}
     local groupOrder = {}
 
@@ -589,7 +588,7 @@ function H.GroupItemsBy(items, groupBy, PE, L)
                 local props = PE:BuildProps(btn.owb_itemInfo.itemID, btn.owb_bagID, btn.owb_slotID, btn.owb_itemInfo)
                 expID = props.expansionID or -1
             end
-            local expName = PE:GetExpansionName(expID) or L["UNKNOWN_EXPANSION"]
+            local expName = OneWoW_GUI:GetExpansionName(expID)
             if not groups[expName] then
                 groups[expName] = {}
                 tinsert(groupOrder, { name = expName, sortKey = expID })
@@ -748,7 +747,7 @@ function H.LayoutCategoryContent(config)
                 section.content:SetHeight(1)
 
                 if groupBy and groupBy ~= "none" then
-                    local groups, groupOrder = H.GroupItemsBy(items, groupBy, PE, L)
+                    local groups, groupOrder = H.GroupItemsBy(items, groupBy, PE)
 
                     if groups and groupOrder then
                         local subY = 0

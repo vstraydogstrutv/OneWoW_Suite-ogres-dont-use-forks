@@ -17,7 +17,6 @@ OneWoW_Bags.InfoBar = OneWoW_Bags.InfoBarFactory:Create({
         { mode = "bag",      labelKey = "VIEW_BAG" },
     },
     expacFilter = {
-        bagSetKey  = "BagSet",
         filterKey  = "activeExpansionFilter",
         settingKey = "enableExpansionFilter",
     },
