@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -9,7 +9,7 @@ local TD = ns.TrackerData
 local pairs, ipairs, type, tostring, tonumber = pairs, ipairs, type, tostring, tonumber
 local tinsert, tremove, wipe, sort = tinsert, tremove, wipe, sort
 local format, strsplit, strtrim, strlower = format, strsplit, strtrim, strlower
-local time, date = time, date
+local time = time
 
 local LIST_TYPES = {
     "guide",
@@ -107,28 +107,19 @@ local function GenerateKey(prefix)
 end
 
 local function GetDB()
-    local addon = _G.OneWoW_Trackers
-    if not addon or not addon.db then return nil end
-    return addon.db
+    return OneWoW_Trackers.db
 end
 
 function TD:GetListsDB()
-    local db = GetDB()
-    if not db then return {} end
-    return db.global.trackerLists or {}
+    return GetDB().global.trackerLists
 end
 
 function TD:GetProgressDB()
-    local db = GetDB()
-    if not db then return {} end
-    return db.char.trackerProgress or {}
+    return GetDB().char.trackerProgress
 end
 
 function TD:GetGlobalProgressDB()
-    local db = GetDB()
-    if not db then return {} end
-    db.global.trackerGlobalProgress = db.global.trackerGlobalProgress or {}
-    return db.global.trackerGlobalProgress
+    return GetDB().global.trackerGlobalProgress
 end
 
 function TD:IsListAccountWide(listID)
@@ -143,18 +134,9 @@ function TD:GetProgressDBForList(listID)
     return self:GetProgressDB()
 end
 
-function TD:GetDashboardDB()
-    local db = GetDB()
-    if not db then return {} end
-    return db.char.trackerDashboard or {}
-end
-
 function TD:CreateList(opts)
     opts = opts or {}
     local db = GetDB()
-    if not db then return nil end
-
-    db.global.trackerLists = db.global.trackerLists or {}
 
     local list = {
         id            = GenerateID("tl"),
@@ -205,17 +187,9 @@ end
 
 function TD:RemoveList(listID)
     local db = GetDB()
-    if not db then return false end
-    if not db.global.trackerLists then return false end
-
     db.global.trackerLists[listID] = nil
-
-    if db.char.trackerProgress then
-        db.char.trackerProgress[listID] = nil
-    end
-    if db.global.trackerGlobalProgress then
-        db.global.trackerGlobalProgress[listID] = nil
-    end
+    db.char.trackerProgress[listID] = nil
+    db.global.trackerGlobalProgress[listID] = nil
     return true
 end
 
@@ -224,8 +198,6 @@ function TD:DuplicateList(listID)
     if not original then return nil end
 
     local db = GetDB()
-    if not db then return nil end
-
     local copy = CopyTable(original)
     copy.id = GenerateID("tl")
     copy.title = copy.title .. " (Copy)"
@@ -641,12 +613,11 @@ end
 
 function TD:CheckResets()
     local db = GetDB()
-    if not db then return end
 
     local now = GetServerTime()
 
-    local lastWeekly = db.char.trackerLastWeeklyReset or 0
-    local lastDaily  = db.char.trackerLastDailyReset or 0
+    local lastWeekly = db.char.trackerLastWeeklyReset
+    local lastDaily  = db.char.trackerLastDailyReset
 
     local secondsUntilDaily = C_DateAndTime.GetSecondsUntilDailyReset()
     local lastDailyReset = now + secondsUntilDaily - 86400
@@ -711,8 +682,6 @@ function TD:CheckResets()
 end
 
 function TD:CheckCustomTimerResets()
-    local db = GetDB()
-    if not db then return end
     local now = time()
 
     local lists = self:GetListsDB()
@@ -841,8 +810,6 @@ function TD:ImportList(str)
     if not expanded or not expanded.title then return nil end
 
     local db = GetDB()
-    if not db then return nil end
-    db.global.trackerLists = db.global.trackerLists or {}
 
     expanded.id = GenerateID("tl")
     expanded.created = time()
@@ -1081,10 +1048,6 @@ end
 function TD:CreateListFromParsed(parsed)
     if not parsed then return nil end
 
-    local db = GetDB()
-    if not db then return nil end
-    db.global.trackerLists = db.global.trackerLists or {}
-
     local list = self:CreateList({
         title = parsed.title,
         description = parsed.description,
@@ -1219,13 +1182,9 @@ function TD:AreStepDependenciesMet(listID, step)
 end
 
 function TD:SetActiveList(listID)
-    local db = GetDB()
-    if not db then return end
-    db.char.trackerActiveList = listID
+    GetDB().char.trackerActiveList = listID
 end
 
 function TD:GetActiveList()
-    local db = GetDB()
-    if not db then return nil end
-    return db.char.trackerActiveList
+    return GetDB().char.trackerActiveList
 end

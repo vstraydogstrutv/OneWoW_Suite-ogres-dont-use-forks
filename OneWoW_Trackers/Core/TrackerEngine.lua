@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -7,8 +7,8 @@ ns.TrackerEngine = {}
 local TE = ns.TrackerEngine
 local TD
 
-local pairs, ipairs, type, tonumber, tostring = pairs, ipairs, type, tonumber, tostring
-local tinsert, tremove, wipe = tinsert, tremove, wipe
+local pairs, ipairs, tonumber, tostring = pairs, ipairs, tonumber, tostring
+local tinsert, wipe = tinsert, wipe
 local format = format
 local time = time
 
@@ -375,14 +375,14 @@ function TE:EvaluateObjective(obj)
     elseif ot == "mount" then
         local mountID = tonumber(op.mountID)
         if mountID then
-            local name, spellID, icon, isActive, isUsable, sourceType, isFavorite, isFactionSpecific, faction, shouldHideOnChar, isCollected = C_MountJournal.GetMountInfoByID(mountID)
+            local _, _, _, _, _, _, _, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
             return isCollected and 1 or 0, 1
         end
 
     elseif ot == "pet" then
         local speciesID = tonumber(op.speciesID)
         if speciesID then
-            local numCollected, limit = C_PetJournal.GetNumCollectedInfo(speciesID)
+            local numCollected = C_PetJournal.GetNumCollectedInfo(speciesID)
             return numCollected or 0, 1
         end
 
@@ -449,7 +449,7 @@ function TE:EvaluateObjective(obj)
             local prof1, prof2 = GetProfessions()
             for _, idx in ipairs({ prof1, prof2 }) do
                 if idx then
-                    local name, icon, skillLevel, maxSkillLevel, numAbilities, spellOffset, skillLineID = GetProfessionInfo(idx)
+                    local _, _, skillLevel, maxSkillLevel, _, _, skillLineID = GetProfessionInfo(idx)
                     if skillLineID == baseID then
                         return skillLevel or 0, maxSkillLevel or 1
                     end
@@ -572,7 +572,7 @@ function TE:EvaluateStep(listID, sectionKey, step)
         sp.completed = allComplete
         sp.current = allComplete and 1 or 0
     else
-        local current, max = self:EvaluateObjective({
+        local current = self:EvaluateObjective({
             type = step.trackType,
             params = step.trackParams or {},
         })
@@ -688,7 +688,7 @@ local function OnNPCInteract(npcID)
     DeferRefresh()
 end
 
-local function OnEvent(self, event, ...)
+local function OnEvent(_, event, ...)
     if event == "PLAYER_ENTERING_WORLD" then
         TD:CheckResets()
         TD:CheckCustomTimerResets()
@@ -819,7 +819,7 @@ function TE:GetPinnedWindow(listID)
 end
 
 function TE:RefreshAllPinnedWindows()
-    for listID, win in pairs(pinnedWindows) do
+    for _, win in pairs(pinnedWindows) do
         if win and win.Refresh then
             win:Refresh()
         end

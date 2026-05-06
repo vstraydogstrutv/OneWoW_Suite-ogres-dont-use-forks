@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -7,7 +7,7 @@ if not OneWoW_GUI then return end
 ns.TrackerPinned = {}
 local TP = ns.TrackerPinned
 
-local pairs, ipairs, format, tinsert, tremove, wipe, math_max = pairs, ipairs, format, tinsert, tremove, wipe, math.max
+local ipairs, format, tinsert, tremove, math_max = ipairs, format, tinsert, tremove, math.max
 
 local BACKDROP_SOFT = OneWoW_GUI.Constants.BACKDROP_SOFT or OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS
 
@@ -191,7 +191,7 @@ function TP:Create(listID)
     scrollContainer:SetPoint("TOPLEFT", titleBar, "BOTTOMLEFT", 0, -2)
     scrollContainer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 14)
 
-    local scrollFrame, scrollChild = OneWoW_GUI:CreateScrollFrame(scrollContainer, {})
+    local _, scrollChild = OneWoW_GUI:CreateScrollFrame(scrollContainer, {})
 
     local activeSections = {}
     local activeSteps = {}
@@ -343,8 +343,8 @@ function TP:Create(listID)
                     end)
                 end
 
-                stepRow:SetScript("OnEnter", function(self)
-                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                stepRow:SetScript("OnEnter", function(myself)
+                    GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
                     ns.TrackerEngine:BuildStepTooltip(GameTooltip, listID, sec.key, step)
                     GameTooltip:Show()
                 end)

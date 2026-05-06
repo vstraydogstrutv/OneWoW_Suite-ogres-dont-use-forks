@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -12,27 +12,23 @@ local UI = ns.UI
 local mainFrame
 
 local function GetDB()
-    local addon = _G.OneWoW_Trackers
-    if not addon or not addon.db then return nil end
-    return addon.db
+    return OneWoW_Trackers.db
 end
 
 local function SavePosition()
-    local db = GetDB()
-    if not db or not mainFrame then return end
+    if not mainFrame then return end
     local point, _, relativePoint, xOfs, yOfs = mainFrame:GetPoint()
-    db.global.mainFramePosition = { point = point, relativePoint = relativePoint, x = xOfs, y = yOfs }
+    GetDB().global.mainFramePosition = { point = point, relativePoint = relativePoint, x = xOfs, y = yOfs }
 end
 
 local function SaveSize()
-    local db = GetDB()
-    if not db or not mainFrame then return end
-    db.global.mainFrameSize = { width = mainFrame:GetWidth(), height = mainFrame:GetHeight() }
+    if not mainFrame then return end
+    GetDB().global.mainFrameSize = { width = mainFrame:GetWidth(), height = mainFrame:GetHeight() }
 end
 
 local function RestorePosition()
+    if not mainFrame then return end
     local db = GetDB()
-    if not db or not mainFrame then return end
     local sz = db.global.mainFrameSize
     if sz and sz.width and sz.height then
         mainFrame:SetSize(sz.width, sz.height)
@@ -63,9 +59,9 @@ function UI:Create()
     mainFrame:EnableMouse(true)
     mainFrame:SetClampedToScreen(true)
     mainFrame:RegisterForDrag("LeftButton")
-    mainFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    mainFrame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
+    mainFrame:SetScript("OnDragStart", function(myself) myself:StartMoving() end)
+    mainFrame:SetScript("OnDragStop", function(myself)
+        myself:StopMovingOrSizing()
         SavePosition()
     end)
 
@@ -149,14 +145,14 @@ function UI:Create()
             btn:SetPoint("TOPLEFT", prevBtn, "TOPRIGHT", SM, 0)
         end
         btn:SetScript("OnClick", function() SelectTab(def.name) end)
-        btn:SetScript("OnEnter", function(self)
+        btn:SetScript("OnEnter", function(myself)
             if not tabFrames[def.name]:IsShown() then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
             end
         end)
-        btn:SetScript("OnLeave", function(self)
+        btn:SetScript("OnLeave", function(myself)
             if not tabFrames[def.name]:IsShown() then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
             end
         end)
         tabButtons[def.name] = btn

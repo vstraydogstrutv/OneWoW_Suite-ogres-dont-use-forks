@@ -5,16 +5,15 @@ if not OneWoW_GUI then return end
 
 local DB = OneWoW_GUI.DB
 
-OneWoW_Trackers = {}
-local addon = OneWoW_Trackers
+-- We use _G[""] form since _G.OneWoW_Trackers would get caught in pre-commit hook.
+_G["OneWoW_Trackers"] = ns
 
-ns.addon = addon
 ns.oneWoWHubActive = false
 ns.mode = "standalone"
 ns.UI = ns.UI or {}
 
 local function ApplyTheme()
-    OneWoW_GUI:ApplyTheme(addon)
+    OneWoW_GUI:ApplyTheme(ns)
     if ns.TrackerEngine and ns.TrackerEngine.RefreshAllPinnedWindows then
         ns.TrackerEngine:RefreshAllPinnedWindows()
     end
@@ -31,9 +30,9 @@ local function ApplyLanguage()
 end
 
 local function RegisterAsOneWoWModule()
-    if not _G.OneWoW or not _G.OneWoW.RegisterModule then return false end
+    if not OneWoW or not OneWoW.RegisterModule then return false end
 
-    _G.OneWoW:RegisterModule({
+    OneWoW:RegisterModule({
         name        = "trackers",
         displayName = function() return ns.L["ADDON_TITLE_SHORT"] or "Trackers" end,
         addonName   = "OneWoW_Trackers",
@@ -53,39 +52,37 @@ local function RegisterAsOneWoWModule()
 end
 
 local function OnInitialize()
-    addon.db = ns.Database:Initialize()
+    ns:InitializeDatabase()
 
-    ns.Database:MigrateFromNotes(addon.db)
-
-    OneWoW_GUI:MigrateSettings(addon.db.global)
+    OneWoW_GUI:MigrateSettings(ns.db.global)
 
     ApplyTheme()
     ApplyLanguage()
 
-    local function slashHandler(msg) addon:SlashCommandHandler(msg) end
+    local function slashHandler(msg) ns:SlashCommandHandler(msg) end
     DB:RegisterSlashCommand("1wt",     slashHandler)
     DB:RegisterSlashCommand("owt",     slashHandler)
     DB:RegisterSlashCommand("tracker", slashHandler)
 
-    OneWoW_GUI:RegisterSettingsCallback("OnThemeChanged", addon, function(self2)
+    OneWoW_GUI:RegisterSettingsCallback("OnThemeChanged", ns, function()
         ApplyTheme()
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", addon, function(self2)
+    OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", ns, function()
         ApplyLanguage()
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnFontChanged", addon, function(self2)
+    OneWoW_GUI:RegisterSettingsCallback("OnFontChanged", ns, function()
         if ns.TrackerEngine and ns.TrackerEngine.RefreshAllPinnedWindows then
             ns.TrackerEngine:RefreshAllPinnedWindows()
         end
         if ns.UI and ns.UI.RefreshTab then ns.UI.RefreshTab() end
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnFontSizeChanged", addon, function(self2)
+    OneWoW_GUI:RegisterSettingsCallback("OnFontSizeChanged", ns, function()
         if ns.TrackerEngine and ns.TrackerEngine.RefreshAllPinnedWindows then
             ns.TrackerEngine:RefreshAllPinnedWindows()
         end
         if ns.UI and ns.UI.RefreshTab then ns.UI.RefreshTab() end
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnMoneyDisplayChanged", addon, function()
+    OneWoW_GUI:RegisterSettingsCallback("OnMoneyDisplayChanged", ns, function()
         if ns.TrackerEngine and ns.TrackerEngine.RefreshAllPinnedWindows then
             ns.TrackerEngine:RefreshAllPinnedWindows()
         end
@@ -95,17 +92,17 @@ local function OnInitialize()
     end)
 
     local _ver = OneWoW_GUI:GetAddonVersion(addonName)
-    if _G.OneWoW and _G.OneWoW.RegisterLoadComponent then
-        _G.OneWoW:RegisterLoadComponent("Trackers", _ver, "/1wt")
+    if OneWoW and OneWoW.RegisterLoadComponent then
+        OneWoW:RegisterLoadComponent("Trackers", _ver, "/1wt")
     end
 end
 
 local function OnEnable()
     RegisterAsOneWoWModule()
 
-    if _G.OneWoW then
-        _G.OneWoW:RegisterMinimap("OneWoW_Trackers",
-            (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_TRACKERS"]) or "Open Trackers",
+    if OneWoW then
+        OneWoW:RegisterMinimap("OneWoW_Trackers",
+            (OneWoW.L and OneWoW.L["CTX_OPEN_TRACKERS"]) or "Open Trackers",
             "trackers",
             nil
         )
@@ -113,10 +110,6 @@ local function OnEnable()
 
     if ns.TrackerEngine and ns.TrackerEngine.Initialize then
         ns.TrackerEngine:Initialize()
-    end
-
-    if ns.TrackerMigration and ns.TrackerMigration.MigrateAll then
-        ns.TrackerMigration:MigrateAll()
     end
 
     if ns.TrackerPresets and ns.TrackerPresets.LoadBundledContent then
@@ -128,20 +121,20 @@ local function OnEnable()
     end
 end
 
-function addon:SlashCommandHandler(input)
+function ns:SlashCommandHandler()
     if ns.mode == "notes_subtab" then
-        if ns.oneWoWHubActive and _G.OneWoW and _G.OneWoW.GUI then
-            _G.OneWoW.GUI:Show("notes", "tracker")
-        elseif _G.OneWoW_Notes then
-            if _G.OneWoW_Notes.SlashCommandHandler then
-                _G.OneWoW_Notes:SlashCommandHandler("")
+        if ns.oneWoWHubActive and OneWoW and OneWoW.GUI then
+            OneWoW.GUI:Show("notes", "tracker")
+        elseif OneWoW_Notes then
+            if OneWoW_Notes.SlashCommandHandler then
+                OneWoW_Notes:SlashCommandHandler("")
             end
         end
         return
     end
 
-    if ns.oneWoWHubActive and _G.OneWoW and _G.OneWoW.GUI then
-        _G.OneWoW.GUI:Show("trackers")
+    if ns.oneWoWHubActive and OneWoW and OneWoW.GUI then
+        OneWoW.GUI:Show("trackers")
         return
     end
 
@@ -150,7 +143,7 @@ function addon:SlashCommandHandler(input)
     end
 end
 
-function addon:FormatResetTimer(seconds)
+function ns:FormatResetTimer(seconds)
     if seconds <= 0 then return "<0m>" end
     local days = math.floor(seconds / 86400)
     local hours = math.floor((seconds % 86400) / 3600)
@@ -180,4 +173,3 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
     end
 end)
-

@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -9,8 +9,7 @@ ns.UI = ns.UI or {}
 local BACKDROP_INNER_NO_INSETS = OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS
 local BACKDROP_SIMPLE = OneWoW_GUI.Constants.BACKDROP_SIMPLE
 
-local pairs, ipairs, format, tinsert, tremove, wipe, sort = pairs, ipairs, format, tinsert, tremove, wipe, sort
-local strlower = strlower
+local ipairs, format, tinsert, wipe = ipairs, format, tinsert, wipe
 
 local LIST_TYPE_ICONS = {
     guide     = "Interface\\Icons\\INV_Misc_Book_09",
@@ -755,7 +754,7 @@ function ns.UI.CreateTrackerTab(parent)
                     checkBtn:SetChecked(isComplete)
 
                     if step.trackType == "manual" and (not step.objectives or #step.objectives == 0) then
-                        checkBtn:SetScript("OnClick", function(self)
+                        checkBtn:SetScript("OnClick", function()
                             TD:ToggleStepComplete(list.id, sec.key, step.key)
                             parent.RefreshList()
                             parent.ShowDetail(list.id)
@@ -903,7 +902,7 @@ function ns.UI.CreateTrackerTab(parent)
                             TE:RefreshAllPinnedWindows()
                         end
                     elseif button == "RightButton" then
-                        MenuUtil.CreateContextMenu(stepRow, function(ownerRegion, rootDescription)
+                        MenuUtil.CreateContextMenu(stepRow, function(_, rootDescription)
                             rootDescription:CreateTitle(step.label or "Step")
                             rootDescription:CreateButton(L["TRACKER_EDIT"] or "Edit", function()
                                 if ns.TrackerEditor then

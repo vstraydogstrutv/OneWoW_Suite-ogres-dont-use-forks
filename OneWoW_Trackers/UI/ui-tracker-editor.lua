@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -7,11 +7,10 @@ if not OneWoW_GUI then return end
 ns.TrackerEditor = {}
 local TE_UI = ns.TrackerEditor
 
-local format, tinsert, tonumber, tostring = format, tinsert, tonumber, tostring
-local strtrim, sort, wipe, pairs, ipairs = strtrim, sort, wipe, pairs, ipairs
+local tinsert, tonumber, tostring = tinsert, tonumber, tostring
+local strtrim, sort, pairs, ipairs = strtrim, sort, pairs, ipairs
 
 local BACKDROP_SOFT = OneWoW_GUI.Constants.BACKDROP_SOFT or OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS
-local BACKDROP_INNER = OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS
 local BACKDROP_SIMPLE = OneWoW_GUI.Constants.BACKDROP_SIMPLE
 
 local function MakeLabel(parent, text, x, y)
@@ -322,14 +321,14 @@ function TE_UI:ShowNewListDialog(callback)
         descFS:SetText(qs.desc)
         descFS:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
 
-        card:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+        card:SetScript("OnEnter", function(myself)
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
             titleFS:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
         end)
-        card:SetScript("OnLeave", function(self)
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+        card:SetScript("OnLeave", function(myself)
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
             titleFS:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
         end)
 
@@ -385,12 +384,12 @@ function TE_UI:ShowNewListDialog(callback)
     impDesc:SetText("Paste an exported list or guide markup shared by another player.")
     impDesc:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
 
-    importCard:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+    importCard:SetScript("OnEnter", function(myself)
+        myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
         impTitle:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
     end)
-    importCard:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+    importCard:SetScript("OnLeave", function(myself)
+        myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
         impTitle:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
     end)
     importCard:SetScript("OnClick", function()
@@ -548,8 +547,8 @@ function TE_UI:ShowProfessionPicker(callback)
     for _, prof in ipairs(profPresets) do
         local check = OneWoW_GUI:CreateCheckbox(content, { label = prof.name })
         check:SetPoint("TOPLEFT", content, "TOPLEFT", 10, yOfs)
-        check:SetScript("OnClick", function(self)
-            if self:GetChecked() then
+        check:SetScript("OnClick", function(myself)
+            if myself:GetChecked() then
                 dialog._selectedProfs[prof.name] = true
             else
                 dialog._selectedProfs[prof.name] = nil
@@ -1029,7 +1028,7 @@ function TE_UI:ShowStepEditor(listID, sectionKey, stepKey, callback)
         card:SetHeight(cardHeight)
         card._expanded = isActive
 
-        card:SetScript("OnClick", function(self)
+        card:SetScript("OnClick", function(myself)
             if #cat.fields == 0 then
                 local stepName = strtrim(nameBox:GetText() or "")
                 if stepName == "" then stepName = cat.title end
@@ -1056,30 +1055,30 @@ function TE_UI:ShowStepEditor(listID, sectionKey, stepKey, callback)
                 return
             end
 
-            if not self._expanded then
-                CollapseAllExcept(self)
-                self._expanded = true
-                if self._fieldRow then self._fieldRow:Show() end
-                if self._saveFieldBtn then self._saveFieldBtn:Show() end
+            if not myself._expanded then
+                CollapseAllExcept(myself)
+                myself._expanded = true
+                if myself._fieldRow then myself._fieldRow:Show() end
+                if myself._saveFieldBtn then myself._saveFieldBtn:Show() end
                 local newH = 28 + (descHeight) + 8 + 42 + 30
-                self:SetHeight(newH)
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
-                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+                myself:SetHeight(newH)
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+                myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
                 titleFS:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
                 ReflowCards()
                 return
             end
         end)
 
-        card:SetScript("OnEnter", function(self)
-            if not self._expanded then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        card:SetScript("OnEnter", function(myself)
+            if not myself._expanded then
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
                 titleFS:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
             end
         end)
-        card:SetScript("OnLeave", function(self)
-            if not self._expanded then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+        card:SetScript("OnLeave", function(myself)
+            if not myself._expanded then
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
                 titleFS:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
             end
         end)

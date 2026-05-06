@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -120,9 +120,7 @@ function TM:MigrateGuide(oldGuide)
     local TD = ns.TrackerData
     if not TD then return nil end
 
-    local db = _G.OneWoW_Trackers and _G.OneWoW_Trackers.db
-    if not db then return nil end
-    db.global.trackerLists = db.global.trackerLists or {}
+    local db = OneWoW_Trackers.db
 
     local newList = {
         id            = GenerateID("tl"),
@@ -213,9 +211,7 @@ function TM:MigrateRoutine(oldRoutine)
     local TD = ns.TrackerData
     if not TD then return nil end
 
-    local db = _G.OneWoW_Trackers and _G.OneWoW_Trackers.db
-    if not db then return nil end
-    db.global.trackerLists = db.global.trackerLists or {}
+    local db = OneWoW_Trackers.db
 
     local hasWeekly = false
     local hasDaily = false
@@ -322,8 +318,7 @@ function TM:MigrateRoutine(oldRoutine)
 end
 
 function TM:MigrateAll()
-    local db = _G.OneWoW_Trackers and _G.OneWoW_Trackers.db
-    if not db then return 0, 0 end
+    local db = OneWoW_Trackers.db
 
     if db.global.guidesRoutinesCleanedUp then
         return 0, 0
@@ -336,7 +331,7 @@ function TM:MigrateAll()
     local hasRoutines = db.global.routines and next(db.global.routines)
 
     if hasGuides or hasRoutines then
-        local existingLists = db.global.trackerLists or {}
+        local existingLists = db.global.trackerLists
         local alreadyMigrated = {}
         for _, list in pairs(existingLists) do
             if list._migratedFrom then
@@ -377,19 +372,15 @@ function TM:MigrateAll()
         end
     end
 
-    for listID, list in pairs(db.global.trackerLists or {}) do
+    for listID, list in pairs(db.global.trackerLists) do
         if list._migratedFrom then
             local mType = list._migratedFrom:match("^(%w+):")
             if mType == "guide" and list.author == "OneWoW" then
                 db.global.trackerLists[listID] = nil
-                if db.char.trackerProgress then
-                    db.char.trackerProgress[listID] = nil
-                end
+                db.char.trackerProgress[listID] = nil
             elseif mType == "routine" and list.title == "Getting Started with Routines" then
                 db.global.trackerLists[listID] = nil
-                if db.char.trackerProgress then
-                    db.char.trackerProgress[listID] = nil
-                end
+                db.char.trackerProgress[listID] = nil
             end
         end
     end

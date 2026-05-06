@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -10,7 +10,6 @@ local TMU = ns.TrackerMapUI
 local format = format
 
 local initialized = false
-local updateTicker = nil
 
 function TMU:Initialize()
     if initialized then return end
@@ -25,7 +24,7 @@ function TMU:Initialize()
         end)
     end
 
-    updateTicker = C_Timer.NewTicker(5, function()
+    C_Timer.NewTicker(5, function()
         if ns.TrackerMap then
             ns.TrackerMap:UpdateMinimapPins()
         end
@@ -119,7 +118,6 @@ function TMU:ShowWaypointList(listID)
             incomplete = incomplete + 1
         end
 
-        local mapInfo = wp.mapID and C_Map.GetMapInfo(wp.mapID)
         local coordStr = format("%.1f, %.1f", wp.x or 0, wp.y or 0)
         local coordLabel = OneWoW_GUI:CreateFS(row, 10)
         coordLabel:SetPoint("RIGHT", row, "RIGHT", -4, 0)

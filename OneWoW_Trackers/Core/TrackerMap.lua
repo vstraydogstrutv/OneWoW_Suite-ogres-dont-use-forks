@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -7,107 +7,18 @@ ns.TrackerMap = {}
 local TM = ns.TrackerMap
 
 local pairs, ipairs, format = pairs, ipairs, format
-local tinsert, tremove, wipe = tinsert, tremove, wipe
+local tinsert, wipe = tinsert, wipe
 local math_sqrt = math.sqrt
 
-local activePins = {}
-local minimapPins = {}
-local worldMapProvider = nil
 local initialized = false
-
-local PIN_TEXTURE_INCOMPLETE = "Interface\\Minimap\\ObjectIconsAtlas"
-local PIN_SIZE = 24
 local MINIMAP_PIN_SIZE = 16
-
-local TrackerWorldMapPinMixin = {}
-
-function TrackerWorldMapPinMixin:OnLoad()
-    self:SetSize(PIN_SIZE, PIN_SIZE)
-end
-
-function TrackerWorldMapPinMixin:OnAcquired(pinData)
-    self.pinData = pinData
-    self:UpdateAppearance()
-end
-
-function TrackerWorldMapPinMixin:OnReleased()
-    self.pinData = nil
-end
-
-function TrackerWorldMapPinMixin:UpdateAppearance()
-    if not self.pinData then return end
-    local data = self.pinData
-
-    if not self.icon then
-        self.icon = self:CreateTexture(nil, "ARTWORK")
-        self.icon:SetAllPoints()
-    end
-
-    if not self.label then
-        self.label = OneWoW_GUI:CreateFS(self, 10)
-        self.label:SetPoint("TOP", self, "BOTTOM", 0, -2)
-        self.label:SetJustifyH("CENTER")
-    end
-
-    local completed = data.completed
-    if completed then
-        self.icon:SetAtlas("Waypoint-MapPin-Tracked")
-        self.icon:SetDesaturated(true)
-        self:SetAlpha(0.5)
-    else
-        self.icon:SetAtlas("Waypoint-MapPin-Untracked")
-        self.icon:SetDesaturated(false)
-        self:SetAlpha(1.0)
-    end
-
-    self.label:SetText(data.label or "")
-    if completed then
-        self.label:SetTextColor(0.5, 0.5, 0.5)
-    else
-        self.label:SetTextColor(1, 0.82, 0)
-    end
-end
-
-function TrackerWorldMapPinMixin:OnMouseEnter()
-    if not self.pinData then return end
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText(self.pinData.label or "Waypoint", 1, 1, 1)
-
-    if self.pinData.stepDesc and self.pinData.stepDesc ~= "" then
-        GameTooltip:AddLine(self.pinData.stepDesc, 0.7, 0.7, 0.7, true)
-    end
-
-    if self.pinData.listTitle then
-        GameTooltip:AddDoubleLine("List:", self.pinData.listTitle, 0.5, 0.5, 0.5, 1, 0.82, 0)
-    end
-
-    if self.pinData.sectionLabel then
-        GameTooltip:AddDoubleLine("Section:", self.pinData.sectionLabel, 0.5, 0.5, 0.5, 0.7, 0.7, 0.7)
-    end
-
-    local coordStr = format("%.1f, %.1f", self.pinData.x or 0, self.pinData.y or 0)
-    GameTooltip:AddDoubleLine("Coords:", coordStr, 0.5, 0.5, 0.5, 0.7, 0.7, 0.7)
-
-    if self.pinData.completed then
-        GameTooltip:AddLine("Completed", 0.4, 0.8, 0.4)
-    else
-        GameTooltip:AddLine("Incomplete", 1, 0.5, 0.5)
-    end
-
-    GameTooltip:Show()
-end
-
-function TrackerWorldMapPinMixin:OnMouseLeave()
-    GameTooltip:Hide()
-end
-
 local TrackerDataProviderMixin = CreateFromMixins(MapCanvasDataProviderMixin)
 
 function TrackerDataProviderMixin:RemoveAllData()
     self:GetMap():RemoveAllPinsByTemplate("TrackerWorldMapPinTemplate")
 end
 
-function TrackerDataProviderMixin:RefreshAllData(fromOnShow)
+function TrackerDataProviderMixin:RefreshAllData()
     self:RemoveAllData()
 
     local mapID = self:GetMap():GetMapID()
@@ -185,10 +96,6 @@ function TM:Initialize()
     local pinFrame = CreateFrame("Frame", "TrackerWorldMapPinTemplate", nil)
     pinFrame:Hide()
 
-    local templateInfo = {
-        type = "TrackerWorldMapPinTemplate",
-    }
-
     WorldMapFrame:AddDataProvider(CreateFromMixins(TrackerDataProviderMixin))
 end
 
@@ -209,7 +116,6 @@ function TM:RefreshWorldMap()
     end
 end
 
-local minimapFrame = nil
 local minimapPinPool = {}
 local activeMinimapPins = {}
 
@@ -285,8 +191,8 @@ function TM:AddMinimapPin(targetX, targetY, playerX, playerY, label)
     pin:Show()
 
     pin.label = label
-    pin:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    pin:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
         GameTooltip:SetText(label or "Waypoint", 1, 0.82, 0)
         GameTooltip:AddLine(format("Distance: ~%.0f%%", dist), 0.7, 0.7, 0.7)
         GameTooltip:Show()

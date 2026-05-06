@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -479,11 +479,7 @@ function TP:LoadBundledContent()
     local TD = ns.TrackerData
     if not TD then return end
 
-    local db = _G.OneWoW_Trackers and _G.OneWoW_Trackers.db
-    if not db then return end
-
-    db.global.trackerBundledVersions = db.global.trackerBundledVersions or {}
-    db.global.trackerBundledDeleted = db.global.trackerBundledDeleted or {}
+    local db = OneWoW_Trackers.db
     local versions = db.global.trackerBundledVersions
     local deleted = db.global.trackerBundledDeleted
 
@@ -520,17 +516,11 @@ function TP:LoadBundledContent()
 end
 
 function TP:OnBundledDeleted(bundledID)
-    local db = _G.OneWoW_Trackers and _G.OneWoW_Trackers.db
-    if not db then return end
-
-    db.global.trackerBundledDeleted = db.global.trackerBundledDeleted or {}
-    db.global.trackerBundledDeleted[bundledID] = true
+    OneWoW_Trackers.db.global.trackerBundledDeleted[bundledID] = true
 end
 
 function TP:RestoreBundledContent()
-    local db = _G.OneWoW_Trackers and _G.OneWoW_Trackers.db
-    if not db then return end
-
+    local db = OneWoW_Trackers.db
     db.global.trackerBundledVersions = {}
     db.global.trackerBundledDeleted = {}
     self:LoadBundledContent()

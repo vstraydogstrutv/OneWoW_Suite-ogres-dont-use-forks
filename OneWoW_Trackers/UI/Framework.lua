@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 ns.UI = ns.UI or {}
 
@@ -144,4 +144,3 @@ function ns.UI.CreateThemedDialog(config)
     frame:Hide()
     return frame
 end
-
