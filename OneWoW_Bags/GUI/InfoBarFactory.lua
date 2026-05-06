@@ -96,11 +96,11 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         btn._defaultEnter = btn:GetScript("OnEnter")
         btn._defaultLeave = btn:GetScript("OnLeave")
 
-        btn:SetScript("OnEnter", function(self)
-            if not self.isActive and self._defaultEnter then self._defaultEnter(self) end
+        btn:SetScript("OnEnter", function(myself)
+            if not myself.isActive and myself._defaultEnter then myself._defaultEnter(myself) end
         end)
-        btn:SetScript("OnLeave", function(self)
-            if not self.isActive and self._defaultLeave then self._defaultLeave(self) end
+        btn:SetScript("OnLeave", function(myself)
+            if not myself.isActive and myself._defaultLeave then myself._defaultLeave(myself) end
         end)
 
         return btn
@@ -179,7 +179,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
                     for _, btn in ipairs(BagSet:GetAllButtons()) do
                         if btn.owb_hasItem and btn.owb_itemInfo and btn.owb_itemInfo.itemID then
                             local expansionID = WH:ResolveExpansionID(btn.owb_itemInfo, btn.owb_bagID, btn.owb_slotID)
-                            if expansionID ~= nil then
+                            if expansionID ~= -1 then
                                 found[expansionID] = true
                             end
                         end
@@ -229,8 +229,8 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             categoriesBtn:SetScript("OnClick", function()
                 config.categoryManagerCallback(GetController())
             end)
-            categoriesBtn:HookScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            categoriesBtn:HookScript("OnEnter", function(myself)
+                GameTooltip:SetOwner(myself, "ANCHOR_TOP")
                 GameTooltip:SetText(L["CATEGORY_MANAGER_BTN"], 1, 1, 1)
                 GameTooltip:Show()
             end)
@@ -252,8 +252,8 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             cleanupBtn:SetScript("OnClick", function()
                 config.cleanupCallback(GetController())
             end)
-            cleanupBtn:HookScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            cleanupBtn:HookScript("OnEnter", function(myself)
+                GameTooltip:SetOwner(myself, "ANCHOR_TOP")
                 GameTooltip:SetText(L["CLEANUP"], 1, 1, 1)
                 GameTooltip:Show()
             end)
@@ -276,8 +276,8 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             end
             bar:UpdateViewButtons()
         end)
-        emptyToggleBtn:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        emptyToggleBtn:SetScript("OnEnter", function(myself)
+            GameTooltip:SetOwner(myself, "ANCHOR_TOP")
             local controller = GetController()
             local showing = controller and controller.GetShowEmptySlots and controller:GetShowEmptySlots() or true
             if showing then
