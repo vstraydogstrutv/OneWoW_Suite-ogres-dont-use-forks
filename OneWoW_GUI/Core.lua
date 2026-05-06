@@ -183,6 +183,7 @@ function OneWoW_GUI:ClearFrame(frame)
     end
 end
 
+---@return boolean
 function OneWoW_GUI:IsAddonRestricted()
     if InCombatLockdown() then return true end
     local state
@@ -193,4 +194,25 @@ function OneWoW_GUI:IsAddonRestricted()
      end
 
      return false
+end
+
+---@param expansionID number
+---@return string|nil
+function OneWoW_GUI:GetExpansionName(expansionID)
+    local expansionName
+
+    if expansionID >= 0 and expansionID <= LE_EXPANSION_LEVEL_CURRENT then
+        -- from Blizzard's ExpansionUtil.lua
+        if GetExpansionName then
+            expansionName = GetExpansionName(expansionID)
+        else
+            expansionName = _G["EXPANSION_NAME" .. tostring(expansionID)] or ""
+        end
+
+        if expansionName:find("^Expansion ") then
+            expansionName = nil
+        end
+    end
+
+    return expansionName
 end

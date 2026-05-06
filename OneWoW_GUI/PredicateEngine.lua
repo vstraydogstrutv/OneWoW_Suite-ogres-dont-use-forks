@@ -1875,8 +1875,8 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
 
     -- ---- Junk (quality + OneWoW hook) ----
     props.isJunk = (props.quality == IQ.Poor)
-    if not props.isJunk and _G.OneWoW and _G.OneWoW.ItemStatus then
-        props.isJunk = _G.OneWoW.ItemStatus:IsItemJunk(itemID) or false
+    if not props.isJunk and OneWoW and OneWoW.ItemStatus then
+        props.isJunk = OneWoW.ItemStatus:IsItemJunk(itemID) or false
     end
 
     -- ---- Special items ----
@@ -2856,41 +2856,6 @@ end
 ---@return string
 function PE:GetTooltipText(bagID, slotID)
     return GetTooltipText(bagID, slotID)
-end
-
---- Backward compat: get expansion ID for an item. Prefers the hyperlink path
---- (carries modified-item context); falls back to itemID. Returns nil when
---- C_Item.GetItemInfo cannot supply expansion data (cache miss / invalid input).
----@param itemID number|nil
----@param hyperlink string|nil
----@return number|nil
-function PE:GetExpansionID(itemID, hyperlink)
-    local expacID = nil
-
-    if hyperlink then
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, expacID = C_Item.GetItemInfo(hyperlink)
-        if expacID ~= nil then
-            return expacID
-        end
-    end
-
-    if itemID then
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, expacID = C_Item.GetItemInfo(itemID)
-        if expacID ~= nil then
-            return expacID
-        end
-    end
-
-    return nil
-end
-
---- Backward compat: get localized expansion name from ID. Returns nil when
---- expID is nil or no matching EXPANSION_NAME<id> global exists.
----@param expID number|nil
----@return string|nil
-function PE:GetExpansionName(expID)
-    if not expID then return nil end
-    return _G["EXPANSION_NAME" .. expID]
 end
 
 PE.BATTLE_PET_CAGE_ID = BATTLE_PET_CAGE_ID

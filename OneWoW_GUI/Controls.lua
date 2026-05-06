@@ -106,7 +106,7 @@ function OneWoW_GUI:CreateToggleRow(parent, options)
         contentArea = CreateFrame("Frame", nil, parent)
         contentArea:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, newYOffset)
         contentArea:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -12, newYOffset)
-        local contentFrame, contentHeight = createContent(contentArea)
+        local _, contentHeight = createContent(contentArea)
         contentHeight = contentHeight or 0
         contentArea:SetHeight(contentHeight)
         newYOffset = newYOffset - contentHeight - 6
@@ -186,11 +186,11 @@ function OneWoW_GUI:CreateDropdown(parent, options)
     arrow:SetPoint("CENTER", dropdown, "RIGHT", -10, 0)
     arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
 
-    dropdown:SetScript("OnEnter", function(self)
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
+    dropdown:SetScript("OnEnter", function(myself)
+        myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
     end)
-    dropdown:SetScript("OnLeave", function(self)
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+    dropdown:SetScript("OnLeave", function(myself)
+        myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
     end)
 
     dropdown._text = text
@@ -207,9 +207,9 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
     local menuHeight = options.menuHeight or 314
     local getActiveValue = options.getActiveValue
 
-    dropdown:SetScript("OnClick", function(self)
-        if self._menu and self._menu:IsShown() then
-            self._menu:Hide()
+    dropdown:SetScript("OnClick", function(myself)
+        if myself._menu and myself._menu:IsShown() then
+            myself._menu:Hide()
             return
         end
 
@@ -231,7 +231,7 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
         -- Walk up to the top-level frame under UIParent (e.g. DevTool window). The overlay sits BELOW
         -- the host so it only blocks game-world clicks; in-host dismiss is handled by the menu's OnUpdate.
         -- Host OnHide hook handles ESC key close (menu is a UIParent child, won't hide with host).
-        local host = self
+        local host = myself
         while host:GetParent() and host:GetParent() ~= UIParent do
             host = host:GetParent()
         end
@@ -260,27 +260,27 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
         overlay:RegisterForClicks("AnyDown", "AnyUp")
 
         local menu = CreateFrame("Frame", "OneWoWGUI_DropMenuFrame_" .. uid, UIParent, "BackdropTemplate")
-        self._menu = menu
+        myself._menu = menu
         _activeDropdownMenu = menu
         _activeDropdownOverlay = overlay
-        menu._ownerDropdown = self
+        menu._ownerDropdown = myself
         menu._boundOverlay = overlay
         menu:SetFrameStrata(menuStrata)
         menu:SetFrameLevel(menuLevel)
         menu:SetToplevel(true)
         menu:SetClampedToScreen(true)
-        menu:SetSize(self:GetWidth() + 20, menuHeight)
+        menu:SetSize(myself:GetWidth() + 20, menuHeight)
 
         local screenH = UIParent:GetHeight()
-        local dropdownBottom = self:GetBottom() or 0
+        local dropdownBottom = myself:GetBottom() or 0
         local spaceBelow = dropdownBottom
-        local spaceAbove = screenH - (self:GetTop() or screenH)
+        local spaceAbove = screenH - (myself:GetTop() or screenH)
         local openUpward = spaceBelow < menuHeight and spaceAbove > spaceBelow
 
         if openUpward then
-            menu:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 0, 2)
+            menu:SetPoint("BOTTOMLEFT", myself, "TOPLEFT", 0, 2)
         else
-            menu:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -2)
+            menu:SetPoint("TOPLEFT", myself, "BOTTOMLEFT", 0, -2)
         end
 
         menu:SetBackdrop(Constants.BACKDROP_INNER_NO_INSETS)
@@ -292,11 +292,11 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
         -- is processed before OnUpdate, so the clicked control fires first, then the menu
         -- closes in the same frame — single click, no consumed events.
         local wasDown = IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")
-        menu:SetScript("OnUpdate", function(self)
+        menu:SetScript("OnUpdate", function(innerself)
             local isDown = IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")
             if isDown and not wasDown then
-                if not self:IsMouseOver() then
-                    self:Hide()
+                if not innerself:IsMouseOver() then
+                    innerself:Hide()
                 end
             end
             wasDown = isDown
@@ -365,7 +365,7 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
         local scrollChild = CreateFrame("Frame", "OneWoWGUI_DropMenuContent_" .. uid, scrollFrame)
         scrollChild:SetHeight(1)
         scrollFrame:SetScrollChild(scrollChild)
-        scrollFrame:HookScript("OnSizeChanged", function(sf, w)
+        scrollFrame:HookScript("OnSizeChanged", function(_, w)
             scrollChild:SetWidth(w)
         end)
 
@@ -620,7 +620,7 @@ function OneWoW_GUI:CreateSlider(parent, options)
     self:ConfigureOptionsSliderEnds(slider, formatVal(minVal), formatVal(maxVal))
     if slider.Text then slider.Text:SetText("") end
 
-    slider:SetScript("OnValueChanged", function(self, val)
+    slider:SetScript("OnValueChanged", function(_, val)
         local rounded = math.floor(val / step + 0.5) * step
         rounded = math.max(minVal, math.min(maxVal, rounded))
         valLabel:SetText(formatVal(rounded))
