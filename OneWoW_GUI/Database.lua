@@ -552,37 +552,37 @@ function DB:BootSubModule(ns, config)
 
     if config.withScanCallbacks then
         local scanCallbacks = {}
-        ns.RegisterScanCallback = function(self, fn)
+        ns.RegisterScanCallback = function(_, fn)
             scanCallbacks[#scanCallbacks + 1] = fn
         end
-        ns.FireScanCallbacks = function(self, data)
+        ns.FireScanCallbacks = function(_, data)
             for _, fn in ipairs(scanCallbacks) do
                 pcall(fn, data)
             end
         end
     end
 
-    ns.GetCharacterKey = function(self)
+    ns.GetCharacterKey = function()
         return OneWoW_GUI:GetCharacterKey()
     end
-    ns.GetCharacterData = function(self, charKey)
+    ns.GetCharacterData = function(_, charKey)
         return DB:GetCharData(savedVar, charKey)
     end
-    ns.GetAllCharacters = function(self)
+    ns.GetAllCharacters = function()
         return DB:GetAllChars(savedVar, config.sortField)
     end
-    ns.DeleteCharacter = function(self, charKey)
+    ns.DeleteCharacter = function(_, charKey)
         return DB:DeleteChar(savedVar, charKey)
     end
 
-    ns.GetDB = function(self)
+    ns.GetDB = function()
         return _G[savedVar]
     end
 
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("ADDON_LOADED")
     eventFrame:RegisterEvent("PLAYER_LOGIN")
-    eventFrame:SetScript("OnEvent", function(self, event, ...)
+    eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "ADDON_LOADED" then
             local loaded = ...
             if loaded == addonName then
@@ -618,7 +618,7 @@ function DB:NewCompat(savedVarName, defaults, useDefaultProfile)
     if not sv.profileKeys then sv.profileKeys = {} end
 
     local charKey = OneWoW_GUI:BuildCharKey()
-    
+
     if charKey then
         if not sv.char[charKey] then sv.char[charKey] = {} end
         if useDefaultProfile then sv.profileKeys[charKey] = "Default" end
