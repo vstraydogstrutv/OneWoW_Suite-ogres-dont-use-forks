@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local Players = ns.DataModule:New(
@@ -58,7 +58,6 @@ function Players:GetTargetPlayerInfo()
 end
 
 function Players:AddPlayer(fullName, playerInfo)
-    local addon = _G.OneWoW_Notes
     if not fullName or not playerInfo then return end
 
     local newData = {
@@ -81,7 +80,7 @@ function Players:AddPlayer(fullName, playerInfo)
         sortOrder    = 0,
     }
 
-    if addon.mainFrame and addon.mainFrame:IsShown() then
+    if OneWoW_Notes.mainFrame and OneWoW_Notes.mainFrame:IsShown() then
         newData.isNew = true
         newData.newTimestamp = GetServerTime()
     end
@@ -105,8 +104,6 @@ function Players:RemovePlayer(fullName)
 end
 
 function Players:Initialize()
-    self:EnsureDB()
-
     if not Players._targetFrame then
         Players._targetFrame = CreateFrame("Frame")
         Players._targetFrame:SetScript("OnEvent", function(_, event)

@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/UI/MainFrame.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -15,8 +12,7 @@ local MainWindow = nil
 
 function ns.UI:Show(tabName)
     if not MainWindow then
-        local savedTab = _G.OneWoW_Notes.db.global.lastTab
-        self:CreateMainFrame(tabName or savedTab or "notes")
+        self:CreateMainFrame(tabName or OneWoW_Notes.db.global.lastTab or "notes")
         if MainWindow then MainWindow:Show() end
     else
         MainWindow:Show()
@@ -44,17 +40,15 @@ function ns.UI:Reset()
 end
 
 function ns.UI:CreateMainFrame(defaultTab)
-    local addon = _G.OneWoW_Notes
-    if not addon or not addon.db or not addon.db.global then return nil end
 
-    local savedSize = addon.db.global.mainFrameSize
+    local savedSize = OneWoW_Notes.db.global.mainFrameSize
     local width  = (savedSize and savedSize.width)  or ns.Constants.GUI.WINDOW_WIDTH
     local height = (savedSize and savedSize.height) or ns.Constants.GUI.WINDOW_HEIGHT
 
     local frame = CreateFrame("Frame", "OneWoW_NotesMainFrame", UIParent, "BackdropTemplate")
     frame:SetSize(width, height)
 
-    local savedPos = addon.db.global.mainFramePosition
+    local savedPos = OneWoW_Notes.db.global.mainFramePosition
     if savedPos and savedPos.point then
         frame:SetPoint(savedPos.point, UIParent, savedPos.relativePoint or "CENTER", savedPos.xOfs or 0, savedPos.yOfs or 0)
     else
@@ -72,11 +66,11 @@ function ns.UI:CreateMainFrame(defaultTab)
     frame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
     frame:SetResizeBounds(ns.Constants.GUI.MIN_WIDTH, ns.Constants.GUI.MIN_HEIGHT, ns.Constants.GUI.MAX_WIDTH, ns.Constants.GUI.MAX_HEIGHT)
     frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relativePoint, xOfs, yOfs = self:GetPoint()
-        addon.db.global.mainFramePosition = { point = point, relativePoint = relativePoint, xOfs = xOfs, yOfs = yOfs }
+    frame:SetScript("OnDragStart", function(myself) myself:StartMoving() end)
+    frame:SetScript("OnDragStop", function(myself)
+        myself:StopMovingOrSizing()
+        local point, _, relativePoint, xOfs, yOfs = myself:GetPoint()
+        OneWoW_Notes.db.global.mainFramePosition = { point = point, relativePoint = relativePoint, xOfs = xOfs, yOfs = yOfs }
     end)
     local resizeButton = CreateFrame("Button", nil, frame)
     resizeButton:SetSize(16, 16)
@@ -89,7 +83,7 @@ function ns.UI:CreateMainFrame(defaultTab)
     resizeButton:SetScript("OnDragStop", function()
         frame:StopMovingOrSizing()
         local w, h = frame:GetSize()
-        addon.db.global.mainFrameSize = { width = w, height = h }
+        OneWoW_Notes.db.global.mainFrameSize = { width = w, height = h }
     end)
 
     local titleBg = OneWoW_GUI:CreateTitleBar(frame, {
@@ -116,7 +110,7 @@ function ns.UI:CreateMainFrame(defaultTab)
 
     local function SelectTab(tabName)
         currentTabName = tabName
-        addon.db.global.lastTab = tabName
+        OneWoW_Notes.db.global.lastTab = tabName
         if ns.UI.notesHelpPanel and ns.UI.notesHelpPanel:IsShown() then
             ns.UI.notesHelpPanel:Hide()
         end
@@ -173,16 +167,16 @@ function ns.UI:CreateMainFrame(defaultTab)
         btn.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
 
         btn:SetScript("OnClick", function() SelectTab(name) end)
-        btn:SetScript("OnEnter", function(self)
+        btn:SetScript("OnEnter", function(myself)
             if currentTabName ~= name then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-                self.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+                myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
             end
         end)
-        btn:SetScript("OnLeave", function(self)
+        btn:SetScript("OnLeave", function(myself)
             if currentTabName ~= name then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-                self.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
             end
         end)
 
@@ -212,9 +206,6 @@ function ns.UI:CreateMainFrame(defaultTab)
     local itemsTab = CreateTab("items", L["TAB_ITEMS"])
     ns.UI.CreateItemsTab(itemsTab)
 
-    local trackerTab = CreateTab("tracker", L["TAB_TRACKER"] or "Tracker")
-    ns.UI.CreateTrackerTab(trackerTab)
-
     local settingsTab = CreateTab("settings", L["TAB_SETTINGS"])
     ns.UI.CreateSettingsTab(settingsTab)
 
@@ -228,6 +219,6 @@ function ns.UI:CreateMainFrame(defaultTab)
     frame.SelectTab = function(_, tab) SelectTab(tab) end
 
     MainWindow = frame
-    addon.mainFrame = frame
+    OneWoW_Notes.mainFrame = frame
     return frame
 end

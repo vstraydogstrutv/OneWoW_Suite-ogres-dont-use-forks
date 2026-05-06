@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/UI/t-notes.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -24,15 +21,12 @@ local currentSort = {
 }
 
 local contentUpdateTimer = nil
-local notesFrame = nil
-local editorPanel = nil
 local contentEditBox = nil
 local todoContainer = nil
 local emptyMessage = nil
 local leftStatusText = nil
 local rightStatusText = nil
 local scrollChild = nil
-local scrollFrame = nil
 
 local MEDIA = "Interface\\AddOns\\OneWoW_Notes\\Media\\"
 
@@ -57,16 +51,12 @@ local function GetFontColorFromKey(fontColorKey, pinColorKey)
 end
 
 function ns.UI.CreateNotesTab(parent)
-    notesFrame = parent
     ns.UI.notesFrame = parent
 
     do
-        local a = _G.OneWoW_Notes
-        if a and a.db and a.db.global.tabSortPrefs and a.db.global.tabSortPrefs.notes then
-            local p = a.db.global.tabSortPrefs.notes
-            currentSort.by        = p.by or "modified"
-            currentSort.ascending = p.ascending ~= false
-        end
+        local p = OneWoW_Notes.db.global.tabSortPrefs.notes
+        currentSort.by        = p.by or "modified"
+        currentSort.ascending = p.ascending ~= false
     end
 
     local controlPanel = CreateThemedBar(nil, parent)
@@ -92,7 +82,7 @@ function ns.UI.CreateNotesTab(parent)
         GameTooltip:AddLine(L["TOOLTIP_BUTTON_ADD_NOTE_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    addNoteBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+    addNoteBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     local categoryDropdown = ns.UI.CreateThemedDropdown(controlPanel, L["LABEL_CATEGORY"], 140, 25)
     categoryDropdown:SetPoint("LEFT", addNoteBtn, "RIGHT", 8, 0)
@@ -131,7 +121,7 @@ function ns.UI.CreateNotesTab(parent)
         GameTooltip:AddLine(L["UI_MANAGE_CATEGORIES_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    manageCategoriesBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+    manageCategoriesBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     local storageDropdown = ns.UI.CreateThemedDropdown(controlPanel, L["LABEL_STORAGE"], 130, 25)
     storageDropdown:SetPoint("LEFT", manageCategoriesBtn, "RIGHT", 4, 0)
@@ -161,10 +151,7 @@ function ns.UI.CreateNotesTab(parent)
         onChange = function(field, ascending)
             currentSort.by        = field
             currentSort.ascending = ascending
-            local a = _G.OneWoW_Notes
-            if a and a.db and a.db.global.tabSortPrefs then
-                a.db.global.tabSortPrefs.notes = { by = field, ascending = ascending }
-            end
+            OneWoW_Notes.db.global.tabSortPrefs.notes = { by = field, ascending = ascending }
             if parent.RefreshNotesList then parent.RefreshNotesList() end
         end,
     })
@@ -219,7 +206,6 @@ function ns.UI.CreateNotesTab(parent)
     searchBox:SetPoint("TOPRIGHT", listingPanel, "TOPRIGHT", -8, -30)
 
     local listScroll = ns.UI.CreateCustomScroll(listingPanel)
-    scrollFrame = listScroll.scrollFrame
     scrollChild = listScroll.scrollChild
     listScroll.container:SetPoint("TOPLEFT",     listingPanel, "TOPLEFT",     10, -62)
     listScroll.container:SetPoint("BOTTOMRIGHT", listingPanel, "BOTTOMRIGHT", -10, 10)
@@ -228,7 +214,6 @@ function ns.UI.CreateNotesTab(parent)
     detailPanel:SetPoint("TOPLEFT", listingPanel, "TOPRIGHT", 10, 0)
     detailPanel:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 35)
 
-    editorPanel = detailPanel
     ns.UI.notesDetailPanel = detailPanel
 
     emptyMessage = OneWoW_GUI:CreateFS(detailPanel, 16)
@@ -329,7 +314,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_DELETE_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            deleteBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            deleteBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
             editorHeader.deleteBtn = deleteBtn
 
             local propertiesBtn = CreateFrame("Button", nil, editorHeader)
@@ -350,7 +335,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_PROPERTIES_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            propertiesBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            propertiesBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
             editorHeader.propertiesBtn = propertiesBtn
 
             local pinBtn = CreateFrame("CheckButton", nil, editorHeader)
@@ -374,9 +359,8 @@ function ns.UI.CreateNotesTab(parent)
                 if selectedNote and ns.NotesPins and ns.NotesData then
                     local allNotes = ns.NotesData:GetAllNotes()
                     local noteData = allNotes[selectedNote]
-                    local addon = _G.OneWoW_Notes
                     if noteData then
-                        if noteData.pinEnabled and addon.notePins and addon.notePins[selectedNote] then
+                        if noteData.pinEnabled and OneWoW_Notes.notePins and OneWoW_Notes.notePins[selectedNote] then
                             ns.NotesPins:HideNotePin(selectedNote)
                             noteData.pinEnabled = false
                             self:GetNormalTexture():SetDesaturated(true)
@@ -399,7 +383,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_PIN_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            pinBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            pinBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
             editorHeader.pinBtn = pinBtn
 
             local favoriteBtn = CreateFrame("CheckButton", nil, editorHeader)
@@ -445,7 +429,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_FAVORITE_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            favoriteBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            favoriteBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
             editorHeader.favoriteBtn = favoriteBtn
 
             local noteTypeLine = OneWoW_GUI:CreateFS(editorHeader, 10)
@@ -489,7 +473,7 @@ function ns.UI.CreateNotesTab(parent)
             contentBg:SetHeight(190)
             contentBg:EnableMouse(true)
 
-            local contentScroll, contentScrollChild = OneWoW_GUI:CreateScrollFrame(contentBg, {})
+            local contentScroll = OneWoW_GUI:CreateScrollFrame(contentBg, {})
             contentScroll:SetPoint("TOPLEFT", contentBg, "TOPLEFT", 4, -4)
             contentScroll:SetPoint("BOTTOMRIGHT", contentBg, "BOTTOMRIGHT", -26, 4)
             contentBg:SetFrameLevel(contentScroll:GetFrameLevel() - 1)
@@ -501,7 +485,7 @@ function ns.UI.CreateNotesTab(parent)
             contentEditBox:SetAutoFocus(false)
             contentEditBox:SetMaxLetters(0)
             contentEditBox:SetHyperlinksEnabled(true)
-            contentEditBox:SetScript("OnHyperlinkClick", function(self, link, text, button)
+            contentEditBox:SetScript("OnHyperlinkClick", function(_, link, text, button)
                 SetItemRef(link, text, button)
             end)
             contentEditBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -512,9 +496,8 @@ function ns.UI.CreateNotesTab(parent)
                     if contentUpdateTimer then contentUpdateTimer:Cancel() end
 
                     contentUpdateTimer = C_Timer.NewTimer(2, function()
-                        local addon = _G.OneWoW_Notes
-                        if selectedNote and addon.notePins and addon.notePins[selectedNote] then
-                            local pinFrame = addon.notePins[selectedNote]
+                        if selectedNote and OneWoW_Notes.notePins and OneWoW_Notes.notePins[selectedNote] then
+                            local pinFrame = OneWoW_Notes.notePins[selectedNote]
                             if pinFrame and pinFrame.contentText then
                                 local allNotes = ns.NotesData:GetAllNotes()
                                 local note = allNotes[selectedNote]
@@ -528,7 +511,7 @@ function ns.UI.CreateNotesTab(parent)
                 end
             end)
             contentEditBox:SetScript("OnReceiveDrag", function(self)
-                local cursorType, itemID, itemLink = GetCursorInfo()
+                local cursorType, _, itemLink = GetCursorInfo()
                 if cursorType == "item" and itemLink then
                     self:Insert(itemLink)
                     ClearCursor()
@@ -545,7 +528,7 @@ function ns.UI.CreateNotesTab(parent)
                 if button == "LeftButton" then
                     local cursorType = GetCursorInfo()
                     if cursorType == "item" or cursorType == "spell" then
-                        local ct, itemID, itemLink = GetCursorInfo()
+                        local ct, _, itemLink = GetCursorInfo()
                         if ct == "item" and itemLink then
                             self:Insert(itemLink)
                             ClearCursor()
@@ -573,11 +556,11 @@ function ns.UI.CreateNotesTab(parent)
             contentScroll:SetScrollChild(contentEditBox)
             detailPanel.contentEditBox = contentEditBox
 
-            contentBg:SetScript("OnMouseDown", function(self, button)
+            contentBg:SetScript("OnMouseDown", function(_, button)
                 if detailPanel.contentEditBox then
                     detailPanel.contentEditBox:SetFocus()
                     if button == "LeftButton" then
-                        local cursorType, itemID, itemLink = GetCursorInfo()
+                        local cursorType, _, itemLink = GetCursorInfo()
                         if cursorType == "item" and itemLink then
                             detailPanel.contentEditBox:Insert(itemLink)
                             ClearCursor()
@@ -635,7 +618,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["NOTE_RESET_TODOS_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            resetTasksBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            resetTasksBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
             local addTaskBtn = CreateFrame("Button", nil, todoHeader)
             addTaskBtn:SetSize(24, 24)
@@ -676,7 +659,7 @@ function ns.UI.CreateNotesTab(parent)
             todoContainer = todoScrollChild
             detailPanel.todoContainer = todoContainer
 
-            todoScroll:SetScript("OnSizeChanged", function(self, width)
+            todoScroll:SetScript("OnSizeChanged", function(_, width)
                 if todoContainer then todoContainer:SetWidth(width - 20) end
             end)
 
@@ -772,8 +755,7 @@ function ns.UI.CreateNotesTab(parent)
                         end
                     end
                     if header.pinBtn then
-                        local addon = _G.OneWoW_Notes
-                        local pinEnabled = note.pinEnabled and addon.notePins and addon.notePins[selectedNote]
+                        local pinEnabled = note.pinEnabled and OneWoW_Notes.notePins and OneWoW_Notes.notePins[selectedNote]
                         header.pinBtn:GetNormalTexture():SetDesaturated(not pinEnabled)
                         header.pinBtn:GetNormalTexture():SetAlpha(pinEnabled and 1.0 or 0.3)
                         header.pinBtn:SetChecked(pinEnabled and true or false)
@@ -806,8 +788,7 @@ function ns.UI.CreateNotesTab(parent)
             end
         end
         if header.pinBtn then
-            local addon = _G.OneWoW_Notes
-            local pinEnabled = note.pinEnabled and addon.notePins and addon.notePins[selectedNote]
+            local pinEnabled = note.pinEnabled and OneWoW_Notes.notePins and OneWoW_Notes.notePins[selectedNote]
             header.pinBtn:GetNormalTexture():SetDesaturated(not pinEnabled)
             header.pinBtn:GetNormalTexture():SetAlpha(pinEnabled and 1.0 or 0.3)
             header.pinBtn:SetChecked(pinEnabled and true or false)
@@ -876,7 +857,7 @@ function ns.UI.CreateNotesTab(parent)
         if not note or type(note) ~= "table" or not note.todos then return end
 
         local yOffset = 0
-        for i, todo in ipairs(note.todos) do
+        for _, todo in ipairs(note.todos) do
             local todoFrame = CreateFrame("Frame", nil, todoContainer)
             todoFrame:SetPoint("TOPLEFT", todoContainer, "TOPLEFT", 0, yOffset)
             todoFrame:SetPoint("RIGHT", todoContainer, "RIGHT", 0, 0)
@@ -1060,8 +1041,6 @@ function ns.UI.CreateNotesTab(parent)
             return section
         end
 
-        local addon = _G.OneWoW_Notes
-        local BACKDROP_INNER_NO_INSETS = OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS
         local function BuildNoteRow(note, yOffset, groupArray, groupIndex)
             local listItemColor = {OneWoW_GUI:GetThemeColor("BG_SECONDARY")}
             local pinColor = note.data.pinColor or "hunter"
@@ -1116,7 +1095,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_DELETE_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            deleteBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            deleteBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
             local propertiesBtn = CreateFrame("Button", nil, noteFrame)
             propertiesBtn:SetSize(22, 22)
@@ -1136,7 +1115,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_PROPERTIES_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            propertiesBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            propertiesBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
             local pinBtn = CreateFrame("CheckButton", nil, noteFrame)
             pinBtn:SetSize(22, 22)
@@ -1145,7 +1124,7 @@ function ns.UI.CreateNotesTab(parent)
             local normalTex = pinBtn:CreateTexture(nil, "BACKGROUND")
             normalTex:SetAllPoints()
             normalTex:SetTexture(MEDIA .. "icon-pin.png")
-            local pinActive = note.data.pinEnabled and addon.notePins and addon.notePins[note.id]
+            local pinActive = note.data.pinEnabled and OneWoW_Notes.notePins and OneWoW_Notes.notePins[note.id]
             if pinActive then
                 normalTex:SetDesaturated(false)
                 normalTex:SetAlpha(1.0)
@@ -1172,7 +1151,7 @@ function ns.UI.CreateNotesTab(parent)
                 if ns.NotesPins then
                     local noteData2 = NotesData:GetAllNotes()[note.id]
                     if noteData2 then
-                        if noteData2.pinEnabled and addon.notePins and addon.notePins[note.id] then
+                        if noteData2.pinEnabled and OneWoW_Notes.notePins and OneWoW_Notes.notePins[note.id] then
                             ns.NotesPins:HideNotePin(note.id)
                             noteData2.pinEnabled = false
                             self:GetNormalTexture():SetDesaturated(true)
@@ -1195,7 +1174,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_PIN_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            pinBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            pinBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
             local favoriteBtn = CreateFrame("CheckButton", nil, noteFrame)
             favoriteBtn:SetSize(22, 22)
@@ -1248,7 +1227,7 @@ function ns.UI.CreateNotesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_FAVORITE_DESC"], 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            favoriteBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            favoriteBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
             if note.data.isNew then
                 local newFlagBtn = CreateFrame("Button", nil, noteFrame)
@@ -1274,7 +1253,7 @@ function ns.UI.CreateNotesTab(parent)
                     GameTooltip:AddLine(L["UI_NOTE_REMOVE_FLAG_HINT"], 0.8, 0.8, 0.8, true)
                     GameTooltip:Show()
                 end)
-                newFlagBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+                newFlagBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
             end
 
             local titleText = OneWoW_GUI:CreateFS(noteFrame, 12)
@@ -1307,10 +1286,7 @@ function ns.UI.CreateNotesTab(parent)
                     currentSort.by = "manual"
                     currentSort.ascending = true
                     sortHandle:SetSort("manual", true)
-                    local a = _G.OneWoW_Notes
-                    if a and a.db and a.db.global.tabSortPrefs then
-                        a.db.global.tabSortPrefs.notes = { by = "manual", ascending = true }
-                    end
+                    OneWoW_Notes.db.global.tabSortPrefs.notes = { by = "manual", ascending = true }
                 end
                 for i, item in ipairs(groupArray) do item.data.sortOrder = i end
                 groupArray[groupIndex].data.sortOrder     = groupIndex - 1
@@ -1332,10 +1308,7 @@ function ns.UI.CreateNotesTab(parent)
                     currentSort.by = "manual"
                     currentSort.ascending = true
                     sortHandle:SetSort("manual", true)
-                    local a = _G.OneWoW_Notes
-                    if a and a.db and a.db.global.tabSortPrefs then
-                        a.db.global.tabSortPrefs.notes = { by = "manual", ascending = true }
-                    end
+                    OneWoW_Notes.db.global.tabSortPrefs.notes = { by = "manual", ascending = true }
                 end
                 for i, item in ipairs(groupArray) do item.data.sortOrder = i end
                 groupArray[groupIndex].data.sortOrder     = groupIndex + 1
@@ -1344,7 +1317,7 @@ function ns.UI.CreateNotesTab(parent)
             end)
 
             noteFrame:EnableMouse(true)
-            noteFrame:SetScript("OnMouseDown", function(self)
+            noteFrame:SetScript("OnMouseDown", function()
                 selectedNote = note.id
                 ShowEditor()
                 parent.RefreshNotesList()

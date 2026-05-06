@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/Core/NotesContextMenu.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -42,7 +39,7 @@ local function CreateDialogTitleBar(parent, titleText)
     parent:SetMovable(true)
     parent:EnableMouse(true)
     titleBar:EnableMouse(true)
-    titleBar:SetScript("OnMouseDown", function(self, button)
+    titleBar:SetScript("OnMouseDown", function(_, button)
         if button == "LeftButton" then
             parent:StartMoving()
         end
@@ -309,7 +306,7 @@ function NotesContextMenu:ShowEditBoxContextMenu(editBox)
     if not UIDropDownMenu_Initialize then return end
 
     local contextMenu = CreateFrame("Frame", "OneWoW_NotesEditBoxCtxMenu", UIParent, "UIDropDownMenuTemplate")
-    UIDropDownMenu_Initialize(contextMenu, function(frame, level)
+    UIDropDownMenu_Initialize(contextMenu, function()
         local info = UIDropDownMenu_CreateInfo()
 
         info.text = L["CTX_INSERT_TARGET"]

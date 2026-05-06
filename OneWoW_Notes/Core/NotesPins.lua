@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/Core/NotesPins.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -38,13 +35,8 @@ local function ReleaseTodoFrame(f)
 end
 
 function NotesPins:Initialize()
-    local addon = _G.OneWoW_Notes
-    if not addon.notePins then
-        addon.notePins = {}
-    end
-
-    if not addon.db.global.notePinPositions then
-        addon.db.global.notePinPositions = {}
+    if not OneWoW_Notes.notePins then
+        OneWoW_Notes.notePins = {}
     end
 
     if ns.NotesData then
@@ -94,13 +86,12 @@ function NotesPins:ShowNotePin(noteID)
 end
 
 function NotesPins:HideNotePin(noteID)
-    local addon = _G.OneWoW_Notes
-    if not addon.notePins or not addon.notePins[noteID] then return end
+    if not OneWoW_Notes.notePins or not OneWoW_Notes.notePins[noteID] then return end
 
-    local pinFrame = addon.notePins[noteID]
+    local pinFrame = OneWoW_Notes.notePins[noteID]
     if pinFrame then
         pinFrame:Hide()
-        addon.notePins[noteID] = nil
+        OneWoW_Notes.notePins[noteID] = nil
 
         if ns.UI and ns.UI.notesFrame and ns.UI.notesFrame.RefreshNotesList then
             ns.UI.notesFrame.RefreshNotesList()
@@ -109,28 +100,22 @@ function NotesPins:HideNotePin(noteID)
 end
 
 function NotesPins:HideAllNotePins()
-    local addon = _G.OneWoW_Notes
-    if not addon.notePins then return end
+    if not OneWoW_Notes.notePins then return end
 
-    for noteID, pinFrame in pairs(addon.notePins) do
+    for _, pinFrame in pairs(OneWoW_Notes.notePins) do
         if pinFrame then
             pinFrame:Hide()
         end
     end
 
-    addon.notePins = {}
+    OneWoW_Notes.notePins = {}
 end
 
 function NotesPins:SavePinPosition(noteID, point, relativePoint, x, y, width, height, meta)
     if not noteID then return end
 
-    local addon = _G.OneWoW_Notes
-    if not addon.db.global.notePinPositions then
-        addon.db.global.notePinPositions = {}
-    end
-
     meta = meta or {}
-    addon.db.global.notePinPositions[noteID] = {
+    OneWoW_Notes.db.global.notePinPositions[noteID] = {
         point = point,
         relativePoint = relativePoint,
         x = x,
@@ -144,16 +129,12 @@ function NotesPins:SavePinPosition(noteID, point, relativePoint, x, y, width, he
 end
 
 function NotesPins:GetPinPosition(noteID)
-    local addon = _G.OneWoW_Notes
-    if not noteID or not addon.db.global.notePinPositions then
-        return nil
-    end
-
-    return addon.db.global.notePinPositions[noteID]
+    if not noteID then return nil end
+    return OneWoW_Notes.db.global.notePinPositions[noteID]
 end
 
 function NotesPins:CreateNotePin(noteID, note)
-    local addon = _G.OneWoW_Notes
+    local addon = OneWoW_Notes
     if not noteID or not note then return end
 
     if not addon.notePins then
@@ -201,14 +182,14 @@ function NotesPins:CreateNotePin(noteID, note)
     pin:SetClampedToScreen(true)
     pin:RegisterForDrag("LeftButton")
     pin:SetScript("OnDragStart", pin.StartMoving)
-    pin:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        SavePinGeometry(self)
+    pin:SetScript("OnDragStop", function(myself)
+        myself:StopMovingOrSizing()
+        SavePinGeometry(myself)
     end)
 
-    pin:SetScript("OnMouseDown", function(self)
-        if self.windowInfo and addon.BringWindowToFront then
-            addon:BringWindowToFront(self)
+    pin:SetScript("OnMouseDown", function(myself)
+        if myself.windowInfo and addon.BringWindowToFront then
+            addon:BringWindowToFront(myself)
         end
     end)
 
@@ -310,13 +291,13 @@ function NotesPins:CreateNotePin(noteID, note)
     scrollFrame:SetPoint("BOTTOMRIGHT", 0, 0)
     scrollFrame:SetClipsChildren(true)
     scrollFrame:EnableMouseWheel(true)
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local current = self:GetVerticalScroll()
-        local maxScroll = self:GetVerticalScrollRange()
+    scrollFrame:SetScript("OnMouseWheel", function(myself, delta)
+        local current = myself:GetVerticalScroll()
+        local maxScroll = myself:GetVerticalScrollRange()
         if delta > 0 then
-            self:SetVerticalScroll(math.max(0, current - 30))
+            myself:SetVerticalScroll(math.max(0, current - 30))
         else
-            self:SetVerticalScroll(math.min(maxScroll, current + 30))
+            myself:SetVerticalScroll(math.min(maxScroll, current + 30))
         end
     end)
 
@@ -330,11 +311,11 @@ function NotesPins:CreateNotePin(noteID, note)
     contentText:SetHeight(1)
     scrollFrame:SetScrollChild(contentText)
 
-    scrollFrame:HookScript("OnSizeChanged", function(self, width)
+    scrollFrame:HookScript("OnSizeChanged", function(_, width)
         contentText:SetWidth(math.max(1, width))
     end)
 
-    contentText:SetScript("OnHyperlinkClick", function(self, linkData, link, button)
+    contentText:SetScript("OnHyperlinkClick", function(_, linkData, link, button)
         if button == "LeftButton" then
             SetItemRef(linkData, link, button)
         end
@@ -364,16 +345,16 @@ function NotesPins:CreateNotePin(noteID, note)
     pin.contentFrame = contentFrame
     pin.scrollFrame = scrollFrame
 
-    pin.UpdateContent = function(self)
+    pin.UpdateContent = function(myself)
         local allNotes = ns.NotesData:GetAllNotes()
         local currentNote = allNotes[noteID]
         if not currentNote then return end
 
-        if self.titleText then
-            self.titleText:SetText(L["CORE_PIN_NOTE_PREFIX"] .. " " .. (currentNote.title or L["CORE_PIN_UNTITLED"]))
+        if myself.titleText then
+            myself.titleText:SetText(L["CORE_PIN_NOTE_PREFIX"] .. " " .. (currentNote.title or L["CORE_PIN_UNTITLED"]))
         end
-        if self.contentText then
-            self.contentText:SetText(currentNote.content or "")
+        if myself.contentText then
+            myself.contentText:SetText(currentNote.content or "")
         end
     end
 
@@ -388,13 +369,13 @@ function NotesPins:CreateNotePin(noteID, note)
     todoScrollFrame:SetPoint("BOTTOMRIGHT", todoMainFrame, "BOTTOMRIGHT", 0, 0)
     todoScrollFrame:SetClipsChildren(true)
     todoScrollFrame:EnableMouseWheel(true)
-    todoScrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local current = self:GetVerticalScroll()
-        local maxScroll = self:GetVerticalScrollRange()
+    todoScrollFrame:SetScript("OnMouseWheel", function(myself, delta)
+        local current = myself:GetVerticalScroll()
+        local maxScroll = myself:GetVerticalScrollRange()
         if delta > 0 then
-            self:SetVerticalScroll(math.max(0, current - 30))
+            myself:SetVerticalScroll(math.max(0, current - 30))
         else
-            self:SetVerticalScroll(math.min(maxScroll, current + 30))
+            myself:SetVerticalScroll(math.min(maxScroll, current + 30))
         end
     end)
     pin.todoScrollFrame = todoScrollFrame
@@ -406,19 +387,19 @@ function NotesPins:CreateNotePin(noteID, note)
     pin.todoContainer = todoContainer
     pin.todoItems = {}
 
-    local function ApplyTaskHoverHeight(self, currentNote, todoCount, hasContent)
-        if not currentNote or self.collapsed or todoCount == 0 then
+    local function ApplyTaskHoverHeight(myself, currentNote, todoCount, hasContent)
+        if not currentNote or myself.collapsed or todoCount == 0 then
             return
         end
 
         if not currentNote.pinHideTasksUntilHover then
-            self._pinHeightTasksExpanded = nil
+            myself._pinHeightTasksExpanded = nil
             return
         end
 
         local todoH = 0
-        if self.todoContainer then
-            todoH = math.max(self.todoContainer:GetHeight() or 0, 1)
+        if myself.todoContainer then
+            todoH = math.max(myself.todoContainer:GetHeight() or 0, 1)
         end
         if todoH < 20 then
             todoH = math.max(48, todoCount * 25 + 16)
@@ -433,41 +414,41 @@ function NotesPins:CreateNotePin(noteID, note)
             minCompact = titleBarH + 14 + 15
         end
 
-        if self._tasksHoverShown then
-            if self._pinHeightTasksExpanded and self._pinHeightTasksExpanded > 0 then
-                if math.abs(self:GetHeight() - self._pinHeightTasksExpanded) > 1 then
-                    self:SetHeight(self._pinHeightTasksExpanded)
+        if myself._tasksHoverShown then
+            if myself._pinHeightTasksExpanded and myself._pinHeightTasksExpanded > 0 then
+                if math.abs(myself:GetHeight() - myself._pinHeightTasksExpanded) > 1 then
+                    myself:SetHeight(myself._pinHeightTasksExpanded)
                 end
             end
-            self._pinHeightTasksExpanded = self:GetHeight()
+            myself._pinHeightTasksExpanded = myself:GetHeight()
             return
         end
 
-        local curH = self:GetHeight()
-        if not self._pinHeightTasksExpanded or curH > self._pinHeightTasksExpanded then
-            self._pinHeightTasksExpanded = curH
+        local curH = myself:GetHeight()
+        if not myself._pinHeightTasksExpanded or curH > myself._pinHeightTasksExpanded then
+            myself._pinHeightTasksExpanded = curH
         end
-        local target = math.max(minCompact, (self._pinHeightTasksExpanded or curH) - todoBlock)
+        local target = math.max(minCompact, (myself._pinHeightTasksExpanded or curH) - todoBlock)
         if target < curH - 1 then
-            self:SetHeight(target)
+            myself:SetHeight(target)
         end
     end
 
-    pin.RefreshLayout = function(self, skipTodoRefresh)
-        if not self.contentFrame or not self.todoMainFrame then return end
+    pin.RefreshLayout = function(myself, skipTodoRefresh)
+        if not myself.contentFrame or not myself.todoMainFrame then return end
 
         local allNotes = ns.NotesData:GetAllNotes()
-        local currentNote = allNotes[self.noteID]
+        local currentNote = allNotes[myself.noteID]
         if not currentNote then return end
 
-        if self.collapsed then
+        if myself.collapsed then
             local sw = GetScreenWidth()
             local sh = GetScreenHeight()
-            local ch = self.titleBar:GetHeight() + 14
-            self:SetResizeBounds(200, ch, sw, sh)
-            self.contentFrame:Hide()
-            self.todoMainFrame:Hide()
-            self.resizeBtn:Hide()
+            local ch = myself.titleBar:GetHeight() + 14
+            myself:SetResizeBounds(200, ch, sw, sh)
+            myself.contentFrame:Hide()
+            myself.todoMainFrame:Hide()
+            myself.resizeBtn:Hide()
             return
         end
 
@@ -475,13 +456,13 @@ function NotesPins:CreateNotePin(noteID, note)
         if currentNote.todos then todoCount = #currentNote.todos end
 
         local layoutTodoCount = todoCount
-        if currentNote.pinHideTasksUntilHover and todoCount > 0 and not self._tasksHoverShown then
+        if currentNote.pinHideTasksUntilHover and todoCount > 0 and not myself._tasksHoverShown then
             layoutTodoCount = 0
         end
 
         local taskHeight = 0
         if layoutTodoCount > 0 then
-            taskHeight = self.todoContainer:GetHeight() or 40
+            taskHeight = myself.todoContainer:GetHeight() or 40
             if taskHeight <= 10 then
                 taskHeight = math.max(40, layoutTodoCount * 25 + 20)
             end
@@ -496,72 +477,72 @@ function NotesPins:CreateNotePin(noteID, note)
 
         local sw = GetScreenWidth()
         local sh = GetScreenHeight()
-        self:SetResizeBounds(200, minWindowHeight, sw, sh)
+        myself:SetResizeBounds(200, minWindowHeight, sw, sh)
 
-        self.contentFrame:ClearAllPoints()
-        self.todoMainFrame:ClearAllPoints()
+        myself.contentFrame:ClearAllPoints()
+        myself.todoMainFrame:ClearAllPoints()
 
         local tasksOnTop = currentNote.tasksOnTop == true
 
         if layoutTodoCount == 0 then
-            self.todoMainFrame:Hide()
+            myself.todoMainFrame:Hide()
             if hasContent then
-                self.contentFrame:SetPoint("TOPLEFT", self.titleBar, "BOTTOMLEFT", 5, -5)
-                self.contentFrame:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 15)
-                self.contentFrame:Show()
+                myself.contentFrame:SetPoint("TOPLEFT", myself.titleBar, "BOTTOMLEFT", 5, -5)
+                myself.contentFrame:SetPoint("BOTTOMRIGHT", myself, "BOTTOMRIGHT", -5, 15)
+                myself.contentFrame:Show()
             else
-                self.contentFrame:Hide()
+                myself.contentFrame:Hide()
             end
         elseif hasContent then
-            self.todoMainFrame:Show()
+            myself.todoMainFrame:Show()
             if tasksOnTop then
-                self.todoMainFrame:SetPoint("TOPLEFT", self.titleBar, "BOTTOMLEFT", 5, -5)
-                self.todoMainFrame:SetPoint("TOPRIGHT", self, "TOPRIGHT", -5, -5)
-                self.todoMainFrame:SetHeight(taskHeight)
-                self.contentFrame:SetPoint("TOPLEFT", self.todoMainFrame, "BOTTOMLEFT", 0, -5)
-                self.contentFrame:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 15)
+                myself.todoMainFrame:SetPoint("TOPLEFT", myself.titleBar, "BOTTOMLEFT", 5, -5)
+                myself.todoMainFrame:SetPoint("TOPRIGHT", myself, "TOPRIGHT", -5, -5)
+                myself.todoMainFrame:SetHeight(taskHeight)
+                myself.contentFrame:SetPoint("TOPLEFT", myself.todoMainFrame, "BOTTOMLEFT", 0, -5)
+                myself.contentFrame:SetPoint("BOTTOMRIGHT", myself, "BOTTOMRIGHT", -5, 15)
             else
-                self.todoMainFrame:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 5, 15)
-                self.todoMainFrame:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 15)
-                self.todoMainFrame:SetHeight(taskHeight)
-                self.contentFrame:SetPoint("TOPLEFT", self.titleBar, "BOTTOMLEFT", 5, -5)
-                self.contentFrame:SetPoint("TOPRIGHT", self, "TOPRIGHT", -5, -5)
-                self.contentFrame:SetPoint("BOTTOMRIGHT", self.todoMainFrame, "TOPRIGHT", 0, -5)
+                myself.todoMainFrame:SetPoint("BOTTOMLEFT", myself, "BOTTOMLEFT", 5, 15)
+                myself.todoMainFrame:SetPoint("BOTTOMRIGHT", myself, "BOTTOMRIGHT", -5, 15)
+                myself.todoMainFrame:SetHeight(taskHeight)
+                myself.contentFrame:SetPoint("TOPLEFT", myself.titleBar, "BOTTOMLEFT", 5, -5)
+                myself.contentFrame:SetPoint("TOPRIGHT", myself, "TOPRIGHT", -5, -5)
+                myself.contentFrame:SetPoint("BOTTOMRIGHT", myself.todoMainFrame, "TOPRIGHT", 0, -5)
             end
-            self.contentFrame:Show()
+            myself.contentFrame:Show()
         else
-            self.todoMainFrame:Show()
-            self.todoMainFrame:SetPoint("TOPLEFT", self.titleBar, "BOTTOMLEFT", 5, -5)
-            self.todoMainFrame:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 15)
-            self.todoMainFrame:SetHeight(taskHeight)
-            self.contentFrame:Hide()
+            myself.todoMainFrame:Show()
+            myself.todoMainFrame:SetPoint("TOPLEFT", myself.titleBar, "BOTTOMLEFT", 5, -5)
+            myself.todoMainFrame:SetPoint("BOTTOMRIGHT", myself, "BOTTOMRIGHT", -5, 15)
+            myself.todoMainFrame:SetHeight(taskHeight)
+            myself.contentFrame:Hide()
         end
 
-        if self.todoContainer then
-            self.todoContainer:SetWidth(self:GetWidth() - 10)
+        if myself.todoContainer then
+            myself.todoContainer:SetWidth(myself:GetWidth() - 10)
         end
 
-        if not skipTodoRefresh and self.RefreshTodos then
-            self:RefreshTodos()
+        if not skipTodoRefresh and myself.RefreshTodos then
+            myself:RefreshTodos()
         end
 
         if not skipTodoRefresh then
-            ApplyTaskHoverHeight(self, currentNote, todoCount, hasContent)
+            ApplyTaskHoverHeight(myself, currentNote, todoCount, hasContent)
         end
     end
 
-    pin.RefreshTodos = function(self)
-        if not self.todoContainer or not noteID then return end
+    pin.RefreshTodos = function(myself)
+        if not myself.todoContainer or not noteID then return end
 
-        for i = #self.todoItems, 1, -1 do
-            ReleaseTodoFrame(table.remove(self.todoItems, i))
+        for i = #myself.todoItems, 1, -1 do
+            ReleaseTodoFrame(table.remove(myself.todoItems, i))
         end
 
         local allNotes = ns.NotesData:GetAllNotes()
         local currentNote = allNotes[noteID]
         if not currentNote or not currentNote.todos or #currentNote.todos == 0 then
-            self.todoContainer:SetHeight(0)
-            self:RefreshLayout(true)
+            myself.todoContainer:SetHeight(0)
+            myself:RefreshLayout(true)
             return
         end
 
@@ -570,8 +551,7 @@ function NotesPins:CreateNotePin(noteID, note)
             table.insert(sortedTodos, todo)
         end
 
-        local addonDB = _G.OneWoW_Notes
-        if addonDB.db.global.sortCompletedTasks == true then
+        if OneWoW_Notes.db.global.sortCompletedTasks == true then
             table.sort(sortedTodos, function(a, b)
                 if a.completed ~= b.completed then return not a.completed end
                 return (a.created or 0) < (b.created or 0)
@@ -582,25 +562,25 @@ function NotesPins:CreateNotePin(noteID, note)
             end)
         end
 
-        local containerWidth = self:GetWidth() - 10
+        local containerWidth = myself:GetWidth() - 10
         if containerWidth < 50 then containerWidth = 280 end
 
         local yOffset = 0
         for _, todo in ipairs(sortedTodos) do
-            local todoFrame = AcquireTodoFrame(self.todoContainer)
-            todoFrame:SetPoint("TOPLEFT", self.todoContainer, "TOPLEFT", 0, yOffset)
-            todoFrame:SetPoint("RIGHT", self.todoContainer, "RIGHT", 0, 0)
+            local todoFrame = AcquireTodoFrame(myself.todoContainer)
+            todoFrame:SetPoint("TOPLEFT", myself.todoContainer, "TOPLEFT", 0, yOffset)
+            todoFrame:SetPoint("RIGHT", myself.todoContainer, "RIGHT", 0, 0)
 
             todoFrame._checkbox:SetChecked(todo.completed)
             todoFrame._checkbox:SetScript("OnClick", function(checkSelf)
                 todo.completed = checkSelf:GetChecked()
                 if currentNote then currentNote.modified = GetServerTime() end
-                self:RefreshTodos()
+                myself:RefreshTodos()
 
                 if currentNote and currentNote.autoPinEnabled and
                    (currentNote.noteType == "daily" or currentNote.noteType == "weekly") then
                     local allCompleted = ns.NotesTodos and ns.NotesTodos:AreAllTodosCompleted(noteID)
-                    if allCompleted and self:IsShown() then
+                    if allCompleted and myself:IsShown() then
                         currentNote.autoUnpinned = true
                         NotesPins:HideNotePin(noteID)
                     elseif not allCompleted and currentNote.autoUnpinned then
@@ -638,12 +618,12 @@ function NotesPins:CreateNotePin(noteID, note)
             local rowHeight = math.max(22, todoFrame._text:GetStringHeight() + 6)
             todoFrame:SetHeight(rowHeight)
 
-            table.insert(self.todoItems, todoFrame)
+            table.insert(myself.todoItems, todoFrame)
             yOffset = yOffset - (rowHeight + 3)
         end
 
         local totalHeight = math.abs(yOffset) + 10
-        self.todoContainer:SetHeight(totalHeight)
+        myself.todoContainer:SetHeight(totalHeight)
     end
 
     -- Resize handle
@@ -653,10 +633,10 @@ function NotesPins:CreateNotePin(noteID, note)
     resizeBtn:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
     resizeBtn:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
     resizeBtn:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
-    resizeBtn:SetScript("OnMouseDown", function(self)
+    resizeBtn:SetScript("OnMouseDown", function()
         pin:StartSizing("BOTTOMRIGHT")
     end)
-    resizeBtn:SetScript("OnMouseUp", function(self)
+    resizeBtn:SetScript("OnMouseUp", function()
         pin:StopMovingOrSizing()
         SavePinGeometry(pin)
         if pin.RefreshLayout then pin:RefreshLayout() end
@@ -792,8 +772,8 @@ function NotesPins:CreateNotePin(noteID, note)
     local lockMoveCB = OneWoW_GUI:CreateCheckbox(hoverControlsPanel, {
         label = L["CORE_PIN_LOCK_MOVE"],
         checked = note.lockMove,
-        onClick = function(self)
-            note.lockMove = self:GetChecked()
+        onClick = function(myself)
+            note.lockMove = myself:GetChecked()
             if note.lockMove then
                 pin:SetMovable(false)
                 pin:RegisterForDrag()
@@ -814,8 +794,8 @@ function NotesPins:CreateNotePin(noteID, note)
     local hoverTasksCB = OneWoW_GUI:CreateCheckbox(hoverControlsPanel, {
         label = L["CORE_PIN_HOVER_TASKS"],
         checked = note.pinHideTasksUntilHover == true,
-        onClick = function(self)
-            note.pinHideTasksUntilHover = self:GetChecked()
+        onClick = function(myself)
+            note.pinHideTasksUntilHover = myself:GetChecked()
             note.modified = GetServerTime()
             pin._pinHeightTasksExpanded = nil
             pin._tasksHoverShown = false
@@ -823,8 +803,8 @@ function NotesPins:CreateNotePin(noteID, note)
         end,
     })
     hoverTasksCB:SetPoint("BOTTOMLEFT", hoverControlsPanel, "BOTTOMLEFT", 10, 4)
-    local function HoverTasksTooltip(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    local function HoverTasksTooltip(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["CORE_PIN_HOVER_TASKS"], 1, 1, 1)
         GameTooltip:AddLine(L["NOTE_PIN_HIDE_TASKS_UNTIL_HOVER_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
@@ -840,8 +820,8 @@ function NotesPins:CreateNotePin(noteID, note)
     local lockResizeCB = OneWoW_GUI:CreateCheckbox(hoverControlsPanel, {
         label = L["CORE_PIN_LOCK_RESIZE"],
         checked = note.lockResize,
-        onClick = function(self)
-            note.lockResize = self:GetChecked()
+        onClick = function(myself)
+            note.lockResize = myself:GetChecked()
             if note.lockResize then
                 resizeBtn:Hide()
                 resizeBtn:Disable()
@@ -878,13 +858,13 @@ function NotesPins:CreateNotePin(noteID, note)
             if pin.RefreshTodos then pin:RefreshTodos() end
         end
     end)
-    resetTodosBtn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    resetTodosBtn:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
         GameTooltip:SetText(L["CORE_PIN_RESET_TODOS"], 1, 1, 1)
         GameTooltip:AddLine(L["CORE_PIN_RESET_TODOS_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    resetTodosBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+    resetTodosBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     pin.resetTodosBtn = resetTodosBtn
 
     local function HideHoverControls()
@@ -956,16 +936,16 @@ function NotesPins:CreateNotePin(noteID, note)
         end)
     end
 
-    pin:SetScript("OnHide", function(self)
-        if self.windowInfo and addon.UnregisterWindow then
-            addon:UnregisterWindow(self)
+    pin:SetScript("OnHide", function(myself)
+        if selmyselff.windowInfo and addon.UnregisterWindow then
+            addon:UnregisterWindow(myself)
         end
     end)
 
-    pin:SetScript("OnShow", function(self)
-        if not self.windowInfo and addon.RegisterWindow then
-            self.windowInfo = addon:RegisterWindow(self, "pinned", function()
-                self:Hide()
+    pin:SetScript("OnShow", function(myself)
+        if not myself.windowInfo and addon.RegisterWindow then
+            myself.windowInfo = addon:RegisterWindow(myself, "pinned", function()
+                myself:Hide()
             end)
         end
     end)
@@ -997,10 +977,9 @@ function NotesPins:CreateNotePin(noteID, note)
 end
 
 function NotesPins:RefreshNotePinColors(noteID)
-    local addon = _G.OneWoW_Notes
-    if not addon.notePins or not addon.notePins[noteID] then return end
+    if not OneWoW_Notes.notePins or not OneWoW_Notes.notePins[noteID] then return end
 
-    local pinFrame = addon.notePins[noteID]
+    local pinFrame = OneWoW_Notes.notePins[noteID]
     if not pinFrame or not pinFrame:IsShown() then return end
 
     local note = ns.NotesData:GetAllNotes()[noteID]
@@ -1052,9 +1031,8 @@ function NotesPins:RefreshNotePinColors(noteID)
 end
 
 function NotesPins:RefreshAllPinFonts()
-    local addon = _G.OneWoW_Notes
-    if not addon.notePins then return end
-    for noteID, pinFrame in pairs(addon.notePins) do
+    if not OneWoW_Notes.notePins then return end
+    for noteID, pinFrame in pairs(OneWoW_Notes.notePins) do
         if pinFrame and pinFrame:IsShown() then
             self:RefreshNotePinColors(noteID)
         end
@@ -1062,10 +1040,9 @@ function NotesPins:RefreshAllPinFonts()
 end
 
 function NotesPins:RefreshSyncPins()
-    local addon = _G.OneWoW_Notes
-    if not addon.notePins then return end
+    if not OneWoW_Notes.notePins then return end
 
-    for noteID, pinFrame in pairs(addon.notePins) do
+    for noteID, pinFrame in pairs(OneWoW_Notes.notePins) do
         if pinFrame and pinFrame:IsShown() then
             local note = ns.NotesData:GetAllNotes()[noteID]
             if note and note.pinColor == "sync" then

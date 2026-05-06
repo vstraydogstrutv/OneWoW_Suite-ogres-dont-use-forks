@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/UI/t-npcs.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -22,7 +19,6 @@ local currentSort   = { by = "name", ascending = true }
 local detailPanel    = nil
 local emptyMessage   = nil
 local leftStatusText = nil
-local scrollFrame    = nil
 local scrollChild    = nil
 
 local MEDIA = "Interface\\AddOns\\OneWoW_Notes\\Media\\"
@@ -45,12 +41,9 @@ end
 
 function ns.UI.CreateNPCsTab(parent)
     do
-        local a = _G.OneWoW_Notes
-        if a and a.db and a.db.global.tabSortPrefs and a.db.global.tabSortPrefs.npcs then
-            local p = a.db.global.tabSortPrefs.npcs
-            currentSort.by        = p.by or "name"
-            currentSort.ascending = p.ascending ~= false
-        end
+        local p = OneWoW_Notes.db.global.tabSortPrefs.npcs
+        currentSort.by        = p.by or "name"
+        currentSort.ascending = p.ascending ~= false
     end
 
     local controlPanel = CreateThemedBar(nil, parent)
@@ -140,7 +133,7 @@ function ns.UI.CreateNPCsTab(parent)
         GameTooltip:AddLine(L["UI_MANAGE_CATEGORIES_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    manageCategoriesBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+    manageCategoriesBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     local storeDD = ns.UI.CreateThemedDropdown(controlPanel, L["LABEL_STORAGE"], 130, 25)
     storeDD:SetPoint("LEFT", manageCategoriesBtn, "RIGHT", 4, 0)
@@ -168,10 +161,7 @@ function ns.UI.CreateNPCsTab(parent)
         onChange = function(field, ascending)
             currentSort.by        = field
             currentSort.ascending = ascending
-            local a = _G.OneWoW_Notes
-            if a and a.db and a.db.global.tabSortPrefs then
-                a.db.global.tabSortPrefs.npcs = { by = field, ascending = ascending }
-            end
+            OneWoW_Notes.db.global.tabSortPrefs.npcs = { by = field, ascending = ascending }
             parent.RefreshNPCsList()
         end,
     })
@@ -226,7 +216,6 @@ function ns.UI.CreateNPCsTab(parent)
     searchBox:SetPoint("TOPRIGHT", listingPanel, "TOPRIGHT", -8, -30)
 
     local listScroll = ns.UI.CreateCustomScroll(listingPanel)
-    scrollFrame = listScroll.scrollFrame
     scrollChild = listScroll.scrollChild
     listScroll.container:SetPoint("TOPLEFT",     listingPanel, "TOPLEFT",     10, -62)
     listScroll.container:SetPoint("BOTTOMRIGHT", listingPanel, "BOTTOMRIGHT", -10, 10)
@@ -494,7 +483,7 @@ function ns.UI.CreateNPCsTab(parent)
             contentBg:SetHeight(160)
             contentBg:EnableMouse(true)
 
-            local contentScroll, contentScrollChild = OneWoW_GUI:CreateScrollFrame(contentBg, {})
+            local contentScroll = OneWoW_GUI:CreateScrollFrame(contentBg, {})
             contentScroll:SetPoint("TOPLEFT",     contentBg, "TOPLEFT",     4, -4)
             contentScroll:SetPoint("BOTTOMRIGHT", contentBg, "BOTTOMRIGHT", -26, 4)
             contentBg:SetFrameLevel(contentScroll:GetFrameLevel() - 1)
@@ -506,7 +495,7 @@ function ns.UI.CreateNPCsTab(parent)
             contentEditBox:SetAutoFocus(false)
             contentEditBox:SetMaxLetters(0)
             contentEditBox:SetHyperlinksEnabled(true)
-            contentEditBox:SetScript("OnHyperlinkClick", function(self, link, text, button)
+            contentEditBox:SetScript("OnHyperlinkClick", function(_, link, text, button)
                 SetItemRef(link, text, button)
             end)
             contentEditBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -529,7 +518,7 @@ function ns.UI.CreateNPCsTab(parent)
             contentScroll:SetScrollChild(contentEditBox)
             detailPanel.contentEditBox = contentEditBox
 
-            contentBg:SetScript("OnMouseDown", function(self, button)
+            contentBg:SetScript("OnMouseDown", function(_, button)
                 if detailPanel.contentEditBox then
                     detailPanel.contentEditBox:SetFocus()
                     if button == "RightButton" and ns.NotesContextMenu then
@@ -556,7 +545,7 @@ function ns.UI.CreateNPCsTab(parent)
                 edit:SetAutoFocus(false)
                 edit:SetMaxLetters(255)
                 edit:SetHyperlinksEnabled(true)
-                edit:SetScript("OnHyperlinkClick", function(self, link, text, button)
+                edit:SetScript("OnHyperlinkClick", function(_, link, text, button)
                     SetItemRef(link, text, button)
                 end)
                 edit:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -672,10 +661,9 @@ function ns.UI.CreateNPCsTab(parent)
     end
 
     parent:HookScript("OnShow", function()
-        local notes = _G.OneWoW_Notes
-        if notes and notes.pendingNPCSelect then
-            local id = notes.pendingNPCSelect
-            notes.pendingNPCSelect = nil
+        if OneWoW_Notes and OneWoW_Notes.pendingNPCSelect then
+            local id = OneWoW_Notes.pendingNPCSelect
+            OneWoW_Notes.pendingNPCSelect = nil
             parent.SelectNPC(id)
         end
     end)
@@ -835,7 +823,7 @@ function ns.UI.CreateNPCsTab(parent)
             aN2:SetDesaturated(not npc.data.alertOnFound)
             aN2:SetAlpha(npc.data.alertOnFound and 1.0 or 0.3)
             alertBtn2:SetNormalTexture(aN2)
-            alertBtn2:SetScript("OnClick", function(self)
+            alertBtn2:SetScript("OnClick", function()
                 if ns.NPCs then
                     local nd = ns.NPCs:GetNPC(npc.id)
                     if nd then
@@ -866,7 +854,7 @@ function ns.UI.CreateNPCsTab(parent)
             fN2:SetDesaturated(not npc.data.favorite)
             fN2:SetAlpha(npc.data.favorite and 1.0 or 0.3)
             favBtn2:SetNormalTexture(fN2)
-            favBtn2:SetScript("OnClick", function(self)
+            favBtn2:SetScript("OnClick", function()
                 if ns.NPCs then
                     local nd = ns.NPCs:GetNPC(npc.id)
                     if nd then
@@ -896,10 +884,7 @@ function ns.UI.CreateNPCsTab(parent)
                     currentSort.by = "manual"
                     currentSort.ascending = true
                     npcSortHandle:SetSort("manual", true)
-                    local a = _G.OneWoW_Notes
-                    if a and a.db and a.db.global.tabSortPrefs then
-                        a.db.global.tabSortPrefs.npcs = { by = "manual", ascending = true }
-                    end
+                    OneWoW_Notes.db.global.tabSortPrefs.npcs = { by = "manual", ascending = true }
                 end
                 for i, item in ipairs(groupArray) do item.data.sortOrder = i end
                 groupArray[groupIndex].data.sortOrder     = groupIndex - 1
@@ -921,10 +906,7 @@ function ns.UI.CreateNPCsTab(parent)
                     currentSort.by = "manual"
                     currentSort.ascending = true
                     npcSortHandle:SetSort("manual", true)
-                    local a = _G.OneWoW_Notes
-                    if a and a.db and a.db.global.tabSortPrefs then
-                        a.db.global.tabSortPrefs.npcs = { by = "manual", ascending = true }
-                    end
+                    OneWoW_Notes.db.global.tabSortPrefs.npcs = { by = "manual", ascending = true }
                 end
                 for i, item in ipairs(groupArray) do item.data.sortOrder = i end
                 groupArray[groupIndex].data.sortOrder     = groupIndex + 1
@@ -1122,7 +1104,7 @@ function ns.UI.ShowManualNPCEntryDialog(refreshParent)
     noteBg:SetPoint("TOPLEFT",     content, "TOPLEFT",     COL1_X, yPos)
     noteBg:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -COL1_X, 6)
 
-    local noteScroll, noteScrollChild = OneWoW_GUI:CreateScrollFrame(noteBg, {})
+    local noteScroll = OneWoW_GUI:CreateScrollFrame(noteBg, {})
     noteScroll:SetPoint("TOPLEFT",     noteBg, "TOPLEFT",     4, -4)
     noteScroll:SetPoint("BOTTOMRIGHT", noteBg, "BOTTOMRIGHT", -26, 4)
 
@@ -1132,7 +1114,7 @@ function ns.UI.ShowManualNPCEntryDialog(refreshParent)
     noteEditBox:SetAutoFocus(false)
     noteEditBox:SetMaxLetters(0)
     noteScroll:SetScrollChild(noteEditBox)
-    noteScroll:HookScript("OnSizeChanged", function(self, w)
+    noteScroll:HookScript("OnSizeChanged", function(_, w)
         noteEditBox:SetWidth(math.max(1, w))
     end)
     dialog._noteEditBox = noteEditBox
@@ -1400,7 +1382,7 @@ function ns.UI.ShowNPCPropertiesDialog(npcID, refreshParent)
     noteBg:SetPoint("TOPLEFT",     content, "TOPLEFT",     COL1_X, yPos)
     noteBg:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -COL1_X, 6)
 
-    local noteScroll, noteScrollChild = OneWoW_GUI:CreateScrollFrame(noteBg, {})
+    local noteScroll = OneWoW_GUI:CreateScrollFrame(noteBg, {})
     noteScroll:SetPoint("TOPLEFT",     noteBg, "TOPLEFT",     4, -4)
     noteScroll:SetPoint("BOTTOMRIGHT", noteBg, "BOTTOMRIGHT", -26, 4)
 
@@ -1412,7 +1394,7 @@ function ns.UI.ShowNPCPropertiesDialog(npcID, refreshParent)
     noteEditBox:SetText(nd.content or "")
     noteEditBox:EnableMouse(false)
     noteScroll:SetScrollChild(noteEditBox)
-    noteScroll:HookScript("OnSizeChanged", function(self, w)
+    noteScroll:HookScript("OnSizeChanged", function(_, w)
         noteEditBox:SetWidth(math.max(1, w))
     end)
 

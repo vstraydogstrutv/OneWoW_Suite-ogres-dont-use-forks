@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/Core/ZonePins.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -10,9 +7,7 @@ local ZonePins = {}
 ns.ZonePins = ZonePins
 
 function ZonePins:Initialize()
-    local addon = _G.OneWoW_Notes
-    if not addon.zonePins then addon.zonePins = {} end
-    if not addon.db.global.zonePinPositions then addon.db.global.zonePinPositions = {} end
+    if not OneWoW_Notes.zonePins then OneWoW_Notes.zonePins = {} end
 
     if ns.Zones then
         C_Timer.After(0.5, function()
@@ -40,7 +35,7 @@ function ZonePins:Initialize()
 end
 
 function ZonePins:ShowZonePin(zoneName, zoneData)
-    local addon = _G.OneWoW_Notes
+    local addon = OneWoW_Notes
     if not zoneName or not zoneData then return end
     if not addon.zonePins then addon.zonePins = {} end
 
@@ -62,21 +57,19 @@ function ZonePins:ShowZonePin(zoneName, zoneData)
 end
 
 function ZonePins:HideZonePin(zoneName)
-    local addon = _G.OneWoW_Notes
-    if not addon.zonePins or not addon.zonePins[zoneName] then return end
+    if not OneWoW_Notes.zonePins or not OneWoW_Notes.zonePins[zoneName] then return end
 
-    local pinFrame = addon.zonePins[zoneName]
+    local pinFrame = OneWoW_Notes.zonePins[zoneName]
     if pinFrame then
         pinFrame:Hide()
     end
 end
 
 function ZonePins:DestroyZonePin(zoneName)
-    local addon = _G.OneWoW_Notes
-    if not addon.zonePins or not addon.zonePins[zoneName] then return end
+    if not OneWoW_Notes.zonePins or not OneWoW_Notes.zonePins[zoneName] then return end
 
-    local pinFrame = addon.zonePins[zoneName]
-    addon.zonePins[zoneName] = nil
+    local pinFrame = OneWoW_Notes.zonePins[zoneName]
+    OneWoW_Notes.zonePins[zoneName] = nil
     if pinFrame then
         pinFrame._destroying = true
         pinFrame:Hide()
@@ -85,36 +78,28 @@ function ZonePins:DestroyZonePin(zoneName)
 end
 
 function ZonePins:HideAllPins()
-    local addon = _G.OneWoW_Notes
-    if not addon.zonePins then return end
-    for zoneName, pinFrame in pairs(addon.zonePins) do
+    if not OneWoW_Notes.zonePins then return end
+    for _, pinFrame in pairs(OneWoW_Notes.zonePins) do
         if pinFrame then
             pinFrame._destroying = true
             pinFrame:Hide()
         end
     end
-    addon.zonePins = {}
+    OneWoW_Notes.zonePins = {}
 end
 
 function ZonePins:SavePinPosition(zoneName, point, relativePoint, x, y, width, height)
-    local addon = _G.OneWoW_Notes
-    if not addon.db.global.zonePinPositions then
-        addon.db.global.zonePinPositions = {}
-    end
-    addon.db.global.zonePinPositions[zoneName] = {
+    OneWoW_Notes.db.global.zonePinPositions[zoneName] = {
         point = point, relativePoint = relativePoint,
         x = x, y = y, width = width, height = height
     }
 end
 
 function ZonePins:GetPinPosition(zoneName)
-    local addon = _G.OneWoW_Notes
-    if not addon.db.global.zonePinPositions then return nil end
-    return addon.db.global.zonePinPositions[zoneName]
+    return OneWoW_Notes.db.global.zonePinPositions[zoneName]
 end
 
 function ZonePins:CreateZonePin(zoneName, zoneData)
-    local addon = _G.OneWoW_Notes
     if not zoneName or not zoneData then return end
 
     local pinColor    = zoneData.pinColor  or "hunter"
@@ -137,15 +122,15 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
     pin:SetClampedToScreen(true)
     pin:RegisterForDrag("LeftButton")
     pin:SetScript("OnDragStart", pin.StartMoving)
-    pin:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relativePoint, x, y = self:GetPoint()
-        ZonePins:SavePinPosition(zoneName, point, relativePoint, x, y, self:GetWidth(), self:GetHeight())
+    pin:SetScript("OnDragStop", function(myself)
+        myself:StopMovingOrSizing()
+        local point, _, relativePoint, x, y = myself:GetPoint()
+        ZonePins:SavePinPosition(zoneName, point, relativePoint, x, y, semyselflf:GetWidth(), myself:GetHeight())
     end)
 
-    pin:SetScript("OnMouseDown", function(self)
-        if self.windowInfo and addon.BringWindowToFront then
-            addon:BringWindowToFront(self)
+    pin:SetScript("OnMouseDown", function(myself)
+        if myself.windowInfo and OneWoW_Notes.BringWindowToFront then
+            OneWoW_Notes:BringWindowToFront(myself)
         end
     end)
 
@@ -236,10 +221,10 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
     scrollFrame:SetPoint("BOTTOMRIGHT", 0, 0)
     scrollFrame:SetClipsChildren(true)
     scrollFrame:EnableMouseWheel(true)
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local cur = self:GetVerticalScroll()
-        local max = self:GetVerticalScrollRange()
-        self:SetVerticalScroll(delta > 0 and math.max(0, cur - 30) or math.min(max, cur + 30))
+    scrollFrame:SetScript("OnMouseWheel", function(myself, delta)
+        local cur = myself:GetVerticalScroll()
+        local max = myself:GetVerticalScrollRange()
+        myself:SetVerticalScroll(delta > 0 and math.max(0, cur - 30) or math.min(max, cur + 30))
     end)
 
     local contentText = CreateFrame("EditBox", nil, scrollFrame)
@@ -252,11 +237,11 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
     contentText:SetHeight(1)
     scrollFrame:SetScrollChild(contentText)
 
-    scrollFrame:HookScript("OnSizeChanged", function(self, width)
+    scrollFrame:HookScript("OnSizeChanged", function(_, width)
         contentText:SetWidth(math.max(1, width))
     end)
 
-    contentText:SetScript("OnHyperlinkClick", function(self, linkData, link, button)
+    contentText:SetScript("OnHyperlinkClick", function(_, linkData, link, button)
         if button == "LeftButton" then
             SetItemRef(linkData, link, button)
         end
@@ -296,8 +281,8 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
     pin.todoContainer = todoContainer
     pin.todoItems = {}
 
-    pin.RefreshLayout = function(self, skipTodoRefresh)
-        if not self.contentFrame or not self.todoMainFrame then return end
+    pin.RefreshLayout = function(myself, skipTodoRefresh)
+        if not myself.contentFrame or not myself.todoMainFrame then return end
 
         local zd = ns.Zones and ns.Zones:GetZone(zoneName)
         if not zd then return end
@@ -305,7 +290,7 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
         local todoCount = #(zd.todos or {})
         local taskHeight = 0
         if todoCount > 0 then
-            taskHeight = self.todoContainer:GetHeight() or 40
+            taskHeight = myself.todoContainer:GetHeight() or 40
             if taskHeight <= 10 then
                 taskHeight = math.max(40, todoCount * 25 + 20)
             end
@@ -313,68 +298,68 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
 
         local hasContent  = zd.content and zd.content ~= ""
         local minWindow   = 30 + (hasContent and 60 or 10) + taskHeight + 35
-        self:SetResizeBounds(200, minWindow, GetScreenWidth(), GetScreenHeight())
+        myself:SetResizeBounds(200, minWindow, GetScreenWidth(), GetScreenHeight())
 
-        self.contentFrame:ClearAllPoints()
-        self.todoMainFrame:ClearAllPoints()
-        self.todoContainer:ClearAllPoints()
+        myself.contentFrame:ClearAllPoints()
+        myself.todoMainFrame:ClearAllPoints()
+        myself.todoContainer:ClearAllPoints()
 
         local tasksOnTop = zd.tasksOnTop == true
 
         if todoCount == 0 then
-            self.todoMainFrame:Hide()
+            myself.todoMainFrame:Hide()
             if hasContent then
-                self.contentFrame:SetPoint("TOPLEFT", self.titleBar, "BOTTOMLEFT", 5, -5)
-                self.contentFrame:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 15)
-                self.contentFrame:Show()
+                myself.contentFrame:SetPoint("TOPLEFT", myself.titleBar, "BOTTOMLEFT", 5, -5)
+                myself.contentFrame:SetPoint("BOTTOMRIGHT", myself, "BOTTOMRIGHT", -5, 15)
+                myself.contentFrame:Show()
             else
-                self.contentFrame:Hide()
+                myself.contentFrame:Hide()
             end
         elseif hasContent then
-            self.todoMainFrame:Show()
+            myself.todoMainFrame:Show()
             if tasksOnTop then
-                self.todoMainFrame:SetPoint("TOPLEFT",  self.titleBar, "BOTTOMLEFT",  5, -5)
-                self.todoMainFrame:SetPoint("TOPRIGHT", self,          "TOPRIGHT",    -5, -5)
-                self.todoMainFrame:SetHeight(taskHeight)
-                self.todoContainer:SetPoint("TOPLEFT",  self.todoMainFrame, "TOPLEFT",  0, 0)
-                self.todoContainer:SetPoint("TOPRIGHT", self.todoMainFrame, "TOPRIGHT", 0, 0)
-                self.contentFrame:SetPoint("TOPLEFT",     self.todoMainFrame, "BOTTOMLEFT", 0, -5)
-                self.contentFrame:SetPoint("BOTTOMRIGHT", self,               "BOTTOMRIGHT", -5, 15)
+                myself.todoMainFrame:SetPoint("TOPLEFT",  myself.titleBar, "BOTTOMLEFT",  5, -5)
+                myself.todoMainFrame:SetPoint("TOPRIGHT", myself,          "TOPRIGHT",    -5, -5)
+                myself.todoMainFrame:SetHeight(taskHeight)
+                myself.todoContainer:SetPoint("TOPLEFT",  myself.todoMainFrame, "TOPLEFT",  0, 0)
+                myself.todoContainer:SetPoint("TOPRIGHT", myself.todoMainFrame, "TOPRIGHT", 0, 0)
+                myself.contentFrame:SetPoint("TOPLEFT",     myself.todoMainFrame, "BOTTOMLEFT", 0, -5)
+                myself.contentFrame:SetPoint("BOTTOMRIGHT", myself,               "BOTTOMRIGHT", -5, 15)
             else
-                self.todoMainFrame:SetPoint("BOTTOMLEFT",  self, "BOTTOMLEFT",  5, 15)
-                self.todoMainFrame:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 15)
-                self.todoMainFrame:SetHeight(taskHeight)
-                self.todoContainer:SetPoint("TOPLEFT",  self.todoMainFrame, "TOPLEFT",  0, 0)
-                self.todoContainer:SetPoint("TOPRIGHT", self.todoMainFrame, "TOPRIGHT", 0, 0)
-                self.contentFrame:SetPoint("TOPLEFT",  self.titleBar, "BOTTOMLEFT",  5, -5)
-                self.contentFrame:SetPoint("TOPRIGHT", self,          "TOPRIGHT",    -5, -5)
-                self.contentFrame:SetPoint("BOTTOMRIGHT", self.todoMainFrame, "TOPRIGHT", 0, -5)
+                myself.todoMainFrame:SetPoint("BOTTOMLEFT",  myself, "BOTTOMLEFT",  5, 15)
+                myself.todoMainFrame:SetPoint("BOTTOMRIGHT", myself, "BOTTOMRIGHT", -5, 15)
+                myself.todoMainFrame:SetHeight(taskHeight)
+                myself.todoContainer:SetPoint("TOPLEFT",  myself.todoMainFrame, "TOPLEFT",  0, 0)
+                myself.todoContainer:SetPoint("TOPRIGHT", myself.todoMainFrame, "TOPRIGHT", 0, 0)
+                myself.contentFrame:SetPoint("TOPLEFT",  myself.titleBar, "BOTTOMLEFT",  5, -5)
+                myself.contentFrame:SetPoint("TOPRIGHT", myself,          "TOPRIGHT",    -5, -5)
+                myself.contentFrame:SetPoint("BOTTOMRIGHT", myself.todoMainFrame, "TOPRIGHT", 0, -5)
             end
-            self.contentFrame:Show()
+            myself.contentFrame:Show()
         else
-            self.todoMainFrame:Show()
-            self.todoMainFrame:SetPoint("TOPLEFT",     self.titleBar, "BOTTOMLEFT",  5, -5)
-            self.todoMainFrame:SetPoint("BOTTOMRIGHT", self,          "BOTTOMRIGHT", -5, 15)
-            self.todoMainFrame:SetHeight(taskHeight)
-            self.todoContainer:SetPoint("TOPLEFT",  self.todoMainFrame, "TOPLEFT",  0, 0)
-            self.todoContainer:SetPoint("TOPRIGHT", self.todoMainFrame, "TOPRIGHT", 0, 0)
-            self.contentFrame:Hide()
+            myself.todoMainFrame:Show()
+            myself.todoMainFrame:SetPoint("TOPLEFT",     myself.titleBar, "BOTTOMLEFT",  5, -5)
+            myself.todoMainFrame:SetPoint("BOTTOMRIGHT", myself,          "BOTTOMRIGHT", -5, 15)
+            myself.todoMainFrame:SetHeight(taskHeight)
+            myself.todoContainer:SetPoint("TOPLEFT",  myself.todoMainFrame, "TOPLEFT",  0, 0)
+            myself.todoContainer:SetPoint("TOPRIGHT", myself.todoMainFrame, "TOPRIGHT", 0, 0)
+            myself.contentFrame:Hide()
         end
 
-        if self.todoContainer then
-            self.todoContainer:SetWidth(self.todoMainFrame:GetWidth())
+        if myself.todoContainer then
+            myself.todoContainer:SetWidth(myself.todoMainFrame:GetWidth())
         end
 
-        if not skipTodoRefresh and self.RefreshTodos then
-            self:RefreshTodos()
+        if not skipTodoRefresh and myself.RefreshTodos then
+            myself:RefreshTodos()
         end
     end
 
-    pin.RefreshTodos = function(self)
-        if not self.todoContainer then return end
+    pin.RefreshTodos = function(myself)
+        if not myself.todoContainer then return end
 
-        for i = #self.todoItems, 1, -1 do
-            local item = table.remove(self.todoItems, i)
+        for i = #myself.todoItems, 1, -1 do
+            local item = table.remove(myself.todoItems, i)
             if item then
                 item:Hide()
                 item._checkbox:SetScript("OnClick", nil)
@@ -385,8 +370,8 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
 
         local zd = ns.Zones and ns.Zones:GetZone(zoneName)
         if not zd or not zd.todos or #zd.todos == 0 then
-            self.todoContainer:SetHeight(0)
-            self:RefreshLayout(true)
+            myself.todoContainer:SetHeight(0)
+            myself:RefreshLayout(true)
             return
         end
 
@@ -396,11 +381,11 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
         for _, todo in ipairs(zd.todos) do
             local todoFrame = table.remove(ns.NotesPins._zoneTodoPool)
             if todoFrame then
-                todoFrame:SetParent(self.todoContainer)
+                todoFrame:SetParent(myself.todoContainer)
                 todoFrame:ClearAllPoints()
                 todoFrame:Show()
             else
-                todoFrame = CreateFrame("Frame", nil, self.todoContainer)
+                todoFrame = CreateFrame("Frame", nil, myself.todoContainer)
                 todoFrame:SetHeight(22)
                 todoFrame._checkbox = CreateFrame("CheckButton", nil, todoFrame, "UICheckButtonTemplate")
                 todoFrame._checkbox:SetSize(16, 16)
@@ -410,14 +395,14 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
                 todoFrame._text:SetJustifyH("LEFT")
             end
 
-            todoFrame:SetPoint("TOPLEFT", self.todoContainer, "TOPLEFT", 0, yOffset)
-            todoFrame:SetPoint("RIGHT",   self.todoContainer, "RIGHT",   0, 0)
+            todoFrame:SetPoint("TOPLEFT", myself.todoContainer, "TOPLEFT", 0, yOffset)
+            todoFrame:SetPoint("RIGHT",   myself.todoContainer, "RIGHT",   0, 0)
 
             todoFrame._checkbox:SetChecked(todo.completed)
             todoFrame._checkbox:SetScript("OnClick", function(cb)
                 todo.completed = cb:GetChecked()
                 if zd then zd.modified = GetServerTime() end
-                self:RefreshTodos()
+                myself:RefreshTodos()
             end)
 
             todoFrame._text:ClearAllPoints()
@@ -435,11 +420,11 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
                 todoFrame._text:SetTextColor(contentTextColor[1], contentTextColor[2], contentTextColor[3], 1)
             end
 
-            table.insert(self.todoItems, todoFrame)
+            table.insert(myself.todoItems, todoFrame)
             yOffset = yOffset - 25
         end
 
-        self.todoContainer:SetHeight(math.abs(yOffset) + 10)
+        myself.todoContainer:SetHeight(math.abs(yOffset) + 10)
     end
 
     -- Resize handle
@@ -509,8 +494,8 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
     local lockMoveCB = OneWoW_GUI:CreateCheckbox(hoverPanel, {
         label = L["CORE_PIN_LOCK_MOVE"] or "Lock",
         checked = zoneData.lockMove,
-        onClick = function(self)
-            zoneData.lockMove = self:GetChecked()
+        onClick = function(myself)
+            zoneData.lockMove = myself:GetChecked()
             if zoneData.lockMove then
                 pin:SetMovable(false)
                 pin:RegisterForDrag()
@@ -553,30 +538,30 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
         end
     end
 
-    addon.zonePins[zoneName] = pin
+    OneWoW_Notes.zonePins[zoneName] = pin
 
-    if addon.RegisterWindow then
-        pin.windowInfo = addon:RegisterWindow(pin, "zone_pinned", function()
+    if OneWoW_Notes.RegisterWindow then
+        pin.windowInfo = OneWoW_Notes:RegisterWindow(pin, "zone_pinned", function()
             pin:Hide()
         end)
     end
 
-    pin:SetScript("OnHide", function(self)
-        if self._destroying then
-            if addon.zonePins and addon.zonePins[zoneName] == self then
-                addon.zonePins[zoneName] = nil
+    pin:SetScript("OnHide", function(myself)
+        if myself._destroying then
+            if OneWoW_Notes.zonePins and adOneWoW_Notesdon.zonePins[zoneName] == myself then
+                OneWoW_Notes.zonePins[zoneName] = nil
             end
         end
-        if self.windowInfo and addon.UnregisterWindow then
-            addon:UnregisterWindow(self)
-            self.windowInfo = nil
+        if myself.windowInfo and OneWoW_Notes.UnregisterWindow then
+            OneWoW_Notes:UnregisterWindow(myself)
+            myself.windowInfo = nil
         end
     end)
 
-    pin:SetScript("OnShow", function(self)
-        if not self.windowInfo and addon.RegisterWindow then
-            self.windowInfo = addon:RegisterWindow(self, "zone_pinned", function()
-                self:Hide()
+    pin:SetScript("OnShow", function(myself)
+        if not myself.windowInfo and OneWoW_Notes.RegisterWindow then
+            myself.windowInfo = OneWoW_Notes:RegisterWindow(myself, "zone_pinned", function()
+                myself:Hide()
             end)
         end
     end)
@@ -585,18 +570,17 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
     pin:RefreshTodos()
     pin:Show()
 
-    if addon.BringWindowToFront then
-        addon:BringWindowToFront(pin)
+    if OneWoW_Notes.BringWindowToFront then
+        OneWoW_Notes:BringWindowToFront(pin)
     end
 
     return pin
 end
 
 function ZonePins:RefreshZonePinColors(zoneName)
-    local addon = _G.OneWoW_Notes
-    if not addon.zonePins or not addon.zonePins[zoneName] then return end
+    if not OneWoW_Notes.zonePins or not OneWoW_Notes.zonePins[zoneName] then return end
 
-    local pinFrame = addon.zonePins[zoneName]
+    local pinFrame = OneWoW_Notes.zonePins[zoneName]
     if not pinFrame or not pinFrame:IsShown() then return end
 
     local zoneData = ns.Zones and ns.Zones:GetZone(zoneName)
@@ -645,9 +629,8 @@ function ZonePins:RefreshZonePinColors(zoneName)
 end
 
 function ZonePins:RefreshAllPinFonts()
-    local addon = _G.OneWoW_Notes
-    if not addon.zonePins then return end
-    for zoneName, pinFrame in pairs(addon.zonePins) do
+    if not OneWoW_Notes.zonePins then return end
+    for zoneName, pinFrame in pairs(OneWoW_Notes.zonePins) do
         if pinFrame and pinFrame:IsShown() then
             self:RefreshZonePinColors(zoneName)
         end
@@ -655,10 +638,9 @@ function ZonePins:RefreshAllPinFonts()
 end
 
 function ZonePins:RefreshSyncPins()
-    local addon = _G.OneWoW_Notes
-    if not addon.zonePins then return end
+    if not OneWoW_Notes.zonePins then return end
 
-    for zoneName, pinFrame in pairs(addon.zonePins) do
+    for zoneName, pinFrame in pairs(OneWoW_Notes.zonePins) do
         if pinFrame and pinFrame:IsShown() then
             local zoneData = ns.Zones and ns.Zones:GetZone(zoneName)
             if zoneData and zoneData.pinColor == "sync" then

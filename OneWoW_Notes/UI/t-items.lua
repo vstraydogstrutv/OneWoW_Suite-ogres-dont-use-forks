@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/UI/t-items.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -21,9 +18,7 @@ local currentSort    = { by = "name", ascending = true }
 local detailPanel    = nil
 local emptyMessage   = nil
 local leftStatusText = nil
-local scrollFrame    = nil
 local scrollChild    = nil
-local todoContainer  = nil
 
 local MEDIA = "Interface\\AddOns\\OneWoW_Notes\\Media\\"
 
@@ -44,15 +39,10 @@ local function CreateThemedBar(name, parentFrame)
 end
 
 function ns.UI.CreateItemsTab(parent)
-    local addon = _G.OneWoW_Notes
-
     do
-        local a = _G.OneWoW_Notes
-        if a and a.db and a.db.global.tabSortPrefs and a.db.global.tabSortPrefs.items then
-            local p = a.db.global.tabSortPrefs.items
-            currentSort.by        = p.by or "name"
-            currentSort.ascending = p.ascending ~= false
-        end
+        local p = OneWoW_Notes.db.global.tabSortPrefs.items
+        currentSort.by        = p.by or "name"
+        currentSort.ascending = p.ascending ~= false
     end
 
     local controlPanel = CreateThemedBar(nil, parent)
@@ -174,7 +164,7 @@ function ns.UI.CreateItemsTab(parent)
         GameTooltip:AddLine(L["UI_MANAGE_CATEGORIES_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    manageCategoriesBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+    manageCategoriesBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     local storeDD = ns.UI.CreateThemedDropdown(controlPanel, L["LABEL_STORAGE"], 130, 25)
     storeDD:SetPoint("LEFT", manageCategoriesBtn, "RIGHT", 4, 0)
@@ -200,10 +190,7 @@ function ns.UI.CreateItemsTab(parent)
         onChange = function(field, ascending)
             currentSort.by        = field
             currentSort.ascending = ascending
-            local a = _G.OneWoW_Notes
-            if a and a.db and a.db.global.tabSortPrefs then
-                a.db.global.tabSortPrefs.items = { by = field, ascending = ascending }
-            end
+            OneWoW_Notes.db.global.tabSortPrefs.items = { by = field, ascending = ascending }
             parent.RefreshItemsList()
         end,
     })
@@ -258,7 +245,6 @@ function ns.UI.CreateItemsTab(parent)
     searchBox:SetPoint("TOPRIGHT", listingPanel, "TOPRIGHT", -8, -30)
 
     local listScroll = ns.UI.CreateCustomScroll(listingPanel)
-    scrollFrame = listScroll.scrollFrame
     scrollChild = listScroll.scrollChild
     listScroll.container:SetPoint("TOPLEFT",     listingPanel, "TOPLEFT",     10, -62)
     listScroll.container:SetPoint("BOTTOMRIGHT", listingPanel, "BOTTOMRIGHT", -10, 10)
@@ -481,7 +467,7 @@ function ns.UI.CreateItemsTab(parent)
             contentBg:SetHeight(160)
             contentBg:EnableMouse(true)
 
-            local contentScroll, contentScrollChild = OneWoW_GUI:CreateScrollFrame(contentBg, {})
+            local contentScroll = OneWoW_GUI:CreateScrollFrame(contentBg, {})
             contentScroll:SetPoint("TOPLEFT",     contentBg, "TOPLEFT",     4, -4)
             contentScroll:SetPoint("BOTTOMRIGHT", contentBg, "BOTTOMRIGHT", -26, 4)
             contentBg:SetFrameLevel(contentScroll:GetFrameLevel() - 1)
@@ -493,7 +479,7 @@ function ns.UI.CreateItemsTab(parent)
             contentEditBox:SetAutoFocus(false)
             contentEditBox:SetMaxLetters(0)
             contentEditBox:SetHyperlinksEnabled(true)
-            contentEditBox:SetScript("OnHyperlinkClick", function(self, link, text, button)
+            contentEditBox:SetScript("OnHyperlinkClick", function(_, link, text, button)
                 SetItemRef(link, text, button)
             end)
             contentEditBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -507,7 +493,7 @@ function ns.UI.CreateItemsTab(parent)
                 end
             end)
             contentEditBox:SetScript("OnReceiveDrag", function(self)
-                local cursorType, itemID, itemLink = GetCursorInfo()
+                local cursorType, _, itemLink = GetCursorInfo()
                 if cursorType == "item" and itemLink then
                     self:Insert(itemLink)
                     ClearCursor()
@@ -522,7 +508,7 @@ function ns.UI.CreateItemsTab(parent)
             contentScroll:SetScrollChild(contentEditBox)
             detailPanel.contentEditBox = contentEditBox
 
-            contentBg:SetScript("OnMouseDown", function(self, button)
+            contentBg:SetScript("OnMouseDown", function(_, button)
                 if detailPanel.contentEditBox then
                     detailPanel.contentEditBox:SetFocus()
                     if button == "RightButton" and ns.NotesContextMenu then
@@ -549,7 +535,7 @@ function ns.UI.CreateItemsTab(parent)
                 edit:SetAutoFocus(false)
                 edit:SetMaxLetters(255)
                 edit:SetHyperlinksEnabled(true)
-                edit:SetScript("OnHyperlinkClick", function(self, link, text, button)
+                edit:SetScript("OnHyperlinkClick", function(_, link, text, button)
                     SetItemRef(link, text, button)
                 end)
                 edit:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -564,7 +550,7 @@ function ns.UI.CreateItemsTab(parent)
                     end
                 end)
                 edit:SetScript("OnReceiveDrag", function(self)
-                    local cursorType, itemID, itemLink = GetCursorInfo()
+                    local cursorType, _, itemLink = GetCursorInfo()
                     if cursorType == "item" and itemLink then self:Insert(itemLink) ClearCursor() end
                 end)
                 edit:SetScript("OnMouseUp", function(self, button)
@@ -793,7 +779,7 @@ function ns.UI.CreateItemsTab(parent)
             aN:SetDesaturated(not item.data.alertOnLoot)
             aN:SetAlpha(item.data.alertOnLoot and 1.0 or 0.3)
             alertBtn:SetNormalTexture(aN)
-            alertBtn:SetScript("OnClick", function(self)
+            alertBtn:SetScript("OnClick", function()
                 if ns.Items then
                     local itemData = ns.Items:GetItem(item.id)
                     if itemData then
@@ -822,7 +808,7 @@ function ns.UI.CreateItemsTab(parent)
             fN:SetDesaturated(not item.data.favorite)
             fN:SetAlpha(item.data.favorite and 1.0 or 0.3)
             favBtn:SetNormalTexture(fN)
-            favBtn:SetScript("OnClick", function(self)
+            favBtn:SetScript("OnClick", function()
                 if ns.Items then
                     local itemData = ns.Items:GetItem(item.id)
                     if itemData then
@@ -913,7 +899,6 @@ function ns.UI.ShowAddItemByIDDialog(refreshParent)
     local COL1_X = 10
     local COL2_X = 240
     local COL_W  = 200
-    local ROW_H  = 42
 
     local dialog = ns.UI.CreateThemedDialog({
         name            = "OneWoW_NotesAddItemByID",
@@ -1028,7 +1013,7 @@ function ns.UI.ShowAddItemByIDDialog(refreshParent)
         statusFS:SetText(L["ITEM_LOADING"] or "Loading...")
         statusFS:SetTextColor(0.8, 0.8, 0.2, 1)
 
-        local itemName, itemLink, itemRarity, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(id)
+        local itemName, _, itemRarity, _, _, _, _, _, _, itemTexture = C_Item.GetItemInfo(id)
         if itemName then
             resultIcon:SetTexture(itemTexture)
             local rc = RARITY_COLORS[itemRarity] or RARITY_COLORS[1]
@@ -1045,7 +1030,7 @@ function ns.UI.ShowAddItemByIDDialog(refreshParent)
             dialog._validated = false
 
             C_Timer.After(2, function()
-                local n2, l2, r2, _, _, _, _, _, _, t2 = C_Item.GetItemInfo(id)
+                local n2, _, r2, _, _, _, _, _, _, t2 = C_Item.GetItemInfo(id)
                 if n2 then
                     resultIcon:SetTexture(t2)
                     local rc2 = RARITY_COLORS[r2] or RARITY_COLORS[1]
@@ -1220,7 +1205,7 @@ function ns.UI.ShowItemPropertiesDialog(itemID, refreshParent)
     noteBg:SetPoint("TOPLEFT",     content, "TOPLEFT",     COL1_X, yPos)
     noteBg:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -COL1_X, 6)
 
-    local noteScroll, noteScrollChild = OneWoW_GUI:CreateScrollFrame(noteBg, {})
+    local noteScroll = OneWoW_GUI:CreateScrollFrame(noteBg, {})
     noteScroll:SetPoint("TOPLEFT",     noteBg, "TOPLEFT",     4, -4)
     noteScroll:SetPoint("BOTTOMRIGHT", noteBg, "BOTTOMRIGHT", -26, 4)
 
@@ -1232,7 +1217,7 @@ function ns.UI.ShowItemPropertiesDialog(itemID, refreshParent)
     noteEditBox:SetText(itemData.content or "")
     noteEditBox:EnableMouse(false)
     noteScroll:SetScrollChild(noteEditBox)
-    noteScroll:HookScript("OnSizeChanged", function(self, w)
+    noteScroll:HookScript("OnSizeChanged", function(_, w)
         noteEditBox:SetWidth(math.max(1, w))
     end)
 

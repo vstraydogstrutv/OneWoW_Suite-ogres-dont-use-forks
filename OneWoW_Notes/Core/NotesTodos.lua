@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/Core/NotesTodos.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 local NotesTodos = {}
 ns.NotesTodos = NotesTodos
@@ -33,9 +30,8 @@ function NotesTodos:AddTodo(noteID, todoText)
         end
     end
 
-    local addon = _G.OneWoW_Notes
-    if addon.notePins and addon.notePins[noteID] then
-        local pinFrame = addon.notePins[noteID]
+    if OneWoW_Notes.notePins and OneWoW_Notes.notePins[noteID] then
+        local pinFrame = OneWoW_Notes.notePins[noteID]
         if pinFrame and pinFrame.RefreshLayout then
             pinFrame:RefreshLayout()
         end
@@ -54,9 +50,8 @@ function NotesTodos:RemoveTodo(noteID, todoId)
             table.remove(note.todos, i)
             note.modified = GetServerTime()
 
-            local addon = _G.OneWoW_Notes
-            if addon.notePins and addon.notePins[noteID] then
-                local pinFrame = addon.notePins[noteID]
+            if OneWoW_Notes.notePins and OneWoW_Notes.notePins[noteID] then
+                local pinFrame = OneWoW_Notes.notePins[noteID]
                 if pinFrame and pinFrame.RefreshLayout then
                     pinFrame:RefreshLayout()
                 end
@@ -79,9 +74,8 @@ function NotesTodos:UpdateTodo(noteID, todoId, newText, completed)
             if completed ~= nil then todo.completed = completed end
             note.modified = GetServerTime()
 
-            local addon = _G.OneWoW_Notes
-            if addon.notePins and addon.notePins[noteID] then
-                local pinFrame = addon.notePins[noteID]
+            if OneWoW_Notes.notePins and OneWoW_Notes.notePins[noteID] then
+                local pinFrame = OneWoW_Notes.notePins[noteID]
                 if pinFrame and pinFrame.RefreshTodos then
                     pinFrame:RefreshTodos()
                 end
@@ -95,7 +89,7 @@ end
 
 function NotesTodos:AreAllTodosCompleted(noteID)
     local NotesData = ns.NotesData
-    local note, notesDB = NotesData:FindNote(noteID)
+    local note = NotesData:FindNote(noteID)
     if not note or type(note) ~= "table" then return false end
 
     if not note.todos or type(note.todos) ~= "table" then return false end
@@ -121,7 +115,6 @@ function NotesTodos:CheckAndPerformResets()
     local lastWeeklyResetTime = GetServerTime() + secondsUntilWeekly - 604800
 
     local allNotes  = ns.NotesData:GetAllNotes()
-    local addon     = _G.OneWoW_Notes
     local anyReset  = false
 
     for noteID, note in pairs(allNotes) do
@@ -153,8 +146,8 @@ function NotesTodos:CheckAndPerformResets()
                         ns.NotesPins:ShowNotePin(noteID)
                     end
 
-                    if addon.notePins and addon.notePins[noteID] then
-                        local pinFrame = addon.notePins[noteID]
+                    if OneWoW_Notes.notePins and OneWoW_Notes.notePins[noteID] then
+                        local pinFrame = OneWoW_Notes.notePins[noteID]
                         if pinFrame and pinFrame.RefreshTodos then
                             pinFrame:RefreshTodos()
                         end

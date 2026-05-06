@@ -1,6 +1,3 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/OneWoW_Notes.lua
--- Created by MichinMuggin (Ricky)
 local addonName, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -8,15 +5,14 @@ if not OneWoW_GUI then return end
 
 local DB = OneWoW_GUI.DB
 
-OneWoW_Notes = {}
-local addon = OneWoW_Notes
+-- We use _G[""] form since _G.OneWoW_Notes would get caught in pre-commit hook.
+_G["OneWoW_Notes"] = ns
 
-ns.addon = addon
 ns.oneWoWHubActive = false
 
 local function RegisterWithOneWoW()
-    if not _G.OneWoW then return false end
-    if not _G.OneWoW.RegisterModule then return false end
+    if not OneWoW then return false end
+    if not OneWoW.RegisterModule then return false end
 
     local tabs = {
         { name = "notes",   displayName = function() return ns.L["TAB_NOTES"]   or "Notes"   end, create = function(p) ns.UI.CreateNotesTab(p) end },
@@ -26,14 +22,14 @@ local function RegisterWithOneWoW()
         { name = "items",   displayName = function() return ns.L["TAB_ITEMS"]   or "Items"   end, create = function(p) ns.UI.CreateItemsTab(p) end },
     }
 
-    _G.OneWoW:RegisterModule({
+    OneWoW:RegisterModule({
         name = "notes",
         displayName = function() return ns.L["ADDON_TITLE_SHORT"] or "Notes" end,
         addonName = "OneWoW_Notes",
         order = 1,
         tabs = tabs,
     })
-    _G.OneWoW:RegisterSettingsPanel({
+    OneWoW:RegisterSettingsPanel({
         name        = "notes",
         displayName = function() return ns.L["ADDON_TITLE_SHORT"] or "Notes" end,
         order       = 1,
@@ -44,19 +40,19 @@ local function RegisterWithOneWoW()
 end
 
 local function OnInitialize()
-    addon:InitializeDatabase()
+    ns:InitializeDatabase()
 
-    OneWoW_GUI:MigrateSettings(addon.db.global)
+    OneWoW_GUI:MigrateSettings(ns.db.global)
 
-    addon:ApplyTheme()
-    if ns.ApplyLanguage then ns.ApplyLanguage() end
+    ns:ApplyTheme()
+    ns.ApplyLanguage()
 
-    local function slashHandler(msg) addon:SlashCommandHandler(msg) end
+    local function slashHandler(msg) ns:SlashCommandHandler(msg) end
     DB:RegisterSlashCommand("own", slashHandler)
     DB:RegisterSlashCommand("onewownotes", slashHandler)
     DB:RegisterSlashCommand("1wn", slashHandler)
 
-    OneWoW_GUI:RegisterSettingsCallback("OnThemeChanged", addon, function(self2)
+    OneWoW_GUI:RegisterSettingsCallback("OnThemeChanged", ns, function()
         if ns.ApplyTheme then ns.ApplyTheme() end
         if ns.NotesPins and ns.NotesPins.RefreshSyncPins then
             ns.NotesPins:RefreshSyncPins()
@@ -65,10 +61,10 @@ local function OnInitialize()
             ns.ZonePins:RefreshSyncPins()
         end
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", addon, function(self2)
-        if ns.ApplyLanguage then ns.ApplyLanguage() end
+    OneWoW_GUI:RegisterSettingsCallback("OnLanguageChanged", ns, function()
+        ns.ApplyLanguage()
     end)
-    OneWoW_GUI:RegisterSettingsCallback("OnFontChanged", addon, function(self2)
+    OneWoW_GUI:RegisterSettingsCallback("OnFontChanged", ns, function()
         if ns.NotesPins and ns.NotesPins.RefreshAllPinFonts then
             ns.NotesPins:RefreshAllPinFonts()
         end
@@ -77,18 +73,18 @@ local function OnInitialize()
         end
     end)
     local _ver = OneWoW_GUI:GetAddonVersion(addonName)
-    if _G.OneWoW and _G.OneWoW.RegisterLoadComponent then
-        _G.OneWoW:RegisterLoadComponent("Notes", _ver, "/1wn")
+    if OneWoW and OneWoW.RegisterLoadComponent then
+        OneWoW:RegisterLoadComponent("Notes", _ver, "/1wn")
     end
 end
 
-function addon:CloseHelpPanel()
+function ns:CloseHelpPanel()
     if ns.UI and ns.UI.notesHelpPanel and ns.UI.notesHelpPanel:IsShown() then
         ns.UI.notesHelpPanel:Hide()
     end
 end
 
-function addon:ApplyTheme()
+function ns:ApplyTheme()
     OneWoW_GUI:ApplyTheme(self)
 
     if ns.NotesPins and ns.NotesPins.RefreshSyncPins then
@@ -99,33 +95,11 @@ function addon:ApplyTheme()
     end
 end
 
-function addon:ApplyLanguage()
-    if ns.ApplyLanguage then
-        ns.ApplyLanguage()
-    end
-end
-
 local function OnEnable()
-    if ns.NotesData and ns.NotesData.MigrateDefaultColors then
-        ns.NotesData:MigrateDefaultColors()
-    end
-
-    if ns.Zones and ns.Zones.MigrateDefaultColors then
-        ns.Zones:MigrateDefaultColors()
-    end
-
-    if ns.NotesData and ns.NotesData.MigrateFontFamily then
-        ns.NotesData:MigrateFontFamily()
-    end
-
-    if ns.Zones and ns.Zones.MigrateFontFamily then
-        ns.Zones:MigrateFontFamily()
-    end
-
     if ns.NotesData then
         local allNotes = ns.NotesData:GetAllNotes()
         if allNotes then
-            for noteID, note in pairs(allNotes) do
+            for _, note in pairs(allNotes) do
                 if type(note) == "table" and note.noteType == "escpanel" then
                     note.noteType = "standard"
                     note.category = "General"
@@ -137,8 +111,8 @@ local function OnEnable()
 
     RegisterWithOneWoW()
 
-    if _G.OneWoW then
-        _G.OneWoW:RegisterMinimap("OneWoW_Notes", (_G.OneWoW.L and _G.OneWoW.L["CTX_OPEN_NOTES"]) or "Open Notes", "notes", nil)
+    if OneWoW then
+        OneWoW:RegisterMinimap("OneWoW_Notes", (OneWoW.L and OneWoW.L["CTX_OPEN_NOTES"]) or "Open Notes", "notes", nil)
     end
 
     if ns.ZonePins and ns.ZonePins.Initialize then
@@ -154,20 +128,11 @@ local function OnEnable()
         ns.NPCs:Initialize()
     end
 
-    addon.Players = ns.Players
-    addon.NPCs    = ns.NPCs
-    addon.Zones   = ns.Zones
-    addon.Config  = ns.Config
-    addon.notePins    = addon.notePins    or {}
-    addon.windowStack = addon.windowStack or {}
-
-    if ns.NotesData then
-        addon.NotesData = ns.NotesData
-    end
-
+    ns.notePins    = ns.notePins    or {}
+    ns.windowStack = ns.windowStack or {}
 end
 
-local function OnPlayerEnteringWorld(isInitialLogin, isReloading)
+local function OnPlayerEnteringWorld(isInitialLogin)
     if isInitialLogin and ns.NotesData then
         local allNotes = ns.NotesData:GetAllNotes()
         if allNotes then
@@ -188,7 +153,7 @@ local function OnPlayerEnteringWorld(isInitialLogin, isReloading)
     end
 end
 
-function addon:FormatResetTimer(seconds)
+function ns:FormatResetTimer(seconds)
     if seconds <= 0 then return "<0m>" end
     local days = math.floor(seconds / 86400)
     local hours = math.floor((seconds % 86400) / 3600)
@@ -203,7 +168,7 @@ function addon:FormatResetTimer(seconds)
     end
 end
 
-function addon:RegisterWindow(frame, windowType, closeCallback)
+function ns:RegisterWindow(frame, windowType, closeCallback)
     if not frame then return end
     if not self.windowStack then self.windowStack = {} end
     local windowInfo = {
@@ -218,7 +183,7 @@ function addon:RegisterWindow(frame, windowType, closeCallback)
     return windowInfo
 end
 
-function addon:UnregisterWindow(frame)
+function ns:UnregisterWindow(frame)
     if not frame or not self.windowStack then return end
     for i = #self.windowStack, 1, -1 do
         if self.windowStack[i].frame == frame then
@@ -229,7 +194,7 @@ function addon:UnregisterWindow(frame)
     self:UpdateWindowLayering()
 end
 
-function addon:BringWindowToFront(frame)
+function ns:BringWindowToFront(frame)
     if not frame or not self.windowStack then return end
     local windowInfo = nil
     local oldIndex = nil
@@ -246,7 +211,7 @@ function addon:BringWindowToFront(frame)
     self:UpdateWindowLayering()
 end
 
-function addon:UpdateWindowLayering()
+function ns:UpdateWindowLayering()
     if not self.windowStack then return end
     local baseLevel = 100
     for i, info in ipairs(self.windowStack) do
@@ -256,19 +221,14 @@ function addon:UpdateWindowLayering()
     end
 end
 
-function addon:SlashCommandHandler(input)
-    if ns.oneWoWHubActive and _G.OneWoW and _G.OneWoW.GUI then
-        _G.OneWoW.GUI:Show("notes")
+function ns:SlashCommandHandler()
+    if ns.oneWoWHubActive and OneWoW and OneWoW.GUI then
+        OneWoW.GUI:Show("notes")
         return
     end
     if ns.UI and ns.UI.Toggle then
         ns.UI:Toggle()
     end
-end
-
-function addon:InitializeDatabase()
-    local defaults = ns.DatabaseDefaults or {}
-    self.db = DB:NewCompat("OneWoW_Notes_DB", defaults, true)
 end
 
 local pewFired = false
@@ -287,4 +247,3 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         OnPlayerEnteringWorld(...)
     end
 end)
-

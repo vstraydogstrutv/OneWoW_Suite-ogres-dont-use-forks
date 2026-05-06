@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/Core/NotesCategories.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local NotesCategories = {}
@@ -28,22 +25,15 @@ function NotesCategories:GetCategories()
         table.insert(allCategories, category)
     end
 
-    local addon = _G.OneWoW_Notes
-    if addon and addon.db and addon.db.global and addon.db.global.notesCustomCategories then
-        for _, customCategory in ipairs(addon.db.global.notesCustomCategories) do
-            table.insert(allCategories, customCategory)
-        end
+    for _, customCategory in ipairs(OneWoW_Notes.db.global.notesCustomCategories) do
+        table.insert(allCategories, customCategory)
     end
 
     return allCategories
 end
 
 function NotesCategories:GetCustomCategories()
-    local addon = _G.OneWoW_Notes
-    if addon and addon.db and addon.db.global and addon.db.global.notesCustomCategories then
-        return addon.db.global.notesCustomCategories
-    end
-    return {}
+    return OneWoW_Notes.db.global.notesCustomCategories
 end
 
 function NotesCategories:IsBuiltInCategory(categoryName)
@@ -60,11 +50,6 @@ function NotesCategories:AddCustomCategory(categoryName)
         return false, L["NOTES_CATEGORY_EMPTY"]
     end
 
-    local addon = _G.OneWoW_Notes
-    if not addon.db.global.notesCustomCategories then
-        addon.db.global.notesCustomCategories = {}
-    end
-
     local allCategories = self:GetCategories()
     for _, existing in ipairs(allCategories) do
         if existing:lower() == categoryName:lower() then
@@ -72,7 +57,7 @@ function NotesCategories:AddCustomCategory(categoryName)
         end
     end
 
-    table.insert(addon.db.global.notesCustomCategories, categoryName)
+    tinsert(OneWoW_Notes.db.global.notesCustomCategories, categoryName)
     return true
 end
 
@@ -81,15 +66,11 @@ function NotesCategories:RemoveCustomCategory(categoryName)
         return false, L["NOTES_CATEGORY_EMPTY"]
     end
 
-    local addon = _G.OneWoW_Notes
-    if not addon.db.global.notesCustomCategories then
-        return false, L["NOTES_CATEGORY_NOT_FOUND"]
-    end
-
     if self:IsBuiltInCategory(categoryName) then
         return false, L["NOTES_CATEGORY_BUILTIN"]
     end
 
+    local addon = OneWoW_Notes
     for i = #addon.db.global.notesCustomCategories, 1, -1 do
         if addon.db.global.notesCustomCategories[i] == categoryName then
             table.remove(addon.db.global.notesCustomCategories, i)

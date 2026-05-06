@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/UI/t-players.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -22,7 +19,6 @@ local currentSort     = { by = "name", ascending = true }
 local detailPanel    = nil
 local emptyMessage   = nil
 local leftStatusText = nil
-local scrollFrame    = nil
 local scrollChild    = nil
 
 local MEDIA = "Interface\\AddOns\\OneWoW_Notes\\Media\\"
@@ -45,12 +41,9 @@ end
 
 function ns.UI.CreatePlayersTab(parent)
     do
-        local a = _G.OneWoW_Notes
-        if a and a.db and a.db.global.tabSortPrefs and a.db.global.tabSortPrefs.players then
-            local p = a.db.global.tabSortPrefs.players
-            currentSort.by        = p.by or "name"
-            currentSort.ascending = p.ascending ~= false
-        end
+        local p = OneWoW_Notes.db.global.tabSortPrefs.players
+        currentSort.by        = p.by or "name"
+        currentSort.ascending = p.ascending ~= false
     end
 
     local controlPanel = CreateThemedBar(nil, parent)
@@ -113,7 +106,7 @@ function ns.UI.CreatePlayersTab(parent)
         addAltsBtn:SetAlpha(0.4)
     end
     addAltsBtn:SetScript("OnClick", function()
-        if not altTrackerLoaded and not _G.OneWoW_AltTracker_Character_DB then
+        if not altTrackerLoaded and not OneWoW_AltTracker_Character_DB then
             print("|cFFFFD100OneWoW - Players:|r " .. (L["PLAYER_ALTS_NO_DATA"] or "AltTracker not detected."))
             return
         end
@@ -185,7 +178,7 @@ function ns.UI.CreatePlayersTab(parent)
         GameTooltip:AddLine(L["UI_MANAGE_CATEGORIES_DESC"], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    manageCategoriesBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+    manageCategoriesBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     local storeDD = ns.UI.CreateThemedDropdown(controlPanel, L["LABEL_STORAGE"], 130, 25)
     storeDD:SetPoint("LEFT", manageCategoriesBtn, "RIGHT", 4, 0)
@@ -215,10 +208,7 @@ function ns.UI.CreatePlayersTab(parent)
         onChange = function(field, ascending)
             currentSort.by        = field
             currentSort.ascending = ascending
-            local a = _G.OneWoW_Notes
-            if a and a.db and a.db.global.tabSortPrefs then
-                a.db.global.tabSortPrefs.players = { by = field, ascending = ascending }
-            end
+            OneWoW_Notes.db.global.tabSortPrefs.players = { by = field, ascending = ascending }
             parent.RefreshPlayersList()
         end,
     })
@@ -273,7 +263,6 @@ function ns.UI.CreatePlayersTab(parent)
     searchBox:SetPoint("TOPRIGHT", listingPanel, "TOPRIGHT", -8, -30)
 
     local listScroll = ns.UI.CreateCustomScroll(listingPanel)
-    scrollFrame = listScroll.scrollFrame
     scrollChild = listScroll.scrollChild
     listScroll.container:SetPoint("TOPLEFT",     listingPanel, "TOPLEFT",     10, -62)
     listScroll.container:SetPoint("BOTTOMRIGHT", listingPanel, "BOTTOMRIGHT", -10, 10)
@@ -489,7 +478,7 @@ function ns.UI.CreatePlayersTab(parent)
             contentBg:SetHeight(160)
             contentBg:EnableMouse(true)
 
-            local contentScroll, contentScrollChild = OneWoW_GUI:CreateScrollFrame(contentBg, {})
+            local contentScroll = OneWoW_GUI:CreateScrollFrame(contentBg, {})
             contentScroll:SetPoint("TOPLEFT",     contentBg, "TOPLEFT",     4, -4)
             contentScroll:SetPoint("BOTTOMRIGHT", contentBg, "BOTTOMRIGHT", -26, 4)
             contentBg:SetFrameLevel(contentScroll:GetFrameLevel() - 1)
@@ -501,7 +490,7 @@ function ns.UI.CreatePlayersTab(parent)
             contentEditBox:SetAutoFocus(false)
             contentEditBox:SetMaxLetters(0)
             contentEditBox:SetHyperlinksEnabled(true)
-            contentEditBox:SetScript("OnHyperlinkClick", function(self, link, text, button)
+            contentEditBox:SetScript("OnHyperlinkClick", function(_, link, text, button)
                 SetItemRef(link, text, button)
             end)
             contentEditBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -524,7 +513,7 @@ function ns.UI.CreatePlayersTab(parent)
             contentScroll:SetScrollChild(contentEditBox)
             detailPanel.contentEditBox = contentEditBox
 
-            contentBg:SetScript("OnMouseDown", function(self, button)
+            contentBg:SetScript("OnMouseDown", function(_, button)
                 if detailPanel.contentEditBox then
                     detailPanel.contentEditBox:SetFocus()
                     if button == "RightButton" and ns.NotesContextMenu then
@@ -553,7 +542,7 @@ function ns.UI.CreatePlayersTab(parent)
                 edit:SetPoint("TOPRIGHT", tooltipSection, "TOPRIGHT", -10, -30 - (i - 1) * 28)
                 edit:SetAutoFocus(false)
                 edit:SetHyperlinksEnabled(true)
-                edit:SetScript("OnHyperlinkClick", function(self, link, text, button)
+                edit:SetScript("OnHyperlinkClick", function(_, link, text, button)
                     SetItemRef(link, text, button)
                 end)
                 edit:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -663,10 +652,9 @@ function ns.UI.CreatePlayersTab(parent)
     end
 
     parent:HookScript("OnShow", function()
-        local notes = _G.OneWoW_Notes
-        if notes and notes.pendingPlayerSelect then
-            local name = notes.pendingPlayerSelect
-            notes.pendingPlayerSelect = nil
+        if OneWoW_Notes and OneWoW_Notes.pendingPlayerSelect then
+            local name = OneWoW_Notes.pendingPlayerSelect
+            OneWoW_Notes.pendingPlayerSelect = nil
             parent.SelectPlayer(name)
         end
     end)
@@ -829,7 +817,7 @@ function ns.UI.CreatePlayersTab(parent)
             aN2:SetDesaturated(not player.data.soundEnabled)
             aN2:SetAlpha(player.data.soundEnabled and 1.0 or 0.3)
             alertBtn2:SetNormalTexture(aN2)
-            alertBtn2:SetScript("OnClick", function(self)
+            alertBtn2:SetScript("OnClick", function()
                 if ns.Players then
                     local pd = ns.Players:GetPlayer(player.fullName)
                     if pd then
@@ -857,7 +845,7 @@ function ns.UI.CreatePlayersTab(parent)
             fN2:SetDesaturated(not player.data.favorite)
             fN2:SetAlpha(player.data.favorite and 1.0 or 0.3)
             favBtn2:SetNormalTexture(fN2)
-            favBtn2:SetScript("OnClick", function(self)
+            favBtn2:SetScript("OnClick", function()
                 if ns.Players then
                     local pd = ns.Players:GetPlayer(player.fullName)
                     if pd then
@@ -887,10 +875,7 @@ function ns.UI.CreatePlayersTab(parent)
                     currentSort.by = "manual"
                     currentSort.ascending = true
                     playerSortHandle:SetSort("manual", true)
-                    local a = _G.OneWoW_Notes
-                    if a and a.db and a.db.global.tabSortPrefs then
-                        a.db.global.tabSortPrefs.players = { by = "manual", ascending = true }
-                    end
+                    OneWoW_Notes.db.global.tabSortPrefs.players = { by = "manual", ascending = true }
                 end
                 for i, item in ipairs(groupArray) do item.data.sortOrder = i end
                 groupArray[groupIndex].data.sortOrder     = groupIndex - 1
@@ -912,10 +897,7 @@ function ns.UI.CreatePlayersTab(parent)
                     currentSort.by = "manual"
                     currentSort.ascending = true
                     playerSortHandle:SetSort("manual", true)
-                    local a = _G.OneWoW_Notes
-                    if a and a.db and a.db.global.tabSortPrefs then
-                        a.db.global.tabSortPrefs.players = { by = "manual", ascending = true }
-                    end
+                    OneWoW_Notes.db.global.tabSortPrefs.players = { by = "manual", ascending = true }
                 end
                 for i, item in ipairs(groupArray) do item.data.sortOrder = i end
                 groupArray[groupIndex].data.sortOrder     = groupIndex + 1
@@ -1183,7 +1165,7 @@ function ns.UI.ShowManualPlayerEntryDialog(refreshParent)
     noteBg:SetPoint("TOPLEFT",     content, "TOPLEFT",     COL1_X, yPos)
     noteBg:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -COL1_X, 6)
 
-    local noteScroll, noteScrollChild = OneWoW_GUI:CreateScrollFrame(noteBg, {})
+    local noteScroll = OneWoW_GUI:CreateScrollFrame(noteBg, {})
     noteScroll:SetPoint("TOPLEFT",     noteBg, "TOPLEFT",     4, -4)
     noteScroll:SetPoint("BOTTOMRIGHT", noteBg, "BOTTOMRIGHT", -26, 4)
 
@@ -1193,7 +1175,7 @@ function ns.UI.ShowManualPlayerEntryDialog(refreshParent)
     noteEditBox:SetAutoFocus(false)
     noteEditBox:SetMaxLetters(0)
     noteScroll:SetScrollChild(noteEditBox)
-    noteScroll:HookScript("OnSizeChanged", function(self, w)
+    noteScroll:HookScript("OnSizeChanged", function(_, w)
         noteEditBox:SetWidth(math.max(1, w))
     end)
     dialog._noteEditBox = noteEditBox
@@ -1379,7 +1361,7 @@ function ns.UI.ShowPlayerPropertiesDialog(fullName, refreshParent)
     noteBg:SetPoint("TOPLEFT",     content, "TOPLEFT",     COL1_X, yPos)
     noteBg:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -COL1_X, 6)
 
-    local noteScroll, noteScrollChild = OneWoW_GUI:CreateScrollFrame(noteBg, {})
+    local noteScroll = OneWoW_GUI:CreateScrollFrame(noteBg, {})
     noteScroll:SetPoint("TOPLEFT",     noteBg, "TOPLEFT",     4, -4)
     noteScroll:SetPoint("BOTTOMRIGHT", noteBg, "BOTTOMRIGHT", -26, 4)
 
@@ -1391,7 +1373,7 @@ function ns.UI.ShowPlayerPropertiesDialog(fullName, refreshParent)
     noteEditBox:SetText(pd.content or "")
     noteEditBox:EnableMouse(false)
     noteScroll:SetScrollChild(noteEditBox)
-    noteScroll:HookScript("OnSizeChanged", function(self, w)
+    noteScroll:HookScript("OnSizeChanged", function(_, w)
         noteEditBox:SetWidth(math.max(1, w))
     end)
 
@@ -1399,7 +1381,7 @@ function ns.UI.ShowPlayerPropertiesDialog(fullName, refreshParent)
 end
 
 function ns.UI.ShowAddAltsDialog(refreshParent)
-    local altDB = _G.OneWoW_AltTracker_Character_DB
+    local altDB = OneWoW_AltTracker_Character_DB
     if not altDB or not altDB.characters then
         print("|cFFFFD100OneWoW - Players:|r " .. (L["PLAYER_ALTS_NO_DATA"] or "AltTracker data not found."))
         return
@@ -1510,7 +1492,7 @@ function ns.UI.ShowAddAltsDialog(refreshParent)
     local ROW_H = 28
     local yPos = 0
 
-    for i, alt in ipairs(altsToAdd) do
+    for _, alt in ipairs(altsToAdd) do
         local row = CreateFrame("Frame", nil, scroll.scrollChild, "BackdropTemplate")
         row:SetPoint("TOPLEFT", scroll.scrollChild, "TOPLEFT", 0, -yPos)
         row:SetPoint("TOPRIGHT", scroll.scrollChild, "TOPRIGHT", 0, -yPos)
@@ -1654,7 +1636,7 @@ function ns.UI.ShowAddGuildDialog(refreshParent)
     local ROW_H = 28
     local yPos = 0
 
-    for i, member in ipairs(guildMembers) do
+    for _, member in ipairs(guildMembers) do
         local row = CreateFrame("Frame", nil, scroll.scrollChild, "BackdropTemplate")
         row:SetPoint("TOPLEFT", scroll.scrollChild, "TOPLEFT", 0, -yPos)
         row:SetPoint("TOPRIGHT", scroll.scrollChild, "TOPRIGHT", 0, -yPos)

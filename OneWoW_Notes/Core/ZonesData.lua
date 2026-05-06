@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/Core/ZonesData.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local Zones = ns.DataModule:New("zones", "zoneCustomCategories", {
@@ -20,13 +17,7 @@ local currentInstanceID = nil
 local zoneEventFrame = CreateFrame("Frame")
 
 function Zones:Initialize()
-    local addon = _G.OneWoW_Notes
-    self:EnsureDB()
-    if addon.db.global.zoneAlertsEnabled == nil then
-        addon.db.global.zoneAlertsEnabled = true
-    end
-
-    if addon.db.global.zoneAlertsEnabled then
+    if OneWoW_Notes.db.global.zoneAlertsEnabled then
         self:EnableScanning()
         C_Timer.After(1, function() Zones:CheckZoneAlerts() end)
     end
@@ -35,8 +26,7 @@ end
 function Zones:EnableScanning()
     if scanningEnabled then return end
     scanningEnabled = true
-    local addon = _G.OneWoW_Notes
-    addon.db.global.zoneAlertsEnabled = true
+    OneWoW_Notes.db.global.zoneAlertsEnabled = true
 
     zoneEventFrame:SetScript("OnEvent", function() C_Timer.After(0.1, function() Zones:CheckZoneAlerts() end) end)
     zoneEventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
@@ -64,8 +54,7 @@ end
 function Zones:DisableScanning()
     if not scanningEnabled then return end
     scanningEnabled = false
-    local addon = _G.OneWoW_Notes
-    addon.db.global.zoneAlertsEnabled = false
+    OneWoW_Notes.db.global.zoneAlertsEnabled = false
     zoneEventFrame:UnregisterEvent("ZONE_CHANGED_NEW_AREA")
     zoneEventFrame:UnregisterEvent("ZONE_CHANGED")
     zoneEventFrame:UnregisterEvent("ZONE_CHANGED_INDOORS")
@@ -117,10 +106,9 @@ function Zones:CheckZoneAlerts()
     end
 
     if shouldHidePins and ns.ZonePins then
-        local addon = _G.OneWoW_Notes
-        if addon.zonePins then
+        if OneWoW_Notes.zonePins then
             local toHide = {}
-            for zoneName in pairs(addon.zonePins) do
+            for zoneName in pairs(OneWoW_Notes.zonePins) do
                 if zoneName ~= fullZone and zoneName ~= zoneText and zoneName ~= subZoneText then
                     table.insert(toHide, zoneName)
                 end
@@ -152,9 +140,9 @@ function Zones:CheckZoneAlerts()
                     lastAlertedZone = key
                     print("|cFFFFD100OneWoW - Zones:|r " .. (L["NOTES_ZONE_ALERT_ARRIVED"] or "Zone:") .. " " .. key)
                     PlaySound(SOUNDKIT.RAID_WARNING)
-                    if _G.OneWoW and _G.OneWoW.Toasts and _G.OneWoW.Toasts.FireZoneAlert then
+                    if OneWoW and OneWoW.Toasts and OneWoW.Toasts.FireZoneAlert then
                         local preview = (zoneData.content and zoneData.content ~= "") and zoneData.content:sub(1, 60) or nil
-                        _G.OneWoW.Toasts.FireZoneAlert(key, preview)
+                        OneWoW.Toasts.FireZoneAlert(key, preview)
                     end
                 end
             end
@@ -209,7 +197,6 @@ end
 
 function Zones:AddZone(zoneName, zoneData)
     if not zoneName or not zoneData then return false end
-    local addon = _G.OneWoW_Notes
 
     zoneData.content       = zoneData.content or zoneData.text or ""
     zoneData.text          = nil
@@ -228,12 +215,12 @@ function Zones:AddZone(zoneName, zoneData)
     zoneData.modified      = GetServerTime()
     zoneData.sortOrder     = zoneData.sortOrder or 0
 
-    if addon.mainFrame and addon.mainFrame:IsShown() then
+    if OneWoW_Notes.mainFrame and OneWoW_Notes.mainFrame:IsShown() then
         zoneData.isNew          = true
         zoneData.newTimestamp   = GetServerTime()
     end
 
-    local targetDB = (zoneData.storage == "character") and addon.db.char.zones or addon.db.global.zones
+    local targetDB = (zoneData.storage == "character") and OneWoW_Notes.db.char.zones or OneWoW_Notes.db.global.zones
     targetDB[zoneName] = zoneData
     self:InvalidateCache()
     return true
@@ -241,9 +228,8 @@ end
 
 function Zones:SaveZone(zoneName, zoneData)
     if not zoneName or not zoneData then return end
-    local addon = _G.OneWoW_Notes
     zoneData.modified = GetServerTime()
-    local targetDB = (zoneData.storage == "character") and addon.db.char.zones or addon.db.global.zones
+    local targetDB = (zoneData.storage == "character") and OneWoW_Notes.db.char.zones or OneWoW_Notes.db.global.zones
     targetDB[zoneName] = zoneData
     self:InvalidateCache()
 end
@@ -297,12 +283,4 @@ function Zones:RemoveTodo(zoneName, todoId)
         end
     end
     return false
-end
-
-function Zones:MigrateDefaultColors()
-    self:MigrateColors("zoneColorsMigrated")
-end
-
-function Zones:MigrateFontFamily()
-    self:MigrateFonts("zoneFontFamilyMigrated")
 end

@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/UI/t-settings.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -55,7 +52,7 @@ local function CreateDetectionRow(parent, labelKey, descKey, isEnabled, onToggle
     toggleBtn:SetScript("OnEnter", function(self)
         self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
     end)
-    toggleBtn:SetScript("OnLeave", function(self)
+    toggleBtn:SetScript("OnLeave", function()
         RefreshToggle(isEnabled())
     end)
 
@@ -86,10 +83,9 @@ function ns.UI.CreateSettingsTab(parent)
 
     local scrollChild = scrollObj.scrollChild
 
-    local addon = _G.OneWoW_Notes
     local yOffset = -20
 
-    if not _G.OneWoW then
+    if not OneWoW then
         yOffset = OneWoW_GUI:CreateSettingsPanel(scrollChild, { yOffset = yOffset, addonName = "OneWoW_Notes" })
     end
 
@@ -97,7 +93,7 @@ function ns.UI.CreateSettingsTab(parent)
     local detectionSection = OneWoW_GUI:CreateSectionHeader(scrollChild, { title = L["SETTINGS_DETECTION"] or "Detection & Alerts", yOffset = yOffset })
     yOffset = detectionSection.bottomY - 16
 
-    local zoneRow = CreateDetectionRow(
+    CreateDetectionRow(
         scrollChild,
         "SETTINGS_ZONE_ALERTS",
         "SETTINGS_ZONE_ALERTS_DESC",

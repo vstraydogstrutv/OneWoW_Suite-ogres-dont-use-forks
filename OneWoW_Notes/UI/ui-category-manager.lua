@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/UI/ui-category-manager.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -59,15 +56,6 @@ local function IsBuiltIn(sectionKey, categoryName)
     return false
 end
 
-local function GetCustomCategories(sectionKey)
-    local addon = _G.OneWoW_Notes
-    local dbKey = CUSTOM_DB_KEYS[sectionKey]
-    if addon and addon.db and addon.db.global and addon.db.global[dbKey] then
-        return addon.db.global[dbKey]
-    end
-    return {}
-end
-
 local function AddCustomCategory(sectionKey, categoryName)
     if not categoryName or categoryName == "" then
         return false, L["NOTES_CATEGORY_EMPTY"]
@@ -77,11 +65,8 @@ local function AddCustomCategory(sectionKey, categoryName)
         return ns.NotesCategories:AddCustomCategory(categoryName)
     end
 
-    local addon = _G.OneWoW_Notes
     local dbKey = CUSTOM_DB_KEYS[sectionKey]
-    if not addon.db.global[dbKey] then
-        addon.db.global[dbKey] = {}
-    end
+    if not dbKey then return false, L["NOTES_CATEGORY_NOT_FOUND"] end
 
     local sectionInfo = nil
     for _, s in ipairs(SECTIONS) do
@@ -96,7 +81,7 @@ local function AddCustomCategory(sectionKey, categoryName)
         end
     end
 
-    table.insert(addon.db.global[dbKey], categoryName)
+    tinsert(OneWoW_Notes.db.global[dbKey], categoryName)
     return true
 end
 
@@ -113,15 +98,12 @@ local function RemoveCustomCategory(sectionKey, categoryName)
         return ns.NotesCategories:RemoveCustomCategory(categoryName)
     end
 
-    local addon = _G.OneWoW_Notes
     local dbKey = CUSTOM_DB_KEYS[sectionKey]
-    if not addon.db.global[dbKey] then
-        return false, L["NOTES_CATEGORY_NOT_FOUND"]
-    end
+    if not dbKey then return false, L["NOTES_CATEGORY_NOT_FOUND"] end
 
-    for i = #addon.db.global[dbKey], 1, -1 do
-        if addon.db.global[dbKey][i] == categoryName then
-            table.remove(addon.db.global[dbKey], i)
+    for i = #OneWoW_Notes.db.global[dbKey], 1, -1 do
+        if OneWoW_Notes.db.global[dbKey][i] == categoryName then
+            tremove(OneWoW_Notes.db.global[dbKey], i)
             return true
         end
     end
@@ -130,8 +112,6 @@ local function RemoveCustomCategory(sectionKey, categoryName)
 end
 
 function ns.UI.ShowCategoryManager(initialSection)
-    local lib = LibStub("OneWoW_GUI-1.0", true)
-
     local dialog = ns.UI.CreateThemedDialog({
         name           = "OneWoW_NotesCategoryManager",
         title          = L["CATMGR_TITLE"],
@@ -210,7 +190,7 @@ function ns.UI.ShowCategoryManager(initialSection)
         local ROW_GAP = 2
         local yPos = 0
 
-        for i, catName in ipairs(allCategories) do
+        for _, catName in ipairs(allCategories) do
             local isBuiltin = IsBuiltIn(currentSection, catName)
 
             local row = CreateFrame("Frame", nil, scrollChild, "BackdropTemplate")

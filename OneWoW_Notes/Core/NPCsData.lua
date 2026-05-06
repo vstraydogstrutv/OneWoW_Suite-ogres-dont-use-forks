@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local NPCs = ns.DataModule:New(
@@ -56,7 +56,6 @@ function NPCs:GetTargetNPCInfo()
 end
 
 function NPCs:AddNPC(npcID, npcInfo)
-    local addon = _G.OneWoW_Notes
     if not npcID or not npcInfo then return false end
     npcID = tonumber(npcID)
     if not npcID then return false end
@@ -79,7 +78,7 @@ function NPCs:AddNPC(npcID, npcInfo)
         sortOrder    = 0,
     }
 
-    if addon.mainFrame and addon.mainFrame:IsShown() then
+    if OneWoW_Notes.mainFrame and OneWoW_Notes.mainFrame:IsShown() then
         newData.isNew = true
         newData.newTimestamp = GetServerTime()
     end
@@ -107,7 +106,7 @@ function NPCs:RemoveNPC(npcID)
     self:Remove(npcID)
 end
 
-function NPCs:CreateWaypoint(npcID, npcData)
+function NPCs:CreateWaypoint(_, npcData)
     if not npcData or not npcData.mapID or not npcData.coords then return end
     if C_Map and C_Map.SetUserWaypoint then
         if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(npcData.mapID) then
@@ -122,8 +121,6 @@ function NPCs:CreateWaypoint(npcID, npcData)
 end
 
 function NPCs:Initialize()
-    self:EnsureDB()
-
     if not NPCs._targetFrame then
         NPCs._targetFrame = CreateFrame("Frame")
         NPCs._targetFrame:SetScript("OnEvent", function(_, event)

@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/Core/NotesHyperlinks.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -168,10 +165,10 @@ end
 function NotesHyperlinks:EnhanceEditBox(editBox)
     if not editBox then return end
 
-    editBox:SetScript("OnChar", function(self, char)
+    editBox:SetScript("OnChar", function(myself, char)
         if char == ")" then
-            local fullText = self:GetText()
-            local cursorPos = self:GetCursorPosition()
+            local fullText = myself:GetText()
+            local cursorPos = myself:GetCursorPosition()
 
             local lineStart = 1
             local searchPos = cursorPos
@@ -200,9 +197,9 @@ function NotesHyperlinks:EnhanceEditBox(editBox)
             local convertedLine = NotesHyperlinks:ConvertManualLinks(currentLine)
             if convertedLine ~= currentLine then
                 local newText = beforeLine .. convertedLine .. afterLine
-                self:SetText(newText)
+                myself:SetText(newText)
                 local lineDiff = string.len(convertedLine) - string.len(currentLine)
-                self:SetCursorPosition(cursorPos + lineDiff)
+                myself:SetCursorPosition(cursorPos + lineDiff)
             end
         end
     end)
@@ -284,7 +281,7 @@ function ns.UI.CreateNotesHelpPanel()
     local pinsContent  = CreateFrame("Frame", nil, helpPanel)
     pinsContent:Hide()
 
-    local tabBtns, tabsBottomY = OneWoW_GUI:CreateFitFrameButtons(helpPanel, {
+    local _, tabsBottomY = OneWoW_GUI:CreateFitFrameButtons(helpPanel, {
         yOffset  = tabAreaTop,
         items    = {
             { text = L["UI_HELP_TAB_LINKS"], value = "links", isActive = true },

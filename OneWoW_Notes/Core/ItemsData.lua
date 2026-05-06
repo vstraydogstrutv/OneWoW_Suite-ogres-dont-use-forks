@@ -1,7 +1,4 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/Core/ItemsData.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local Items = ns.DataModule:New("items", "itemCustomCategories", {
@@ -24,7 +21,7 @@ function Items:AddItem(itemID, itemData)
     itemID = tonumber(itemID)
     if not itemID then return false end
 
-    local addon = _G.OneWoW_Notes
+    local addon = OneWoW_Notes
 
     local existing = self:GetItem(itemID)
     if existing then
@@ -34,8 +31,7 @@ function Items:AddItem(itemID, itemData)
         return true
     end
 
-    local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType,
-          itemStackCount, itemEquipLoc, itemTexture = C_Item.GetItemInfo(itemID)
+    local itemName, itemLink, itemRarity, itemLevel, _, itemType, itemSubType, _, _, itemTexture = C_Item.GetItemInfo(itemID)
 
     if not itemName then
         return false, L["NOTES_ITEM_INVALID_ID"] or "Invalid item ID"
@@ -80,15 +76,13 @@ function Items:SaveItem(itemID, itemData)
     itemID = tonumber(itemID)
     if not itemID then return end
 
-    local addon = _G.OneWoW_Notes
+    local addon = OneWoW_Notes
     local storageType = itemData.storage or "account"
     itemData.modified = GetServerTime()
 
     if storageType == "character" then
-        if not addon.db.char.items then addon.db.char.items = {} end
         addon.db.char.items[itemID] = itemData
     else
-        if not addon.db.global.items then addon.db.global.items = {} end
         addon.db.global.items[itemID] = itemData
     end
 

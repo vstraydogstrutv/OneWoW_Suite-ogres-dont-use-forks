@@ -1,14 +1,10 @@
--- OneWoW_Notes Addon File
--- OneWoW_Notes/UI/t-zones.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
 local BACKDROP_INNER_NO_INSETS = OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS
-local BACKDROP_SIMPLE = OneWoW_GUI.Constants.BACKDROP_SIMPLE
 
 ns.UI = ns.UI or {}
 
@@ -24,7 +20,6 @@ local detailPanel     = nil
 local emptyMessage    = nil
 local leftStatusText  = nil
 local rightStatusText = nil
-local scrollFrame     = nil
 local scrollChild     = nil
 local todoContainer       = nil
 local contentUpdateTimer  = nil
@@ -53,12 +48,9 @@ end
 
 function ns.UI.CreateZonesTab(parent)
     do
-        local a = _G.OneWoW_Notes
-        if a and a.db and a.db.global.tabSortPrefs and a.db.global.tabSortPrefs.zones then
-            local p = a.db.global.tabSortPrefs.zones
-            currentSort.by        = p.by or "name"
-            currentSort.ascending = p.ascending ~= false
-        end
+        local p = OneWoW_Notes.db.global.tabSortPrefs.zones
+        currentSort.by        = p.by or "name"
+        currentSort.ascending = p.ascending ~= false
     end
 
     local controlPanel = CreateThemedBar(nil, parent)
@@ -176,7 +168,7 @@ function ns.UI.CreateZonesTab(parent)
         GameTooltip:AddLine(L["UI_MANAGE_CATEGORIES_DESC"] or "Add, remove, and organize categories.", 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    manageCategoriesBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+    manageCategoriesBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     local storageDropdown = ns.UI.CreateThemedDropdown(controlPanel, L["LABEL_STORAGE"], 130, 25)
     storageDropdown:SetPoint("LEFT", manageCategoriesBtn, "RIGHT", 4, 0)
@@ -204,10 +196,7 @@ function ns.UI.CreateZonesTab(parent)
         onChange = function(field, ascending)
             currentSort.by        = field
             currentSort.ascending = ascending
-            local a = _G.OneWoW_Notes
-            if a and a.db and a.db.global.tabSortPrefs then
-                a.db.global.tabSortPrefs.zones = { by = field, ascending = ascending }
-            end
+            OneWoW_Notes.db.global.tabSortPrefs.zones = { by = field, ascending = ascending }
             parent.RefreshZonesList()
         end,
     })
@@ -262,7 +251,6 @@ function ns.UI.CreateZonesTab(parent)
     searchBox:SetPoint("TOPRIGHT", listingPanel, "TOPRIGHT", -8, -30)
 
     local listScroll = ns.UI.CreateCustomScroll(listingPanel)
-    scrollFrame = listScroll.scrollFrame
     scrollChild = listScroll.scrollChild
     listScroll.container:SetPoint("TOPLEFT", listingPanel, "TOPLEFT", 10, -62)
     listScroll.container:SetPoint("BOTTOMRIGHT", listingPanel, "BOTTOMRIGHT", -10, 10)
@@ -361,7 +349,7 @@ function ns.UI.CreateZonesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_DELETE_DESC"] or "Delete this zone.", 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            deleteBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            deleteBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
             local propertiesBtn = CreateFrame("Button", nil, editorHeader)
             propertiesBtn:SetSize(22, 22)
@@ -381,7 +369,7 @@ function ns.UI.CreateZonesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_PROPERTIES_DESC"] or "Edit zone properties.", 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            propertiesBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            propertiesBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
             local pinBtn = CreateFrame("CheckButton", nil, editorHeader)
             pinBtn:SetSize(22, 22)
@@ -403,9 +391,8 @@ function ns.UI.CreateZonesTab(parent)
             pinBtn:SetScript("OnClick", function(self)
                 if selectedZone and ns.ZonePins and ns.Zones then
                     local zoneData = ns.Zones:GetZone(selectedZone)
-                    local addon = _G.OneWoW_Notes
                     if zoneData then
-                        if zoneData.pinEnabled and addon.zonePins and addon.zonePins[selectedZone] then
+                        if zoneData.pinEnabled and OneWoW_Notes.zonePins and OneWoW_Notes.zonePins[selectedZone] then
                             ns.ZonePins:HideZonePin(selectedZone)
                             zoneData.pinEnabled = false
                             self:GetNormalTexture():SetDesaturated(true)
@@ -428,7 +415,7 @@ function ns.UI.CreateZonesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_PIN_DESC"] or "Pin this zone.", 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            pinBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            pinBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
             editorHeader.pinBtn = pinBtn
 
             local alertHeaderBtn = CreateFrame("CheckButton", nil, editorHeader)
@@ -474,7 +461,7 @@ function ns.UI.CreateZonesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_ZONE_ALERT_DESC"] or "Toggle zone entry alert.", 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            alertHeaderBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            alertHeaderBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
             editorHeader.alertBtn = alertHeaderBtn
 
             local favoriteBtn = CreateFrame("CheckButton", nil, editorHeader)
@@ -524,7 +511,7 @@ function ns.UI.CreateZonesTab(parent)
                 GameTooltip:AddLine(L["TOOLTIP_NOTE_FAVORITE_DESC"] or "Mark as favorite.", 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            favoriteBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            favoriteBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
             editorHeader.favoriteBtn = favoriteBtn
 
             local categoryLine = OneWoW_GUI:CreateFS(editorHeader, 10)
@@ -545,7 +532,7 @@ function ns.UI.CreateZonesTab(parent)
             contentBg:SetHeight(190)
             contentBg:EnableMouse(true)
 
-            local contentScroll, contentScrollChild = OneWoW_GUI:CreateScrollFrame(contentBg, {})
+            local contentScroll = OneWoW_GUI:CreateScrollFrame(contentBg, {})
             contentScroll:SetPoint("TOPLEFT", contentBg, "TOPLEFT", 4, -4)
             contentScroll:SetPoint("BOTTOMRIGHT", contentBg, "BOTTOMRIGHT", -26, 4)
             contentBg:SetFrameLevel(contentScroll:GetFrameLevel() - 1)
@@ -557,7 +544,7 @@ function ns.UI.CreateZonesTab(parent)
             contentEditBox:SetAutoFocus(false)
             contentEditBox:SetMaxLetters(0)
             contentEditBox:SetHyperlinksEnabled(true)
-            contentEditBox:SetScript("OnHyperlinkClick", function(self, link, text, button)
+            contentEditBox:SetScript("OnHyperlinkClick", function(_, link, text, button)
                 SetItemRef(link, text, button)
             end)
             contentEditBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -571,9 +558,8 @@ function ns.UI.CreateZonesTab(parent)
 
                         if contentUpdateTimer then contentUpdateTimer:Cancel() end
                         contentUpdateTimer = C_Timer.NewTimer(2, function()
-                            local addon = _G.OneWoW_Notes
-                            if selectedZone and addon.zonePins and addon.zonePins[selectedZone] then
-                                local pinFrame = addon.zonePins[selectedZone]
+                            if selectedZone and OneWoW_Notes.zonePins and OneWoW_Notes.zonePins[selectedZone] then
+                                local pinFrame = OneWoW_Notes.zonePins[selectedZone]
                                 if pinFrame and pinFrame.contentText then
                                     local zone = ns.Zones:GetZone(selectedZone)
                                     if zone then
@@ -587,7 +573,7 @@ function ns.UI.CreateZonesTab(parent)
                 end
             end)
             contentEditBox:SetScript("OnReceiveDrag", function(self)
-                local cursorType, itemID, itemLink = GetCursorInfo()
+                local cursorType, _, itemLink = GetCursorInfo()
                 if cursorType == "item" and itemLink then
                     self:Insert(itemLink)
                     ClearCursor()
@@ -605,11 +591,11 @@ function ns.UI.CreateZonesTab(parent)
             contentScroll:SetScrollChild(contentEditBox)
             detailPanel.contentEditBox = contentEditBox
 
-            contentBg:SetScript("OnMouseDown", function(self, button)
+            contentBg:SetScript("OnMouseDown", function(_, button)
                 if detailPanel.contentEditBox then
                     detailPanel.contentEditBox:SetFocus()
                     if button == "LeftButton" then
-                        local cursorType, itemID, itemLink = GetCursorInfo()
+                        local cursorType, _, itemLink = GetCursorInfo()
                         if cursorType == "item" and itemLink then
                             detailPanel.contentEditBox:Insert(itemLink)
                             ClearCursor()
@@ -667,7 +653,7 @@ function ns.UI.CreateZonesTab(parent)
                 GameTooltip:AddLine(L["NOTE_RESET_TODOS_DESC"] or "Uncheck all tasks.", 0.8, 0.8, 0.8, true)
                 GameTooltip:Show()
             end)
-            resetTasksBtn:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
+            resetTasksBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
             local addTaskBtn = CreateFrame("Button", nil, todoHeader)
             addTaskBtn:SetSize(24, 24)
@@ -718,7 +704,7 @@ function ns.UI.CreateZonesTab(parent)
             todoContainer = todoScrollChild
             detailPanel.todoContainer = todoContainer
 
-            todoScroll:SetScript("OnSizeChanged", function(self, width)
+            todoScroll:SetScript("OnSizeChanged", function(_, width)
                 if todoContainer then todoContainer:SetWidth(width - 20) end
             end)
 
@@ -1044,7 +1030,7 @@ function ns.UI.CreateZonesTab(parent)
             aN:SetDesaturated(not alertOn)
             aN:SetAlpha(alertOn and 1.0 or 0.3)
             alertBtn:SetNormalTexture(aN)
-            alertBtn:SetScript("OnClick", function(self)
+            alertBtn:SetScript("OnClick", function()
                 if ns.Zones then
                     local zoneData = ns.Zones:GetZone(zone.name)
                     if zoneData then
@@ -1073,7 +1059,7 @@ function ns.UI.CreateZonesTab(parent)
             pN:SetDesaturated(not zone.data.pinEnabled)
             pN:SetAlpha(zone.data.pinEnabled and 1.0 or 0.3)
             pinListBtn:SetNormalTexture(pN)
-            pinListBtn:SetScript("OnClick", function(self)
+            pinListBtn:SetScript("OnClick", function()
                 if ns.Zones and ns.ZonePins then
                     local zoneData = ns.Zones:GetZone(zone.name)
                     if zoneData then
@@ -1110,7 +1096,7 @@ function ns.UI.CreateZonesTab(parent)
             fN2:SetDesaturated(not zone.data.favorite)
             fN2:SetAlpha(zone.data.favorite and 1.0 or 0.3)
             favBtn:SetNormalTexture(fN2)
-            favBtn:SetScript("OnClick", function(self)
+            favBtn:SetScript("OnClick", function()
                 if ns.Zones then
                     local zoneData = ns.Zones:GetZone(zone.name)
                     if zoneData then
@@ -1140,10 +1126,7 @@ function ns.UI.CreateZonesTab(parent)
                     currentSort.by = "manual"
                     currentSort.ascending = true
                     zoneSortHandle:SetSort("manual", true)
-                    local a = _G.OneWoW_Notes
-                    if a and a.db and a.db.global.tabSortPrefs then
-                        a.db.global.tabSortPrefs.zones = { by = "manual", ascending = true }
-                    end
+                    OneWoW_Notes.db.global.tabSortPrefs.zones = { by = "manual", ascending = true }
                 end
                 for i, item in ipairs(groupArray) do item.data.sortOrder = i end
                 groupArray[groupIndex].data.sortOrder     = groupIndex - 1
@@ -1165,10 +1148,7 @@ function ns.UI.CreateZonesTab(parent)
                     currentSort.by = "manual"
                     currentSort.ascending = true
                     zoneSortHandle:SetSort("manual", true)
-                    local a = _G.OneWoW_Notes
-                    if a and a.db and a.db.global.tabSortPrefs then
-                        a.db.global.tabSortPrefs.zones = { by = "manual", ascending = true }
-                    end
+                    OneWoW_Notes.db.global.tabSortPrefs.zones = { by = "manual", ascending = true }
                 end
                 for i, item in ipairs(groupArray) do item.data.sortOrder = i end
                 groupArray[groupIndex].data.sortOrder     = groupIndex + 1
@@ -1265,10 +1245,9 @@ local function MakeZoneInput(parent, x, y, w)
     return box
 end
 
-local function MakeZoneSlider(parent, name, x, y, w, minV, maxV, defV, fmt)
+local function MakeZoneSlider(parent, _, x, y, w, minV, maxV, defV, fmt)
     local step = (fmt == "pct") and 0.05 or 1
     local fmtStr = (fmt == "pct") and "%d%%" or "%d"
-    local currentDisplay = defV
     local container = OneWoW_GUI:CreateSlider(parent, {
         minVal = minV,
         maxVal = maxV,
@@ -1441,13 +1420,13 @@ function ns.UI.ShowManualZoneEntryDialog(refreshParent)
     if fontSizeContainer then
         local sliderChild = select(1, fontSizeContainer:GetChildren())
         if sliderChild then
-            sliderChild:SetScript("OnValueChanged", function(self, value)
+            sliderChild:SetScript("OnValueChanged", function(_, value)
                 local val = math.floor(value + 0.5)
                 dialog._fontSize = val
             end)
         end
     elseif fontSizeSlider.SetScript then
-        fontSizeSlider:SetScript("OnValueChanged", function(self, value)
+        fontSizeSlider:SetScript("OnValueChanged", function(_, value)
             local val = math.floor(value + 0.5)
             if fontSizeTxt then fontSizeTxt:SetText(tostring(val)) end
             dialog._fontSize = val
@@ -1498,13 +1477,12 @@ function ns.UI.ShowManualZoneEntryDialog(refreshParent)
     if opacityContainer then
         local sliderChild = select(1, opacityContainer:GetChildren())
         if sliderChild then
-            sliderChild:SetScript("OnValueChanged", function(self, value)
-                local val = math.floor(value * 100 + 0.5)
+            sliderChild:SetScript("OnValueChanged", function(_, value)
                 dialog._opacity = value
             end)
         end
     elseif opacitySlider.SetScript then
-        opacitySlider:SetScript("OnValueChanged", function(self, value)
+        opacitySlider:SetScript("OnValueChanged", function(_, value)
             local val = math.floor(value * 100 + 0.5)
             if opacityTxt then opacityTxt:SetText(val .. "%") end
             dialog._opacity = value
@@ -1522,7 +1500,7 @@ function ns.UI.ShowManualZoneEntryDialog(refreshParent)
     noteBg:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
     noteBg:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
 
-    local noteScroll, noteScrollChild = OneWoW_GUI:CreateScrollFrame(noteBg, {})
+    local noteScroll = OneWoW_GUI:CreateScrollFrame(noteBg, {})
     noteScroll:SetPoint("TOPLEFT",     noteBg, "TOPLEFT",     4, -4)
     noteScroll:SetPoint("BOTTOMRIGHT", noteBg, "BOTTOMRIGHT", -26, 4)
 
@@ -1532,7 +1510,7 @@ function ns.UI.ShowManualZoneEntryDialog(refreshParent)
     noteEditBox:SetAutoFocus(false)
     noteEditBox:SetMaxLetters(0)
     noteScroll:SetScrollChild(noteEditBox)
-    noteScroll:HookScript("OnSizeChanged", function(self, w)
+    noteScroll:HookScript("OnSizeChanged", function(_, w)
         noteEditBox:SetWidth(math.max(1, w))
     end)
     noteEditBox._skipGlobalFont = true
@@ -1723,14 +1701,14 @@ function ns.UI.ShowZonePropertiesDialog(zoneName, refreshParent)
     if propFontSizeContainer then
         local sliderChild = select(1, propFontSizeContainer:GetChildren())
         if sliderChild then
-            sliderChild:SetScript("OnValueChanged", function(self, value)
+            sliderChild:SetScript("OnValueChanged", function(_, value)
                 local val = math.floor(value + 0.5)
                 SaveField("fontSize", val)
                 RefreshEditor()
             end)
         end
     elseif propFontSizeSlider.SetScript then
-        propFontSizeSlider:SetScript("OnValueChanged", function(self, value)
+        propFontSizeSlider:SetScript("OnValueChanged", function(_, value)
             local val = math.floor(value + 0.5)
             if propFontSizeTxt then propFontSizeTxt:SetText(tostring(val)) end
             SaveField("fontSize", val)
@@ -1781,13 +1759,13 @@ function ns.UI.ShowZonePropertiesDialog(zoneName, refreshParent)
     if propOpacityContainer then
         local sliderChild = select(1, propOpacityContainer:GetChildren())
         if sliderChild then
-            sliderChild:SetScript("OnValueChanged", function(self, value)
+            sliderChild:SetScript("OnValueChanged", function(_, value)
                 SaveField("opacity", value)
                 RefreshEditor()
             end)
         end
     elseif propOpacitySlider.SetScript then
-        propOpacitySlider:SetScript("OnValueChanged", function(self, value)
+        propOpacitySlider:SetScript("OnValueChanged", function(_, value)
             local val = math.floor(value * 100 + 0.5)
             if propOpacityTxt then propOpacityTxt:SetText(val .. "%") end
             SaveField("opacity", value)
@@ -1806,7 +1784,7 @@ function ns.UI.ShowZonePropertiesDialog(zoneName, refreshParent)
     noteBg:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
     noteBg:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
 
-    local noteScroll, noteScrollChild = OneWoW_GUI:CreateScrollFrame(noteBg, {})
+    local noteScroll = OneWoW_GUI:CreateScrollFrame(noteBg, {})
     noteScroll:SetPoint("TOPLEFT",     noteBg, "TOPLEFT",     4, -4)
     noteScroll:SetPoint("BOTTOMRIGHT", noteBg, "BOTTOMRIGHT", -26, 4)
 
@@ -1821,7 +1799,7 @@ function ns.UI.ShowZonePropertiesDialog(zoneName, refreshParent)
     propPreviewEditBox = noteEditBox
     noteEditBox:EnableMouse(false)
     noteScroll:SetScrollChild(noteEditBox)
-    noteScroll:HookScript("OnSizeChanged", function(self, w)
+    noteScroll:HookScript("OnSizeChanged", function(_, w)
         noteEditBox:SetWidth(math.max(1, w))
     end)
 

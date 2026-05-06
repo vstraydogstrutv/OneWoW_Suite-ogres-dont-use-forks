@@ -1,13 +1,9 @@
-local addonName, ns = ...
-local L = ns.L
-local T = ns.T
-local S = ns.S
+local _, ns = ...
 
 ns.UI = ns.UI or {}
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
-
 
 function ns.UI.CreateSplitPanel(parent)
     local panels = OneWoW_GUI:CreateSplitPanel(parent)

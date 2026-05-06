@@ -1,6 +1,6 @@
 -- NOTE: this code doesn't seem to be used anywhere (2026-04-27)
 
-local addonName, ns = ...
+local _, ns = ...
 ns.UI = ns.UI or {}
 ns.UI.Dialog = {}
 
@@ -132,10 +132,10 @@ function ns.UI.Dialog.Create(config)
         resizeButton:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
         resizeButton:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
         resizeButton:SetFrameLevel(dialog:GetFrameLevel() + 10)
-        resizeButton:SetScript("OnMouseDown", function(self, button)
+        resizeButton:SetScript("OnMouseDown", function(_, button)
             if button == "LeftButton" then dialog:StartSizing("BOTTOMRIGHT") end
         end)
-        resizeButton:SetScript("OnMouseUp", function(self, button)
+        resizeButton:SetScript("OnMouseUp", function()
             dialog:StopMovingOrSizing()
         end)
         dialog.resizeButton = resizeButton
@@ -143,9 +143,6 @@ function ns.UI.Dialog.Create(config)
 
     if config.twoContent then
         local contentParent = dialog.content
-        local footerHeight = (config.buttons and #config.buttons > 0) and 40 or 4
-        local contentTop = 0
-        local contentBottom = 0
         local content1Height = config.content1Height or math.floor(contentParent:GetHeight() / 2) - 5
 
         local content1 = OneWoW_GUI:CreateFrame(contentParent, {

@@ -1,12 +1,9 @@
-local addonName, ns = ...
+local _, ns = ...
 local NotesData = ns.DataModule:New("notes", "notesCustomCategories", {})
 ns.NotesData = NotesData
 
 function NotesData:GetNotesDB(storageType) return self:GetDataDB(storageType) end
 function NotesData:GetAllNotes() return self:GetAll() end
-
-function NotesData:MigrateDefaultColors() self:MigrateColors("colorsMigrated") end
-function NotesData:MigrateFontFamily() self:MigrateFonts("fontFamilyMigrated") end
 
 function NotesData:GenerateUniqueID()
     return string.format("%08x-%04x-%04x",
@@ -16,7 +13,6 @@ function NotesData:GenerateUniqueID()
 end
 
 function NotesData:AddNote(noteTitle, noteData)
-    local addon = _G.OneWoW_Notes
     local noteID = self:GenerateUniqueID()
     local storageType = "account"
 
@@ -72,17 +68,12 @@ function NotesData:AddNote(noteTitle, noteData)
         }
     end
 
-    if addon.mainFrame and addon.mainFrame:IsShown() then
+    if OneWoW_Notes.mainFrame and aOneWoW_Notesddon.mainFrame:IsShown() then
         noteData.isNew = true
         noteData.newTimestamp = GetServerTime()
     end
 
     local targetDB = self:GetDataDB(storageType)
-    if not targetDB then
-        self:EnsureDB()
-        targetDB = self:GetDataDB(storageType)
-    end
-
     targetDB[noteID] = noteData
     self:InvalidateCache()
     return noteID
@@ -91,7 +82,7 @@ end
 function NotesData:RemoveNote(noteID)
     self:Remove(noteID)
 
-    local addon = _G.OneWoW_Notes
+    local addon = OneWoW_Notes
     if addon.notePins and addon.notePins[noteID] then
         local pinFrame = addon.notePins[noteID]
         if pinFrame and pinFrame.Hide then
@@ -110,7 +101,7 @@ function NotesData:UpdateNote(noteID, noteContent)
             note.modified = GetServerTime()
         end
 
-        local addon = _G.OneWoW_Notes
+        local addon = OneWoW_Notes
         if addon.notePins and addon.notePins[noteID] then
             local pinFrame = addon.notePins[noteID]
             if pinFrame and pinFrame.UpdateContent then
@@ -127,7 +118,7 @@ function NotesData:UpdateNoteTitle(noteID, newTitle)
         note.title = newTitle
         note.modified = GetServerTime()
 
-        local addon = _G.OneWoW_Notes
+        local addon = OneWoW_Notes
         if addon.notePins and addon.notePins[noteID] then
             local pinFrame = addon.notePins[noteID]
             if pinFrame and pinFrame.UpdateContent then
@@ -169,10 +160,10 @@ function NotesData:SetPinEnabled(noteID, pinEnabled)
 end
 
 function NotesData:FindNote(noteID)
-    local addon = _G.OneWoW_Notes
-    if addon.db.global.notes and addon.db.global.notes[noteID] then
+    local addon = OneWoW_Notes
+    if addon.db.global.notes[noteID] then
         return addon.db.global.notes[noteID], addon.db.global.notes
-    elseif addon.db.char.notes and addon.db.char.notes[noteID] then
+    elseif addon.db.char.notes[noteID] then
         return addon.db.char.notes[noteID], addon.db.char.notes
     end
     return nil, nil

@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -302,7 +302,7 @@ function ns.UI.ShowAddNoteDialog()
     contentBg:SetBackdropColor(initCC.background[1], initCC.background[2], initCC.background[3], 0.9)
     contentBg:SetBackdropBorderColor(initCC.border[1], initCC.border[2], initCC.border[3], 0.8)
 
-    local contentScroll, contentScrollChild = OneWoW_GUI:CreateScrollFrame(contentBg, {})
+    local contentScroll = OneWoW_GUI:CreateScrollFrame(contentBg, {})
     contentScroll:SetPoint("TOPLEFT",     contentBg, "TOPLEFT",     4, -4)
     contentScroll:SetPoint("BOTTOMRIGHT", contentBg, "BOTTOMRIGHT", -26, 4)
 
@@ -312,7 +312,7 @@ function ns.UI.ShowAddNoteDialog()
     contentEditBox:SetAutoFocus(false)
     contentEditBox:SetMaxLetters(0)
     contentEditBox:SetHyperlinksEnabled(true)
-    contentEditBox:SetScript("OnHyperlinkClick", function(self, link, text, button)
+    contentEditBox:SetScript("OnHyperlinkClick", function(_, link, text, button)
         SetItemRef(link, text, button)
     end)
     contentEditBox:SetScript("OnMouseUp", function(self, button)
@@ -322,7 +322,7 @@ function ns.UI.ShowAddNoteDialog()
     end)
     if ns.NotesHyperlinks then ns.NotesHyperlinks:EnhanceEditBox(contentEditBox) end
     contentScroll:SetScrollChild(contentEditBox)
-    contentScroll:HookScript("OnSizeChanged", function(self, w)
+    contentScroll:HookScript("OnSizeChanged", function(_, w)
         contentEditBox:SetWidth(math.max(1, w))
     end)
     contentEditBox._skipGlobalFont = true
@@ -339,8 +339,7 @@ function ns.UI.ShowNotePropertiesDialog(noteID)
     local noteData = allNotes[noteID]
     if not noteData or type(noteData) ~= "table" then return end
 
-    local addon = _G.OneWoW_Notes
-    local pinWasAlreadyVisible = addon.notePins and addon.notePins[noteID] and addon.notePins[noteID]:IsShown()
+    local pinWasAlreadyVisible = OneWoW_Notes.notePins and OneWoW_Notes.notePins[noteID] and OneWoW_Notes.notePins[noteID]:IsShown()
 
     local pinOpenedByDialog = false
     if not pinWasAlreadyVisible and ns.NotesPins then
@@ -669,7 +668,7 @@ function ns.UI.ShowNotePropertiesDialog(noteID)
                 notesDB[noteID].modified = GetServerTime()
             end
             noteData.pinHideTasksUntilHover = checked
-            local pf = addon.notePins and addon.notePins[noteID]
+            local pf = OneWoW_Notes.notePins and OneWoW_Notes.notePins[noteID]
             if pf then
                 pf._tasksHoverShown = checked and pf:IsMouseOver() or false
                 if pf.RefreshLayout then pf:RefreshLayout() end
@@ -706,7 +705,7 @@ function ns.UI.ShowNotePropertiesDialog(noteID)
     contentBg:SetPoint("TOPLEFT",     content, "TOPLEFT",     COL1_X,  yPos)
     contentBg:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -COL1_X, 6)
 
-    local contentScroll, contentScrollChild = OneWoW_GUI:CreateScrollFrame(contentBg, {})
+    local contentScroll = OneWoW_GUI:CreateScrollFrame(contentBg, {})
     contentScroll:SetPoint("TOPLEFT",     contentBg, "TOPLEFT",     4, -4)
     contentScroll:SetPoint("BOTTOMRIGHT", contentBg, "BOTTOMRIGHT", -26, 4)
 
@@ -718,7 +717,7 @@ function ns.UI.ShowNotePropertiesDialog(noteID)
     contentEditBox:SetMaxLetters(0)
     contentEditBox:SetHyperlinksEnabled(true)
     contentEditBox:SetText(noteData.content or "")
-    contentEditBox:SetScript("OnHyperlinkClick", function(self, link, text, button)
+    contentEditBox:SetScript("OnHyperlinkClick", function(_, link, text, button)
         SetItemRef(link, text, button)
     end)
     contentEditBox:SetScript("OnTextChanged", function(self, userInput)
@@ -733,7 +732,7 @@ function ns.UI.ShowNotePropertiesDialog(noteID)
     end)
     if ns.NotesHyperlinks then ns.NotesHyperlinks:EnhanceEditBox(contentEditBox) end
     contentScroll:SetScrollChild(contentEditBox)
-    contentScroll:HookScript("OnSizeChanged", function(self, w)
+    contentScroll:HookScript("OnSizeChanged", function(_, w)
         contentEditBox:SetWidth(math.max(1, w))
     end)
     contentEditBox._skipGlobalFont = true
