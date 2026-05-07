@@ -120,9 +120,8 @@ function FirstRun:Apply(selections)
         SetEnabled(ds, datastoreState[ds] and true or false)
     end
 
-    if _G.OneWoW_DB then
-        _G.OneWoW_DB.wizardShown = true
-    end
+    -- wizardShown is owned by the "Do not show again" checkbox in BuildPanel,
+    -- which writes to the DB on toggle. Apply intentionally does not touch it.
 
     StaticPopupDialogs["ONEWOW_MANAGE_FEATURES_RELOAD"] = {
         text = L["WIZARD_RELOAD_TEXT"],
@@ -236,6 +235,26 @@ function FirstRun:BuildPanel(parent)
         minWidth = 130,
     })
     applyBtn:SetPoint("TOPRIGHT", actionBar, "TOPRIGHT", 0, 0)
+
+    -- "Do not show again" checkbox owns OneWoW_DB.wizardShown directly:
+    --   - Initial state mirrors the DB (default checked on first run).
+    --   - The current state is written to the DB now and on every toggle, so
+    --     ANY close path (Apply, X, ESC, navigating away) already has the
+    --     correct value persisted - no onClose hook needed.
+    local initialDontShow = (_G.OneWoW_DB and _G.OneWoW_DB.wizardShown ~= false) and true or false
+    if _G.OneWoW_DB then
+        _G.OneWoW_DB.wizardShown = initialDontShow
+    end
+    local dontShowCB = OneWoW_GUI:CreateCheckbox(actionBar, {
+        label   = L["WIZARD_DONT_SHOW_AGAIN"],
+        checked = initialDontShow,
+        onClick = function(myself)
+            if _G.OneWoW_DB then
+                _G.OneWoW_DB.wizardShown = myself:GetChecked() and true or false
+            end
+        end,
+    })
+    dontShowCB:SetPoint("RIGHT", applyBtn, "LEFT", -OneWoW_GUI:GetSpacing("MD"), 0)
 
     local listContainer = OneWoW_GUI:CreateLayoutFrame(content, {})
     listContainer:SetPoint("TOPLEFT", content, "TOPLEFT", 12, summary.bottomY - actionHeight - 16)

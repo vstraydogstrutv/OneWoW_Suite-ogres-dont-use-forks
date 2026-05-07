@@ -111,6 +111,7 @@ OneWoW.Locales["enUS"] = {
     ["WIZARD_PRESET_MINIMAL"] = "Minimal",
     ["WIZARD_PRESET_MANUAL"] = "Manual",
     ["WIZARD_APPLY_RELOAD"] = "Apply & Reload",
+    ["WIZARD_DONT_SHOW_AGAIN"] = "Do not show again",
     ["WIZARD_GROUP_FEATURES"] = "Core Features",
     ["WIZARD_GROUP_STANDALONE"] = "Stand-alone Addons",
     ["WIZARD_GROUP_UTILITY"] = "Utilities",
