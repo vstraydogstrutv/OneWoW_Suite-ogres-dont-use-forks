@@ -661,7 +661,13 @@ function ns.UI.CreateVendorsTab(parent)
     clearBtn:SetPoint("LEFT", searchBox, "RIGHT", 4, 0)
 
     local chkBox = OneWoW_GUI:CreateCheckbox(headerBar, { label = L["VENDORS_ZONE_CURRENT"] })
-    chkBox:SetPoint("TOPRIGHT", headerBar, "TOPRIGHT", -8, -13)
+    -- CreateCheckbox sizes the frame to just the box; its label fontstring is anchored
+    -- LEFT-to-RIGHT outside the frame, so anchoring the box's TOPRIGHT alone leaves the
+    -- localized label spilling past the parent. Inset by (label gap + measured label
+    -- width) so the entire checkbox+label fits regardless of locale string length.
+    local chkLabelGap   = OneWoW_GUI:GetSpacing("XS")
+    local chkLabelWidth = chkBox.label:GetStringWidth()
+    chkBox:SetPoint("TOPRIGHT", headerBar, "TOPRIGHT", -8 - chkLabelGap - chkLabelWidth, -13)
 
     local zoneDropdown, zoneDropdownText = OneWoW_GUI:CreateDropdown(headerBar, {
         width = 200,
