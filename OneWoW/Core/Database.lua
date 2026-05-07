@@ -324,6 +324,7 @@ local DEFAULTS = {
             recipes = false,
             recipesOnlyMyProfessions = false,
             tmogs   = false,
+            suppressBlizzardAlerts = false,
             sound   = SOUNDKIT.READY_CHECK,
         },
         notes = {

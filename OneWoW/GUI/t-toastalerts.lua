@@ -146,6 +146,26 @@ local function AddDetectionExtras(dsc, yOffset)
     end
 
     yOffset = yOffset - 8
+    yOffset = OneWoW_GUI:CreateSection(dsc, {
+        title = L["TOAST_LOOT_SUPPRESS_BLIZZARD_HEADER"] or "Native Blizzard Alerts",
+        yOffset = yOffset,
+    })
+
+    local suppressCb = OneWoW_GUI:CreateCheckbox(dsc, {
+        label = L["TOAST_LOOT_SUPPRESS_BLIZZARD"] or "Hide Blizzard's default mount, pet, and toy alerts",
+    })
+    suppressCb:SetPoint("TOPLEFT", dsc, "TOPLEFT", 12, yOffset)
+    suppressCb:SetChecked(loot.suppressBlizzardAlerts == true)
+    suppressCb:SetScript("OnClick", function(self)
+        local tdb = GetToastsDB()
+        if tdb and tdb.loot then
+            tdb.loot.suppressBlizzardAlerts = self:GetChecked()
+            OneWoW.Toasts.ApplyBlizzardSuppression()
+        end
+    end)
+    yOffset = yOffset - 32
+
+    yOffset = yOffset - 8
     yOffset = OneWoW_GUI:CreateSection(dsc, { title = L["TOAST_SOUND_HEADER"] or "Alert Sound", yOffset = yOffset })
     yOffset = CreateSoundDropdown(dsc, "loot", yOffset)
 

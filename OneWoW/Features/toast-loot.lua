@@ -82,12 +82,18 @@ end
 
 local function OnNewToy(itemID)
     if not LootEnabled() or not CategoryEnabled("toys") then return end
+    if not itemID or itemID <= 0 then return end
 
-    local props = PE:BuildProps(itemID)
-    if not props.isCollected then return end
-    if not props.name then return end
+    -- Use C_ToyBox.GetToyInfo for authoritative toy data.
+    -- PE:BuildProps relies on hyperlink-based item info, which is frequently
+    -- uncached the moment NEW_TOY_ADDED fires (especially for seasonal-vendor
+    -- toys like the Children's Week balloons), causing nameRaw to be empty
+    -- and the toast to silently no-op.
+    local _, name, icon = C_ToyBox.GetToyInfo(itemID)
+    if not name or not icon then return end
+    if not PlayerHasToy(itemID) then return end
 
-    FireLootToast("toy", props.nameRaw, props.icon, nil)
+    FireLootToast("toy", name, icon, nil)
 end
 
 local bagCache  = {}
@@ -176,6 +182,29 @@ local function ScanBagsForCollectibles()
     bagCache = newCache
 end
 
+-- ============================================================================
+-- Blizzard native-alert suppression
+-- ============================================================================
+-- The Blizzard NewMount/NewPet/NewToy alert systems route through AlertFrame
+-- (events registered on AlertFrame are dispatched to the matching subsystem).
+-- Unregistering them here cleanly suppresses the native popups while leaving
+-- our own lootFrame's handlers intact, so OneWoW's toast can still fire.
+local NATIVE_ALERT_EVENTS = { "NEW_MOUNT_ADDED", "NEW_PET_ADDED", "NEW_TOY_ADDED" }
+
+local function ApplyBlizzardSuppression()
+    local db = GetDB()
+    local should = db and db.loot and db.loot.suppressBlizzardAlerts == true
+    for _, ev in ipairs(NATIVE_ALERT_EVENTS) do
+        if should then
+            AlertFrame:UnregisterEvent(ev)
+        else
+            AlertFrame:RegisterEvent(ev)
+        end
+    end
+end
+
+Toasts.ApplyBlizzardSuppression = ApplyBlizzardSuppression
+
 local lootFrame = CreateFrame("Frame")
 lootFrame:RegisterEvent("PLAYER_LOGIN")
 lootFrame:RegisterEvent("BAG_UPDATE_DELAYED")
@@ -187,6 +216,7 @@ lootFrame:RegisterEvent("SKILL_LINES_CHANGED")
 lootFrame:SetScript("OnEvent", function(_, event, arg1)
     if event == "PLAYER_LOGIN" then
         C_Timer.After(3, BuildBagCache)
+        ApplyBlizzardSuppression()
 
     elseif event == "SKILL_LINES_CHANGED" then
         PE:InvalidateKnownProfessions()
