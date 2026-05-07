@@ -937,13 +937,13 @@ function NotesPins:CreateNotePin(noteID, note)
     end
 
     pin:SetScript("OnHide", function(myself)
-        if selmyselff.windowInfo and addon.UnregisterWindow then
+        if myself.windowInfo then
             addon:UnregisterWindow(myself)
         end
     end)
 
     pin:SetScript("OnShow", function(myself)
-        if not myself.windowInfo and addon.RegisterWindow then
+        if not myself.windowInfo then
             myself.windowInfo = addon:RegisterWindow(myself, "pinned", function()
                 myself:Hide()
             end)
