@@ -542,6 +542,16 @@ local function GetCompanionAction(compName)
     if not companions then return nil end
     for _, comp in ipairs(companions) do
         if comp.name == compName then
+            -- Core and GUI both ultimately just toggle the main OneWoW window.
+            -- Skip the slash dispatch (pairs(SlashCmdList) iteration order can
+            -- mis-resolve "/1w" on some clients, leaving the Core tile dead).
+            if comp.name == "Core" or comp.name == "GUI" then
+                return function()
+                    if _G.OneWoW and _G.OneWoW.GUI then
+                        _G.OneWoW.GUI:Toggle()
+                    end
+                end
+            end
             if comp.cmd then
                 return function()
                     local cmd = comp.cmd:gsub("^/", "")
