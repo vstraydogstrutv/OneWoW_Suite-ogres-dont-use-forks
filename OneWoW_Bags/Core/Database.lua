@@ -67,6 +67,7 @@ local defaults = {
         showSearchBar = true,
         searchHistoryLimit = 10,
         searchHistory = {},
+        savedSearches = {},
         showCategoryHeaders = true,
         categorySpacing = 1.0,
         bankHideScrollBar = false,

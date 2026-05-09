@@ -242,7 +242,11 @@ local function CollectCustomPredicateCandidates(itemID, bagID, slotID, itemInfo,
             local fm = InferFilterMode(categoryData)
             if fm == "search" then
                 if categoryData.searchExpression and categoryData.searchExpression ~= "" then
-                    if PE:CheckItem(categoryData.searchExpression, itemID, bagID, slotID, itemInfo or {}) then
+                    local expression = categoryData.searchExpression
+                    if OneWoW_Bags.SavedSearches then
+                        expression = OneWoW_Bags.SavedSearches:Expand(expression)
+                    end
+                    if PE:CheckItem(expression, itemID, bagID, slotID, itemInfo or {}) then
                         if not disabled[categoryData.name] then
                             tinsert(cands, { name = categoryData.name, tieKey = categoryId, isCustom = true })
                         end

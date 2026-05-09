@@ -13,10 +13,13 @@ local floor = math.floor
 local ipairs = ipairs
 local max = math.max
 local min = math.min
+local strgsub = string.gsub
 local strtrim = strtrim
 local tinsert = tinsert
 local CreateFrame = CreateFrame
 local IsMouseButtonDown = IsMouseButtonDown
+local StaticPopupDialogs = StaticPopupDialogs
+local StaticPopup_Show = StaticPopup_Show
 
 OneWoW_Bags.InfoBarFactory = {}
 
@@ -24,6 +27,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
     local bar = {}
     local infoBarFrame = nil
     local searchHistoryMenu = nil
+    local pendingSavedSearchQuery = nil
 
     local ROW1_H = 28
     local ROW2_H = 28
@@ -69,6 +73,20 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         return text
     end
 
+    local function ApplySingleLineText(fontString)
+        fontString:SetWordWrap(false)
+        if fontString.SetNonSpaceWrap then
+            fontString:SetNonSpaceWrap(false)
+        end
+        if fontString.SetMaxLines then
+            fontString:SetMaxLines(1)
+        end
+    end
+
+    local function SingleLinePreview(text)
+        return strgsub(text or "", "[\r\n]+", " ")
+    end
+
     local function HideSearchHistoryMenu()
         if not searchHistoryMenu then return end
         searchHistoryMenu:SetScript("OnUpdate", nil)
@@ -102,6 +120,114 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
 
     local function CommitSearchText(searchBox)
         AddSearchHistory(searchBox, searchBox:GetText())
+    end
+
+    local function GetRealSearchText(searchBox)
+        if not searchBox then return nil end
+        local text = searchBox.GetSearchText and searchBox:GetSearchText() or searchBox:GetText()
+        return NormalizeSearchText(searchBox, text)
+    end
+
+    local function UpdateSaveSearchButton(searchBox)
+        if not infoBarFrame or not infoBarFrame.saveSearchBtn then return end
+
+        local canSave = GetRealSearchText(searchBox) ~= nil
+        local btn = infoBarFrame.saveSearchBtn
+        btn.canSaveSearch = canSave
+        btn:SetAlpha(canSave and 1 or 0.35)
+        if btn.icon and btn.icon.SetDesaturated then
+            btn.icon:SetDesaturated(not canSave)
+        end
+    end
+
+    local function SaveSearch(name, query)
+        local SS = OneWoW_Bags.SavedSearches
+        if not SS then return end
+
+        local ok, err = SS:Set(name, query)
+        if not ok and err and L[err] then
+            print(L[err])
+        end
+    end
+
+    local function ShowSavedSearchOverwrite(name, query)
+        StaticPopup_Show("ONEWOW_BAGS_OVERWRITE_SAVED_SEARCH", name, nil, {
+            name = name,
+            query = query,
+        })
+    end
+
+    local function ShowSavedSearchNamePopup(searchBox)
+        pendingSavedSearchQuery = GetRealSearchText(searchBox)
+        if not pendingSavedSearchQuery then return end
+
+        local popup = StaticPopup_Show("ONEWOW_BAGS_SAVE_SEARCH")
+        if popup and popup.EditBox then
+            popup.EditBox:SetText("")
+            popup.EditBox:SetFocus()
+        end
+    end
+
+    local function RegisterSavedSearchPopups()
+        if StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"] then return end
+
+        StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"] = {
+            text = L["SAVED_SEARCH_NAME_PROMPT"],
+            hasEditBox = true,
+            button1 = L["SAVED_SEARCH_SAVE"],
+            button2 = L["POPUP_CANCEL"],
+            timeout = 0,
+            whileDead = true,
+            hideOnEscape = true,
+            OnAccept = function(dialog)
+                local SS = OneWoW_Bags.SavedSearches
+                if not SS or not pendingSavedSearchQuery then return end
+
+                local name = dialog.EditBox:GetText()
+                local normalized, err = SS:NormalizeName(name)
+                if not normalized then
+                    if err and L[err] then print(L[err]) end
+                    C_Timer.After(0, function()
+                        local reopened = StaticPopup_Show("ONEWOW_BAGS_SAVE_SEARCH")
+                        if reopened and reopened.EditBox then
+                            reopened.EditBox:SetText(name or "")
+                            reopened.EditBox:SetFocus()
+                        end
+                    end)
+                    return
+                end
+
+                local existingKey = SS:FindKey(normalized)
+                if existingKey then
+                    ShowSavedSearchOverwrite(existingKey, pendingSavedSearchQuery)
+                    return
+                end
+
+                SaveSearch(normalized, pendingSavedSearchQuery)
+            end,
+            EditBoxOnEnterPressed = function(editBox)
+                local parent = editBox:GetParent()
+                StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"].OnAccept(parent)
+                parent:Hide()
+            end,
+            EditBoxOnEscapePressed = function(editBox)
+                editBox:GetParent():Hide()
+            end,
+        }
+
+        StaticPopupDialogs["ONEWOW_BAGS_OVERWRITE_SAVED_SEARCH"] = {
+            text = L["SAVED_SEARCH_OVERWRITE_CONFIRM"],
+            button1 = L["SAVED_SEARCH_OVERWRITE"],
+            button2 = L["POPUP_CANCEL"],
+            timeout = 0,
+            whileDead = true,
+            hideOnEscape = true,
+            OnAccept = function(_, data)
+                if data and data.name and data.query then
+                    SaveSearch(data.name, data.query)
+                end
+            end,
+        }
     end
 
     local function IsMouseOverSearchHistory(searchBox)
@@ -174,6 +300,8 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
                 row.text:SetPoint("LEFT", row, "LEFT", 6, 0)
                 row.text:SetPoint("RIGHT", row, "RIGHT", -6, 0)
                 row.text:SetJustifyH("LEFT")
+                row.text:SetHeight(rowHeight - 4)
+                ApplySingleLineText(row.text)
 
                 row:SetScript("OnEnter", function(myself)
                     myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
@@ -192,7 +320,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             row:SetPoint("TOPLEFT", searchHistoryMenu, "TOPLEFT", 2, -2 - ((i - 1) * rowHeight))
             row:SetPoint("TOPRIGHT", searchHistoryMenu, "TOPRIGHT", -2, -2 - ((i - 1) * rowHeight))
             row.historyText = history[i]
-            row.text:SetText(history[i])
+            row.text:SetText(SingleLinePreview(history[i]))
             row.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
             row:Show()
         end
@@ -440,6 +568,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             height = 22,
             placeholderText = L["SEARCH_PLACEHOLDER"],
             onTextChanged = function(text)
+                UpdateSaveSearchButton(infoBarFrame and infoBarFrame.searchBox)
                 local controller = GetController()
                 if config.onSearchChanged then
                     config.onSearchChanged(text, controller)
@@ -452,14 +581,46 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             end,
         })
 
+        local saveSearchBtn
+        if config.savedSearches then
+            RegisterSavedSearchPopups()
+            saveSearchBtn = OneWoW_GUI:CreateAtlasIconButton(infoBarFrame, {
+                atlas = "perks-owned-large",
+                width = 20,
+                height = 20,
+            })
+            saveSearchBtn:SetScript("OnClick", function(myself)
+                if not myself.canSaveSearch then return end
+                ShowSavedSearchNamePopup(searchBox)
+            end)
+            saveSearchBtn:HookScript("OnEnter", function(myself)
+                GameTooltip:SetOwner(myself, "ANCHOR_TOP")
+                if myself.canSaveSearch then
+                    GameTooltip:SetText(L["SAVE_SEARCH_TOOLTIP"], 1, 1, 1)
+                else
+                    GameTooltip:SetText(L["SAVE_SEARCH_EMPTY_TOOLTIP"], 1, 1, 1)
+                end
+                GameTooltip:Show()
+            end)
+            saveSearchBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+            infoBarFrame.saveSearchBtn = saveSearchBtn
+        end
+
         local bagsHelpBtn
         if OneWoW_GUI.CreateKeywordHelpButton then
             bagsHelpBtn = OneWoW_GUI:CreateKeywordHelpButton(infoBarFrame, { editBox = searchBox, size = 20 })
             bagsHelpBtn:SetPoint("RIGHT", emptyToggleBtn, "LEFT", -3, 0)
         end
 
+        if saveSearchBtn then
+            local saveAnchor = bagsHelpBtn or emptyToggleBtn
+            saveSearchBtn:SetPoint("RIGHT", saveAnchor, "LEFT", -3, 0)
+        end
+
         searchBox:SetPoint("TOPLEFT", infoBarFrame, "TOPLEFT", leftInset, searchY)
-        if bagsHelpBtn then
+        if saveSearchBtn then
+            searchBox:SetPoint("TOPRIGHT", saveSearchBtn, "TOPLEFT", -3, 0)
+        elseif bagsHelpBtn then
             searchBox:SetPoint("TOPRIGHT", bagsHelpBtn, "TOPLEFT", -3, 0)
         else
             searchBox:SetPoint("TOPRIGHT", emptyToggleBtn, "TOPLEFT", -3, 0)
@@ -490,6 +651,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         end
         infoBarFrame.searchBox = searchBox
         infoBarFrame.searchHelpBtn = bagsHelpBtn
+        UpdateSaveSearchButton(searchBox)
 
         bar:UpdateVisibility()
         return infoBarFrame
@@ -531,6 +693,11 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
                 HideSearchHistoryMenu()
             end
             infoBarFrame.searchBox:SetShown(showSearch)
+            UpdateSaveSearchButton(infoBarFrame.searchBox)
+        end
+
+        if infoBarFrame.saveSearchBtn then
+            infoBarFrame.saveSearchBtn:SetShown(showSearch)
         end
 
         if infoBarFrame.searchHelpBtn then
@@ -606,10 +773,18 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             infoBarFrame.searchHelpBtn:SetPoint("RIGHT", infoBarFrame.emptyToggleBtn, "LEFT", -3, 0)
         end
 
+        if infoBarFrame.saveSearchBtn and showSearch then
+            infoBarFrame.saveSearchBtn:ClearAllPoints()
+            local saveAnchor = infoBarFrame.searchHelpBtn or infoBarFrame.emptyToggleBtn
+            infoBarFrame.saveSearchBtn:SetPoint("RIGHT", saveAnchor, "LEFT", -3, 0)
+        end
+
         if infoBarFrame.searchBox and showSearch then
             infoBarFrame.searchBox:ClearAllPoints()
             infoBarFrame.searchBox:SetPoint("TOPLEFT", infoBarFrame, "TOPLEFT", leftInset, searchY)
-            if infoBarFrame.searchHelpBtn then
+            if infoBarFrame.saveSearchBtn then
+                infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame.saveSearchBtn, "TOPLEFT", -3, 0)
+            elseif infoBarFrame.searchHelpBtn then
                 infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame.searchHelpBtn, "TOPLEFT", -3, 0)
             else
                 infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame.emptyToggleBtn, "TOPLEFT", -3, 0)

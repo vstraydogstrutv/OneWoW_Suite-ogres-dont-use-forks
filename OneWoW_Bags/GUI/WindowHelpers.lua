@@ -306,6 +306,10 @@ function WH:FilterBySearch(buttons, searchText)
         return buttons
     end
 
+    if OneWoW_Bags.SavedSearches then
+        searchText = OneWoW_Bags.SavedSearches:Expand(searchText)
+    end
+
     local filtered = {}
     for _, button in ipairs(buttons) do
         if button.owb_hasItem and button.owb_itemInfo and button.owb_itemInfo.itemID then

@@ -1918,35 +1918,6 @@ function CatMgrUI:Show()
         timeout = 0, whileDead = true, hideOnEscape = true,
     }
 
-    -- LibCopyPaste uses DIALOG strata; the Category Manager also uses DIALOG, so
-    -- the copy dialog can render at or below it. Discover the singleton frame on
-    -- first use (by matching our title text) and raise it to FULLSCREEN_DIALOG.
-    local cachedCPFrame
-    local function raiseCopyPasteDialog(title)
-        if cachedCPFrame and cachedCPFrame:IsShown() then
-            cachedCPFrame:SetFrameStrata("FULLSCREEN_DIALOG")
-            cachedCPFrame:Raise()
-            return
-        end
-        local children = { UIParent:GetChildren() }
-        for i = #children, 1, -1 do
-            local child = children[i]
-            if child and child.IsShown and child:IsShown() and child.GetFrameStrata then
-                for _, region in ipairs({ child:GetRegions() }) do
-                    if region:GetObjectType() == "FontString" then
-                        ---@cast region FontString
-                        if region:GetText() == title then
-                            cachedCPFrame = child
-                            child:SetFrameStrata("FULLSCREEN_DIALOG")
-                            child:Raise()
-                            return
-                        end
-                    end
-                end
-            end
-        end
-    end
-
     -- Export button (right of undo)
     local exportBtn = OneWoW_GUI:CreateFitTextButton(actionBar, { text = L["EXPORT_LABEL"], height = 24 })
     exportBtn:SetPoint("RIGHT", undoBtn, "LEFT", -6, 0)
@@ -1954,8 +1925,7 @@ function CatMgrUI:Show()
         if not Serializer or not LibCopyPaste then return end
         local title = L["EXPORT_DIALOG_TITLE"]
         local payload = Serializer:Encode(Serializer:BuildExport(GetDB()))
-        LibCopyPaste:Copy(title, payload, { readOnly = true })
-        raiseCopyPasteDialog(title)
+        LibCopyPaste:Copy(title, payload, { readOnly = true, frameStrata = "FULLSCREEN_DIALOG" })
     end)
 
     -- Import pulldown (right of export button)
@@ -2014,14 +1984,12 @@ function CatMgrUI:Show()
                 local title = L["IMPORT_DIALOG_TITLE"]
                 LibCopyPaste:Paste(title, function(text)
                     doOpenPreview(Planner:FromOneWowString(text, GetDB()))
-                end)
-                raiseCopyPasteDialog(title)
+                end, { frameStrata = "FULLSCREEN_DIALOG" })
             elseif value == "baganator_string" and LibCopyPaste then
                 local title = L["IMPORT_DIALOG_TITLE"]
                 LibCopyPaste:Paste(title, function(text)
                     doOpenPreview(Planner:FromBaganatorString(text, GetDB()))
-                end)
-                raiseCopyPasteDialog(title)
+                end, { frameStrata = "FULLSCREEN_DIALOG" })
             end
         end,
     })
