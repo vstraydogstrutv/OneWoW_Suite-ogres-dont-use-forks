@@ -8,6 +8,7 @@
 ## OptionalDeps: OneWoW_Notes, TradeSkillMaster, Auctionator
 ## Category: OneWoW
 ## Group: OneWoW
+## IconTexture: Interface\AddOns\OneWoW_GUI\Media\neutral-mini.png
 
 ## SavedVariables: OneWoW_Trackers_DB
 ## SavedVariablesPerCharacter: OneWoW_Trackers_CharDB
