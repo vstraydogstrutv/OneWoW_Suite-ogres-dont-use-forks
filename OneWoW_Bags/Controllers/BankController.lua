@@ -1,8 +1,14 @@
 local _, OneWoW_Bags = ...
 
+local BagTypes = OneWoW_Bags.BagTypes
+
 local C_Bank = C_Bank
 local C_Container = C_Container
 local C_Timer = C_Timer
+local ItemLocation = ItemLocation
+local tinsert = tinsert
+
+local DEPOSIT_INTERVAL_SEC = 0.12
 
 OneWoW_Bags.BankController = {}
 local BankController = OneWoW_Bags.BankController
@@ -156,6 +162,13 @@ function BankController:IsWarbandMode()
     return db.global.bankShowWarband == true
 end
 
+function BankController:GetActiveBankType()
+    if self:IsWarbandMode() then
+        return Enum.BankType.Account
+    end
+    return Enum.BankType.Character
+end
+
 function BankController:SetBankMode(showWarband)
     local db = self.addon:GetDB()
     if db.global.bankShowWarband == showWarband then return end
@@ -186,8 +199,87 @@ function BankController:SortBank()
 end
 
 function BankController:DepositReagents()
-    local bankType = self:IsWarbandMode() and Enum.BankType.Account or Enum.BankType.Character
+    local bankType = self:GetActiveBankType()
     C_Bank.AutoDepositItemsIntoBank(bankType)
+end
+
+function BankController:QueueBagDeposits(queue, bankType)
+    if self._bagDepositTicker then
+        self._bagDepositTicker:Cancel()
+        self._bagDepositTicker = nil
+    end
+
+    local index = 1
+    local function Finish()
+        if self._bagDepositTicker then
+            self._bagDepositTicker:Cancel()
+            self._bagDepositTicker = nil
+        end
+        self.addon:RequestLayoutRefresh("all")
+    end
+
+    self._bagDepositTicker = C_Timer.NewTicker(DEPOSIT_INTERVAL_SEC, function()
+        local entry = queue[index]
+        index = index + 1
+
+        if not entry then
+            Finish()
+            return
+        end
+
+        if self.addon.bankOpen and C_Bank.CanUseBank(bankType) then
+            local info = C_Container.GetContainerItemInfo(entry.bagID, entry.slotID)
+            if info and not info.isLocked and info.itemID == entry.itemID and info.hyperlink == entry.hyperlink then
+                local location = ItemLocation:CreateFromBagAndSlot(entry.bagID, entry.slotID)
+                if location and location:IsValid() and C_Bank.IsItemAllowedInBankType(bankType, location) then
+                    C_Container.UseContainerItem(entry.bagID, entry.slotID, nil, bankType)
+                end
+            end
+        end
+
+        if index > #queue then
+            Finish()
+        end
+    end)
+end
+
+function BankController:DepositBagButtonStack(button)
+    if not self.addon.bankOpen or not button or not button.owb_hasItem then return false end
+
+    local bankType = self:GetActiveBankType()
+    if not C_Bank.CanUseBank(bankType) then return false end
+
+    local sourceButtons = button._owb_virtualStackButtons or { button }
+    local queuedSlots = {}
+    local seenSlots = {}
+
+    for _, sourceButton in ipairs(sourceButtons) do
+        local bagID = sourceButton and sourceButton.owb_bagID
+        local slotID = sourceButton and sourceButton.owb_slotID
+        if bagID and slotID and BagTypes:IsPlayerBag(bagID) then
+            local slotKey = bagID .. ":" .. slotID
+            if not seenSlots[slotKey] then
+                seenSlots[slotKey] = true
+                local info = C_Container.GetContainerItemInfo(bagID, slotID)
+                if info and not info.isLocked and info.itemID and info.hyperlink then
+                    local location = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
+                    if location and location:IsValid() and C_Bank.IsItemAllowedInBankType(bankType, location) then
+                        tinsert(queuedSlots, {
+                            bagID = bagID,
+                            slotID = slotID,
+                            itemID = info.itemID,
+                            hyperlink = info.hyperlink,
+                        })
+                    end
+                end
+            end
+        end
+    end
+
+    if #queuedSlots == 0 then return false end
+
+    self:QueueBagDeposits(queuedSlots, bankType)
+    return true
 end
 
 function BankController:ShowWithdrawMoney(anchorFrame)

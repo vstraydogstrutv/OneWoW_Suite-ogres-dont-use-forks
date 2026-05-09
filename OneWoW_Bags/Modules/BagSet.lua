@@ -9,6 +9,8 @@ local ItemPool = OneWoW_Bags.ItemPool
 local pairs, ipairs, tinsert = pairs, ipairs, tinsert
 
 local C_Container = C_Container
+local CursorHasItem = CursorHasItem
+local IsControlKeyDown = IsControlKeyDown
 
 OneWoW_Bags.BagSet = {}
 local BagSet = OneWoW_Bags.BagSet
@@ -46,6 +48,7 @@ function BagSet:Build()
             button:SetParent(bagFrame)
             OneWoW_Bags:ApplyItemButtonMixin(button)
             button:OWB_SetSlot(bagID, slotID)
+            self:ApplyBagScripts(button)
             self.slots[bagID][slotID] = button
             self.totalSlots = self.totalSlots + 1
         end
@@ -56,8 +59,8 @@ function BagSet:Build()
 end
 
 function BagSet:ReleaseAll()
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             ItemPool:Release(button)
         end
     end
@@ -80,7 +83,7 @@ function BagSet:UpdateDirtyBags(dirtyBags)
             if currentCount ~= numSlots then
                 self:RebuildBag(bagID, numSlots)
             else
-                for slotID, button in pairs(currentSlots) do
+                for _, button in pairs(currentSlots) do
                     button:OWB_MarkDirty()
                 end
             end
@@ -91,7 +94,7 @@ end
 
 function BagSet:RebuildBag(bagID, numSlots)
     if self.slots[bagID] then
-        for slotID, button in pairs(self.slots[bagID]) do
+        for _, button in pairs(self.slots[bagID]) do
             ItemPool:Release(button)
             self.totalSlots = self.totalSlots - 1
         end
@@ -106,6 +109,7 @@ function BagSet:RebuildBag(bagID, numSlots)
         button:SetParent(bagFrame)
         OneWoW_Bags:ApplyItemButtonMixin(button)
         button:OWB_SetSlot(bagID, slotID)
+        self:ApplyBagScripts(button)
         button:OWB_MarkDirty()
         self.slots[bagID][slotID] = button
         self.totalSlots = self.totalSlots + 1
@@ -114,8 +118,8 @@ end
 
 function BagSet:ProcessDirtySlots()
     self.freeSlots = 0
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             if button:OWB_IsDirty() then
                 button:OWB_FullUpdate()
             end
@@ -127,8 +131,8 @@ function BagSet:ProcessDirtySlots()
 end
 
 function BagSet:UpdateAllSlots()
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             button:OWB_MarkDirty()
         end
     end
@@ -138,8 +142,8 @@ end
 function BagSet:UpdateSlotsForItems(itemIDs)
     if not self.isBuilt or not itemIDs then return end
     local anyDirty = false
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             local info = button.owb_itemInfo
             local id = info and info.itemID
             if id and itemIDs[id] then
@@ -154,8 +158,8 @@ function BagSet:UpdateSlotsForItems(itemIDs)
 end
 
 function BagSet:UpdateQualityColors()
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             local quality = button.owb_itemInfo and button.owb_itemInfo.quality
             if OneWoW_Bags:ShouldShowItemQuality(false, quality) then
                 OneWoW_GUI:UpdateIconQuality(button, button.owb_itemInfo.quality)
@@ -191,6 +195,38 @@ function BagSet:GetButtonsByBag(bagID)
         end
     end
     return buttons
+end
+
+function BagSet:ApplyBagScripts(button)
+    if button._bankScriptsApplied then
+        OneWoW_Bags.BankSet:RestoreBankScripts(button)
+    end
+    if button._bagScriptsApplied then return end
+    button._bagScriptsApplied = true
+    button._bagOrigOnClick = button:GetScript("OnClick")
+    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    button:SetScript("OnClick", function(myself, mouseButton)
+        if mouseButton == "RightButton"
+            and IsControlKeyDown()
+            and OneWoW_Bags.bankOpen
+            and myself.owb_hasItem
+            and not CursorHasItem()
+        then
+            OneWoW_Bags.BankController:DepositBagButtonStack(myself)
+            return
+        end
+
+        if myself._bagOrigOnClick then
+            myself._bagOrigOnClick(myself, mouseButton)
+            return
+        end
+
+        if mouseButton == "RightButton" then
+            C_Container.UseContainerItem(myself.owb_bagID, myself.owb_slotID)
+        else
+            C_Container.PickupContainerItem(myself.owb_bagID, myself.owb_slotID)
+        end
+    end)
 end
 
 function BagSet:GetSlotCount()

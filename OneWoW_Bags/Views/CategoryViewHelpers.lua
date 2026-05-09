@@ -511,6 +511,7 @@ end
 function H.RestoreItemButtonCounts(items)
     for _, btn in ipairs(items) do
         btn._owb_stackCount = nil
+        btn._owb_virtualStackButtons = nil
         local info = btn.owb_itemInfo
         if info and info.hyperlink then
             SetItemButtonCount(btn, info.stackCount or 0)
@@ -545,6 +546,7 @@ function H.StackItems(items, db, PE)
         local rep = stack.representative or stack.buttons[1]
         if stack.count > 1 and rep then
             rep._owb_stackCount = stack.count
+            rep._owb_virtualStackButtons = stack.buttons
             SetItemButtonCount(rep, stack.count)
         end
         tinsert(result, rep)

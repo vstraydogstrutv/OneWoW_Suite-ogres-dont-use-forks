@@ -15,7 +15,7 @@ local active = {}
 local totalCreated = 0
 
 function Pool:Preallocate(count)
-    for i = 1, count do
+    for _ = 1, count do
         local button = Pool:CreateButton()
         button:Hide()
         tinsert(available, button)
@@ -115,6 +115,7 @@ function Pool:ResetButton(button)
     button.owb_slotID = nil
     button.owb_itemInfo = nil
     button._owb_stackCount = nil
+    button._owb_virtualStackButtons = nil
     button.owb_categoryName = nil
     button.owb_hasItem = false
     button:SetAlpha(1.0)
