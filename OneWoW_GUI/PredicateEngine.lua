@@ -1947,9 +1947,11 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
 
     -- ---- Catalyst properties ----
     if hyperlink and TransmogUpgradeMaster_API and TransmogUpgradeMaster_API.IsAppearanceMissing then
-        local isCatalyst, isCatalystUpgrade = TransmogUpgradeMaster_API.IsAppearanceMissing(hyperlink)
-        props.isCatalyst = isCatalyst == true
-        props.isCatalystUpgrade = isCatalystUpgrade == true
+        local ok, isCatalyst, isCatalystUpgrade = pcall(TransmogUpgradeMaster_API.IsAppearanceMissing, hyperlink)
+        if ok then
+            props.isCatalyst = isCatalyst == true
+            props.isCatalystUpgrade = isCatalystUpgrade == true
+        end
     end
 
     if props.classID == Enum.ItemClass.Housing and props.subClassID == Enum.ItemHousingSubclass.Decor then
