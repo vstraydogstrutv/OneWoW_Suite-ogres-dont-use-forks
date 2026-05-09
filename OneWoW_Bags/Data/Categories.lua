@@ -555,7 +555,7 @@ function Categories:OnPlayerBagDirtySnapshot(dirtyBags)
     self:CleanExpiredRecent()
     for bagID in pairs(dirtyBags) do
         if BagTypes:IsPlayerBag(bagID) then
-            local numSlots = C_Container.GetContainerNumSlots(bagID) or 0
+            local numSlots = C_Container.GetContainerNumSlots(bagID)
             for slotID = 1, numSlots do
                 if C_NewItems.IsNewItem(bagID, slotID) then
                     local loc = ItemLocation:CreateFromBagAndSlot(bagID, slotID)

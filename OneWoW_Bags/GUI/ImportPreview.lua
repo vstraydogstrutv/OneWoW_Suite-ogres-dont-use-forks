@@ -135,21 +135,14 @@ local function makeSmallBtn(parent, text, onClick)
 end
 
 local function makeEditBox(parent, width, initial)
-    local eb = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
-    eb:SetSize(width, 20)
-    eb:SetAutoFocus(false)
-    eb:SetFontObject("GameFontHighlight")
-    eb:SetMaxLetters(64)
-    eb:SetTextInsets(5, 5, 0, 0)
-    eb:SetBackdrop({
-        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 12,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 },
+    local eb = OneWoW_GUI:CreateEditBox(parent, {
+        width = width,
+        height = 20,
+        maxLetters = 64,
+        placeholderText = "",
     })
-    eb:SetBackdropColor(0, 0, 0, 0.7)
-    eb:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
     eb:SetText(initial or "")
+    eb:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
     return eb
 end
 

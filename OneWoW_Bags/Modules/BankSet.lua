@@ -230,42 +230,8 @@ function BankSet:ApplyBankScripts(button)
     button._bankScriptsApplied = true
     button.owb_isBank = true
 
-    button._bankOrigOnClick = button:GetScript("OnClick")
     button._bankOrigOnEnter = button:GetScript("OnEnter")
     button._bankOrigOnLeave = button:GetScript("OnLeave")
-    button._bankOrigOnDragStart = button:GetScript("OnDragStart")
-    button._bankOrigOnReceiveDrag = button:GetScript("OnReceiveDrag")
-
-    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    button:RegisterForDrag("LeftButton")
-
-    button.SplitStack = function(myself, amount)
-        C_Container.SplitContainerItem(myself.owb_bagID, myself.owb_slotID, amount)
-    end
-
-    button:SetScript("OnClick", function(myself, mouseButton)
-        local bagID = myself.owb_bagID
-        local slotID = myself.owb_slotID
-        if not bagID or not slotID then return end
-
-        if myself.owb_itemInfo and myself.owb_itemInfo.hyperlink then
-            if HandleModifiedItemClick(selmyselff.owb_itemInfo.hyperlink) then return end
-        end
-
-        if IsModifiedClick("SPLITSTACK") and myself.owb_hasItem then
-            local info = C_Container.GetContainerItemInfo(bagID, slotID)
-            if info and info.stackCount and info.stackCount > 1 then
-                StackSplitFrame:OpenStackSplitFrame(info.stackCount, myself, "BOTTOMLEFT", "TOPLEFT")
-            end
-            return
-        end
-
-        if mouseButton == "RightButton" then
-            C_Container.UseContainerItem(bagID, slotID)
-        else
-            C_Container.PickupContainerItem(bagID, slotID)
-        end
-    end)
 
     button:SetScript("OnEnter", function(myself)
         GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
@@ -283,41 +249,17 @@ function BankSet:ApplyBankScripts(button)
     button:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-
-    button:SetScript("OnDragStart", function(myself)
-        C_Container.PickupContainerItem(myself.owb_bagID, myself.owb_slotID)
-    end)
-
-    button:SetScript("OnReceiveDrag", function(myself)
-        C_Container.PickupContainerItem(myself.owb_bagID, myself.owb_slotID)
-    end)
 end
 
 function BankSet:RestoreBankScripts(button)
     if not button._bankScriptsApplied then return end
     button._bankScriptsApplied = nil
+    button.owb_isBank = nil
 
-    if button._bankOrigOnClick ~= nil then
-        button:SetScript("OnClick", button._bankOrigOnClick)
-    end
-    if button._bankOrigOnEnter ~= nil then
-        button:SetScript("OnEnter", button._bankOrigOnEnter)
-    end
-    if button._bankOrigOnLeave ~= nil then
-        button:SetScript("OnLeave", button._bankOrigOnLeave)
-    end
-    if button._bankOrigOnDragStart ~= nil then
-        button:SetScript("OnDragStart", button._bankOrigOnDragStart)
-    end
-    if button._bankOrigOnReceiveDrag ~= nil then
-        button:SetScript("OnReceiveDrag", button._bankOrigOnReceiveDrag)
-    end
-    button._bankOrigOnClick = nil
+    button:SetScript("OnEnter", button._bankOrigOnEnter)
+    button:SetScript("OnLeave", button._bankOrigOnLeave)
     button._bankOrigOnEnter = nil
     button._bankOrigOnLeave = nil
-    button._bankOrigOnDragStart = nil
-    button._bankOrigOnReceiveDrag = nil
-    button.SplitStack = nil
 end
 
 function BankSet:GetSlotCount()

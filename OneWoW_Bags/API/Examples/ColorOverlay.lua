@@ -12,7 +12,7 @@ Instructions:
 
 local ADDON_NAME = ...
 
-if _G.OneWoW_Bags then
+if OneWoW_Bags then
 
     local RARITY_COLORS = {
         [0] = { r = 0.62, g = 0.62, b = 0.62 },  -- Poor (gray)
@@ -71,6 +71,5 @@ if _G.OneWoW_Bags then
         end
     end
 
-    _G.OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, YourAddon_UpdateItemButton)
-
+    OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, YourAddon_UpdateItemButton)
 end

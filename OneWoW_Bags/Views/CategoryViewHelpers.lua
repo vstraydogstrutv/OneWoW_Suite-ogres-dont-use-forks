@@ -265,7 +265,7 @@ function H.GetSortedCategoryNames(itemsByCategory)
 
     local db = OneWoW_Bags.db
     local categoryOrder = db.global.categoryOrder
-    if categoryOrder and #categoryOrder > 0 then
+    if #categoryOrder > 0 then
         local orderMap = {}
         for i, name in ipairs(categoryOrder) do
             orderMap[name] = i
@@ -600,11 +600,12 @@ function H.GroupItemsBy(items, groupBy, PE)
         end
         sort(groupOrder, function(a, b) return a.sortKey > b.sortKey end)
     elseif groupBy == "type" then
+        local OTHER = L["CAT_OTHER"]
         for _, btn in ipairs(items) do
-            local typeName = "Other"
+            local typeName = OTHER
             if btn.owb_itemInfo then
                 local props = PE:BuildProps(btn.owb_itemInfo.itemID, btn.owb_bagID, btn.owb_slotID, btn.owb_itemInfo)
-                typeName = props.itemType or "Other"
+                typeName = props.itemType or OTHER
             end
             if not groups[typeName] then
                 groups[typeName] = {}
@@ -614,8 +615,9 @@ function H.GroupItemsBy(items, groupBy, PE)
         end
         sort(groupOrder, function(a, b) return a.sortKey < b.sortKey end)
     elseif groupBy == "slot" then
+        local OTHER = L["CAT_OTHER"]
         for _, btn in ipairs(items) do
-            local slotName = "Other"
+            local slotName = OTHER
             if btn.owb_itemInfo then
                 local props = PE:BuildProps(btn.owb_itemInfo.itemID, btn.owb_bagID, btn.owb_slotID, btn.owb_itemInfo)
                 local equipLoc = props.equipLoc

@@ -6,7 +6,7 @@ local C_Bank = C_Bank
 local C_Container = C_Container
 local C_Timer = C_Timer
 local ItemLocation = ItemLocation
-local tinsert = tinsert
+local tinsert, ipairs = tinsert, ipairs
 
 local DEPOSIT_INTERVAL_SEC = 0.12
 
@@ -60,8 +60,7 @@ function BankController:Create(addon)
 end
 
 function BankController:ActiveKeys()
-    local db = self.addon:GetDB()
-    if db and db.global.bankShowWarband then
+    if self.addon:GetDB().global.bankShowWarband then
         return WARBAND_KEYS
     end
     return PERSONAL_KEYS

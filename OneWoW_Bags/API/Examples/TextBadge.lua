@@ -12,7 +12,7 @@ Instructions:
 
 local ADDON_NAME = ...
 
-if _G.OneWoW_Bags then
+if OneWoW_Bags then
 
     function YourAddon_GetItemValue(itemLink)
         -- This function should return the value you want to display
@@ -90,6 +90,5 @@ if _G.OneWoW_Bags then
         end
     end
 
-    _G.OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, YourAddon_UpdateItemButton)
-
+    OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, YourAddon_UpdateItemButton)
 end

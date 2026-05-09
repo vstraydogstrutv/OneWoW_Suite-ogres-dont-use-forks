@@ -468,6 +468,9 @@ OneWoW_Bags.Locales["deDE"] = {
     ["IMPORT_PREVIEW_RULE_LINE"]       = "Regel: %s",
 
     ["IMPORT_BAGANATOR_SECTION_NAME"]  = "Baganator-Import",
+    ["IMPORT_BAGANATOR_CATCHALL_SECTION"] = "Baganator nicht zugeordnet",
+    ["EXPORT_UNAVAILABLE_SERIALIZER"]  = "Export nicht verfügbar (Serializer oder LibCopyPaste fehlt).",
+    ["EXPORT_UNAVAILABLE_DB"]          = "Export nicht verfügbar (Datenbank nicht bereit).",
     ["IMPORT_RESULT_SUCCESS"]          = "Import abgeschlossen: %d neu, %d umbenannt, %d zusammengeführt, %d übersprungen.",
     ["IMPORT_RESULT_EMPTY"]            = "Nichts zu importieren.",
 }

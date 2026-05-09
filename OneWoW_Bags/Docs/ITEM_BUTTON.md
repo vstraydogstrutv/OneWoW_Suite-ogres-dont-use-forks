@@ -17,18 +17,18 @@ the button mixin lives in
 ## API at a Glance
 
 ```lua
-if _G.OneWoW_Bags then
-    _G.OneWoW_Bags:RegisterItemButtonCallback("MyAddon", function(button, bagID, slotID)
+if OneWoW_Bags then
+    OneWoW_Bags:RegisterItemButtonCallback("MyAddon", function(button, bagID, slotID)
         -- Decorate `button` for the item at (bagID, slotID).
     end)
 end
 
 -- Later, if you want to detach:
-_G.OneWoW_Bags:UnregisterItemButtonCallback("MyAddon")
+OneWoW_Bags:UnregisterItemButtonCallback("MyAddon")
 ```
 
-OneWoW Bags is published on the global table as `_G["OneWoW_Bags"]`. Always
-guard your registration with `if _G.OneWoW_Bags then ... end` so your addon
+OneWoW Bags is published on the global table as `OneWoW_Bags`. Always
+guard your registration with `if OneWoW_Bags then ... end` so your addon
 keeps working when OneWoW Bags is not installed.
 
 ---
@@ -170,7 +170,7 @@ calls, and toggle visibility based on item state.
 ```lua
 local ADDON_NAME = ...
 
-if _G.OneWoW_Bags then
+if OneWoW_Bags then
     local function UpdateButton(button, bagID, slotID)
         if not button.MyAddonOverlay then
             button.MyAddonOverlay = CreateFrame("Frame", nil, button)
@@ -196,7 +196,7 @@ if _G.OneWoW_Bags then
         overlay:Show()
     end
 
-    _G.OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, UpdateButton)
+    OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, UpdateButton)
 end
 ```
 
@@ -291,7 +291,7 @@ Enum.ItemQuality.WoWToken   = 8
    ```
    Integrations\OneWoWBags.lua
    ```
-2. Wrap the registration in `if _G.OneWoW_Bags then ... end` so your addon
+2. Wrap the registration in `if OneWoW_Bags then ... end` so your addon
    loads cleanly when OneWoW Bags is absent.
 3. Use a unique `name` (your addon folder name is a safe default) when
    calling `RegisterItemButtonCallback`.
@@ -303,7 +303,7 @@ Enum.ItemQuality.WoWToken   = 8
 
 ### My callback isn't firing
 
-- Verify OneWoW Bags is loaded: `print(_G.OneWoW_Bags ~= nil)` from `/run`.
+- Verify OneWoW Bags is loaded: `print(OneWoW_Bags ~= nil)` from `/run`.
 - Make sure your integration file is listed in your `.toc` and your
   registration is reached at file load.
 - Bank window: callbacks are gated on `BankController:Get("overlays")`. The

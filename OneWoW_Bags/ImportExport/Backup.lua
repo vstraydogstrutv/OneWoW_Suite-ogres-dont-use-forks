@@ -4,7 +4,8 @@ OneWoW_Bags.ImportExport = OneWoW_Bags.ImportExport or {}
 OneWoW_Bags.ImportExport.Backup = OneWoW_Bags.ImportExport.Backup or {}
 local Backup = OneWoW_Bags.ImportExport.Backup
 
-local pairs, type, time = pairs, type, time
+local pairs, time = pairs, time
+local deepCopy = OneWoW_Bags.ImportExport.Util.DeepCopy
 
 local BACKUP_FIELDS = {
     "customCategoriesV2",
@@ -15,18 +16,6 @@ local BACKUP_FIELDS = {
     "categoryOrder",
     "displayOrder",
 }
-
-local function deepCopy(v, seen)
-    if type(v) ~= "table" then return v end
-    seen = seen or {}
-    if seen[v] then return seen[v] end
-    local out = {}
-    seen[v] = out
-    for k, vv in pairs(v) do
-        out[k] = deepCopy(vv, seen)
-    end
-    return out
-end
 
 --- Save a deep-copy snapshot of import-managed category tables.
 ---@param tag string|nil

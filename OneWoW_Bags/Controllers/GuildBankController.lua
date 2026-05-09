@@ -17,6 +17,14 @@ function GuildBankController:GetViewMode()
     return db.global.guildBankViewMode
 end
 
+--- Return the column count used for guild bank tab grids.
+--- Currently shares the personal-bank column setting; routed through the
+--- controller so callers don't reach into DB directly (mirrors BankController).
+---@return number columns
+function GuildBankController:GetColumns()
+    return self.addon:GetDB().global.bankColumns
+end
+
 function GuildBankController:SetViewMode(mode)
     local db = self.addon:GetDB()
     if db.global.guildBankViewMode == mode then return end

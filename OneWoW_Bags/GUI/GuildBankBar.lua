@@ -174,7 +174,7 @@ function GuildBankBar:CreateTabButton(parent, tabID, tabName, tabIcon, isViewabl
 
     btn:SetScript("OnEnter", function(myself)
         GameTooltip:SetOwner(myself, "ANCHOR_TOP")
-        local tName = myself.tabName or format(GUILDBANK_TAB_NUMBER, self.tabID)
+        local tName = myself.tabName or format(GUILDBANK_TAB_NUMBER, myself.tabID)
         GameTooltip:SetText(tName, 1, 1, 1)
         if myself.isViewable then
             local _, _, _, _, _, remainingWithdrawals = GetGuildBankTabInfo(myself.tabID)

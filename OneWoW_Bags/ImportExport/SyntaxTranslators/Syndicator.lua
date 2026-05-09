@@ -9,6 +9,8 @@ local Registry = ST.Registry
 local Syndicator = ST.Syndicator or {}
 ST.Syndicator = Syndicator
 
+local L = OneWoW_Bags.L
+
 local tinsert, tconcat = table.insert, table.concat
 local string_lower, string_gsub = string.lower, string.gsub
 local string_sub = string.sub
@@ -76,7 +78,7 @@ local function normalizeKeyword(rawToken, context, warnings)
     local hit = ENGLISH_TO_OW[token]
     if hit ~= nil then
         if hit == false then
-            addWarning(warnings, "#" .. rawToken, "Keyword has no OneWoW equivalent; rule dropped.", "warn")
+            addWarning(warnings, "#" .. rawToken, L["IMPORT_WARN_KEYWORD_NO_EQUIVALENT"], "warn")
             return nil, false
         end
         return hit, true
@@ -157,7 +159,7 @@ local function translateAtom(atom, context, warnings)
     if string_sub(body, 1, 1) == "#" then
         local kw = string_sub(body, 2)
         if kw == "" then
-            addWarning(warnings, body, "Empty keyword token dropped.", "warn")
+            addWarning(warnings, body, L["IMPORT_WARN_EMPTY_KEYWORD"], "warn")
             return ""
         end
         local owKw, ok = normalizeKeyword(kw, context, warnings)

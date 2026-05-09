@@ -48,7 +48,7 @@ function Events:OnPredicateInvalidation()
         predicateRefreshPending = true
         C_Timer.After(0, function()
             predicateRefreshPending = false
-            local refreshBags = OneWoW_Bags.GUI and OneWoW_Bags.GUI.IsShown and OneWoW_Bags.GUI:IsShown()
+            local refreshBags = OneWoW_Bags.GUI:IsShown()
             local refreshBankRelated = OneWoW_Bags.bankOpen or OneWoW_Bags.guildBankOpen
 
             if refreshBags and refreshBankRelated then
@@ -178,4 +178,3 @@ end
 function Events:OnAccountMoney()
     OneWoW_Bags:OnAccountMoney()
 end
-

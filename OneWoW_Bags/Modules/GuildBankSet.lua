@@ -5,7 +5,7 @@ if not OneWoW_GUI then return end
 
 local ItemPool = OneWoW_Bags.ItemPool
 
-local tonumber, pairs = tonumber, pairs
+local tonumber, pairs, tinsert = tonumber, pairs, tinsert
 local GameTooltip = GameTooltip
 local C_Item = C_Item
 
@@ -434,6 +434,9 @@ local function ShowTooltipForButton(button)
 end
 
 function GBSet:ApplyGuildBankScripts(button)
+    if button._gbScriptsApplied then return end
+    button._gbScriptsApplied = true
+
     button._gbOrigOnClick = button:GetScript("OnClick")
     button._gbOrigOnEnter = button:GetScript("OnEnter")
     button._gbOrigOnLeave = button:GetScript("OnLeave")
@@ -542,21 +545,14 @@ function GBSet:ApplyGuildBankScripts(button)
 end
 
 function GBSet:RestoreButtonScripts(button)
-    if button._gbOrigOnClick ~= nil then
-        button:SetScript("OnClick", button._gbOrigOnClick)
-    end
-    if button._gbOrigOnEnter ~= nil then
-        button:SetScript("OnEnter", button._gbOrigOnEnter)
-    end
-    if button._gbOrigOnLeave ~= nil then
-        button:SetScript("OnLeave", button._gbOrigOnLeave)
-    end
-    if button._gbOrigOnDragStart ~= nil then
-        button:SetScript("OnDragStart", button._gbOrigOnDragStart)
-    end
-    if button._gbOrigOnReceiveDrag ~= nil then
-        button:SetScript("OnReceiveDrag", button._gbOrigOnReceiveDrag)
-    end
+    if not button._gbScriptsApplied then return end
+    button._gbScriptsApplied = nil
+
+    button:SetScript("OnClick", button._gbOrigOnClick)
+    button:SetScript("OnEnter", button._gbOrigOnEnter)
+    button:SetScript("OnLeave", button._gbOrigOnLeave)
+    button:SetScript("OnDragStart", button._gbOrigOnDragStart)
+    button:SetScript("OnReceiveDrag", button._gbOrigOnReceiveDrag)
     button._gbOrigOnClick = nil
     button._gbOrigOnEnter = nil
     button._gbOrigOnLeave = nil

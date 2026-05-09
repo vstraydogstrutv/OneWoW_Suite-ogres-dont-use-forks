@@ -4,10 +4,11 @@
 ## Notes: Unified bag interface for World of Warcraft. Part of the OneWoW Suite.
 ## Author: OneWoW Dev Team
 
-## RequiredDeps: OneWoW, OneWoW_GUI
-## OptionalDeps: OneWoW_AltTracker, OneWoW_ShoppingList, TradeSkillMaster, Baganator, Pawn
+## RequiredDeps: OneWoW_GUI
+## OptionalDeps: OneWoW, OneWoW_AltTracker, OneWoW_ShoppingList, TradeSkillMaster, Baganator
 ## Category: OneWoW
 ## Group: OneWoW
+## IconTexture: Interface\AddOns\OneWoW_GUI\Media\neutral-mini.png
 
 ## SavedVariables: OneWoW_Bags_DB
 
@@ -49,6 +50,7 @@ Modules\BankCategoryManager.lua
 Modules\GuildBankCategoryManager.lua
 
 # Import/Export
+ImportExport\Util.lua
 ImportExport\Serializer.lua
 ImportExport\Backup.lua
 ImportExport\SyntaxTranslators\Registry.lua

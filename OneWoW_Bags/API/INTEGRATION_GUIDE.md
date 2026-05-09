@@ -67,12 +67,12 @@ When OneWoW Bags loads, it will automatically detect and register your callback.
 ```lua
 local ADDON_NAME = ...
 
-if _G.OneWoW_Bags then
+if OneWoW_Bags then
     function YourAddon_OnItemButton(button, bagID, slotID)
         -- Your custom logic here
     end
 
-    _G.OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, YourAddon_OnItemButton)
+    OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, YourAddon_OnItemButton)
 end
 ```
 
@@ -81,7 +81,7 @@ end
 ```lua
 local ADDON_NAME = ...
 
-if _G.OneWoW_Bags then
+if OneWoW_Bags then
     function MyAddon_UpdateItemButton(button, bagID, slotID)
         if not button then return end
 
@@ -112,7 +112,7 @@ if _G.OneWoW_Bags then
         end
     end
 
-    _G.OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, MyAddon_UpdateItemButton)
+    OneWoW_Bags:RegisterItemButtonCallback(ADDON_NAME, MyAddon_UpdateItemButton)
 end
 ```
 
@@ -224,7 +224,7 @@ See [ITEM_BUTTON.md](../Docs/ITEM_BUTTON.md) for:
 ## Troubleshooting
 
 **My callback isn't firing:**
-- Make sure OneWoW_Bags is loaded (check for `_G.OneWoW_Bags`)
+- Make sure OneWoW_Bags is loaded (check for `OneWoW_Bags`)
 - Verify your integration file is in your .toc file
 - Check that OneWoW Bags is installed and enabled
 

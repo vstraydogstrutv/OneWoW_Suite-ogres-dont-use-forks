@@ -162,7 +162,7 @@ OneWoW_Bags uses a **layered hybrid MVC** pattern. It is not strict MVC—some o
 
 ### The Root Namespace Object
 
-`OneWoW_Bags` (the second vararg from `local _, OneWoW_Bags = ...`) is the central orchestration hub. All layers attach their tables to it, and it is also exposed as `_G.OneWoW_Bags` for cross-addon access.
+`OneWoW_Bags` (the second vararg from `local _, OneWoW_Bags = ...`) is the central orchestration hub. All layers attach their tables to it, and it is also exposed as `_G["OneWoW_Bags"]` for cross-addon access.
 
 The root object provides:
 

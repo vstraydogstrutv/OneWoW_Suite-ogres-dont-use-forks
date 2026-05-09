@@ -7,6 +7,9 @@ local ST = OneWoW_Bags.ImportExport.SyntaxTranslators
 local Registry = ST.Registry or {}
 ST.Registry = Registry
 
+local L = OneWoW_Bags.L
+local string_format = string.format
+
 local translators = {}
 
 --- Register a search-syntax translator by dialect name.
@@ -39,7 +42,7 @@ function Registry:Translate(dialect, input, context)
     if not t then
         return {
             expression = type(input) == "string" and input or "",
-            warnings = { { severity = "error", text = "No translator registered for dialect '" .. tostring(dialect) .. "'" } },
+            warnings = { { severity = "error", text = string_format(L["IMPORT_WARN_NO_TRANSLATOR"], tostring(dialect)) } },
             translatable = false,
         }
     end

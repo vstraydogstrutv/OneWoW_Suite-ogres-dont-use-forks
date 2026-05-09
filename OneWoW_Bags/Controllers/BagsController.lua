@@ -121,7 +121,7 @@ function BagsController:AddTrackedEntryFromID(rawID)
 
     local list = db.global.trackedCurrencies
     if IsAlreadyTracked(list, trackType, id) then
-        print("|cffff4444OneWoW_Bags:|r " .. (L["TRACKER_ALREADY_TRACKED"]))
+        print("|cffff4444" .. L["ADDON_CHAT_PREFIX"] .. "|r " .. L["TRACKER_ALREADY_TRACKED"])
         return false
     end
 
@@ -139,7 +139,7 @@ function BagsController:AddTrackedItem(itemID)
 
     local list = db.global.trackedCurrencies
     if IsAlreadyTracked(list, "item", itemID) then
-        print("|cffff4444OneWoW_Bags:|r " .. (L["TRACKER_ALREADY_TRACKED"]))
+        print("|cffff4444" .. L["ADDON_CHAT_PREFIX"] .. "|r " .. L["TRACKER_ALREADY_TRACKED"])
         return false
     end
 
@@ -153,7 +153,6 @@ end
 
 function BagsController:RemoveTrackedEntry(index)
     local db = self.addon:GetDB()
-    if not db then return end
 
     tremove(db.global.trackedCurrencies, index)
     if self.addon.BagsBar then
@@ -164,8 +163,6 @@ end
 
 function BagsController:MoveTrackedEntry(fromIndex, toIndex)
     local db = self.addon:GetDB()
-    if not db then return end
-
     local list = db.global.trackedCurrencies
     local n = #list
     if fromIndex < 1 or fromIndex > n or toIndex < 1 or toIndex > n or fromIndex == toIndex then

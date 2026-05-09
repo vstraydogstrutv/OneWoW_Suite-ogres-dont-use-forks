@@ -535,6 +535,22 @@ OneWoW_Bags.Locales["enUS"] = {
     ["IMPORT_PREVIEW_RULE_LINE"]       = "rule: %s",
 
     ["IMPORT_BAGANATOR_SECTION_NAME"]  = "Baganator Import",
+    ["IMPORT_BAGANATOR_CATCHALL_SECTION"] = "Baganator Unmapped",
+    ["EXPORT_UNAVAILABLE_SERIALIZER"]  = "Export unavailable (Serializer or LibCopyPaste missing).",
+    ["EXPORT_UNAVAILABLE_DB"]          = "Export unavailable (database not ready).",
+
+    ["IMPORT_WARN_DECODE_FAILED"]      = "Could not decode OneWoW export: %s",
+    ["IMPORT_WARN_NOT_TABLE"]          = "Decoded value was not a table",
+    ["IMPORT_WARN_NOT_OWB_EXPORT"]     = "Not a OneWoW_Bags export (format=%s)",
+    ["IMPORT_WARN_VERSION_MISMATCH"]   = "Export version %s, expected %d. Attempting best-effort import.",
+    ["IMPORT_INFO_LOCALE_MISMATCH"]    = "Exported from '%s' client into '%s' client.",
+    ["IMPORT_WARN_BAGANATOR_DIRECT_FAILED"] = "Baganator direct-read failed",
+    ["IMPORT_WARN_BAGANATOR_STRING_FAILED"] = "Baganator string parse failed",
+    ["IMPORT_WARN_TSM_UNAVAILABLE"]    = "TSM is not available",
+    ["IMPORT_WARN_TSM_NO_BUILDPLAN"]   = "TSM integration does not expose BuildPlan",
+    ["IMPORT_WARN_NO_TRANSLATOR"]      = "No translator registered for dialect '%s'",
+    ["IMPORT_WARN_KEYWORD_NO_EQUIVALENT"] = "Keyword has no OneWoW equivalent; rule dropped.",
+    ["IMPORT_WARN_EMPTY_KEYWORD"]      = "Empty keyword token dropped.",
     ["IMPORT_RESULT_SUCCESS"]          = "Import complete: %d new, %d renamed, %d merged, %d skipped.",
     ["IMPORT_RESULT_EMPTY"]            = "Nothing to import.",
 }

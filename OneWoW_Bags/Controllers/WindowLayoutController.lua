@@ -4,9 +4,9 @@ OneWoW_Bags.WindowLayoutController = {}
 local WindowLayoutController = OneWoW_Bags.WindowLayoutController
 
 function WindowLayoutController:UpdateFixedWidth(config)
-    local db = self.addon:GetDB()
-    if not db or not config.mainWindow then return end
+    if not config.mainWindow then return end
 
+    local db = self.addon:GetDB()
     local cols = db.global[config.columnsKey] or config.defaultColumns
     local iconSize = self.addon.Constants.ICON_SIZES[db.global.iconSize] or 37
     local spacing = self.addon.Constants.GUI.ITEM_BUTTON_SPACING

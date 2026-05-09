@@ -33,8 +33,6 @@ end
 
 function SettingsController:Apply(settingKey, value)
     local db = self.addon:GetDB()
-    if not db then return end
-
     local applier = self.appliers[settingKey]
     if applier then
         applier(self, db, value)
@@ -98,7 +96,9 @@ SettingsController.appliers = {
     overlaysEnabled = function(_, _, value)
         if not OneWoW or not OneWoW.SettingsFeatureRegistry then return end
         OneWoW.SettingsFeatureRegistry:SetEnabled("overlays", "general", value)
-        OneWoW.OverlayEngine:Refresh()
+        if OneWoW.OverlayEngine then
+            OneWoW.OverlayEngine:Refresh()
+        end
     end,
     showScrollBar = function(self, db, value)
         db.global.hideScrollBar = not value

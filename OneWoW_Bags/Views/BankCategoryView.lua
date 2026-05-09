@@ -4,12 +4,9 @@ local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
 local Constants = OneWoW_Bags.Constants
-local Categories = OneWoW_Bags.Categories
-local BankSet = OneWoW_Bags.BankSet
 local H = OneWoW_Bags.CategoryViewHelpers
 local PE = OneWoW_GUI.PredicateEngine
 
-local tinsert = tinsert
 local ipairs = ipairs
 local floor, max = math.floor, math.max
 
@@ -41,24 +38,11 @@ function View:Layout(contentFrame, width, filteredButtons, viewContext)
         end
     end
 
-    if not BankSet then return 100 end
-
     local containerType = viewContext.containerType
 
-    local itemsByCategory = {}
-    local allButtons = BankSet:GetAllButtons()
-    for _, button in ipairs(allButtons) do
-        if button.owb_hasItem and button.owb_itemInfo then
-            local catName = Categories:GetItemCategory(button.owb_bagID, button.owb_slotID, button.owb_itemInfo)
-            button.owb_categoryName = catName
-            if catName then
-                if not itemsByCategory[catName] then
-                    itemsByCategory[catName] = {}
-                end
-                tinsert(itemsByCategory[catName], button)
-            end
-        end
-    end
+    local BankCategoryManager = OneWoW_Bags.BankCategoryManager
+    BankCategoryManager:AssignCategories()
+    local itemsByCategory = BankCategoryManager:GetItemsByCategory()
 
     local layout = H.GetSectionedLayout(itemsByCategory, containerType)
 

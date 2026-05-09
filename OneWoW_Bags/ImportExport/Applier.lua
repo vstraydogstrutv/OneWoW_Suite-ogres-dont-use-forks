@@ -5,32 +5,14 @@ OneWoW_Bags.ImportExport.Applier = OneWoW_Bags.ImportExport.Applier or {}
 local Applier = OneWoW_Bags.ImportExport.Applier
 
 local Backup = OneWoW_Bags.ImportExport.Backup
+local Util = OneWoW_Bags.ImportExport.Util
 
 local pairs, ipairs, type = pairs, ipairs, type
 local tinsert = table.insert
-local strtrim = strtrim or function(s) return (s or ""):gsub("^%s+", ""):gsub("%s+$", "") end
-local string_lower = string.lower
+local strtrim = strtrim
 
--- ------------------------------------------------------------------
--- Helpers
--- ------------------------------------------------------------------
-
-local function normKey(name)
-    if type(name) ~= "string" then return "" end
-    return string_lower(strtrim(name))
-end
-
-local function deepCopy(v, seen)
-    if type(v) ~= "table" then return v end
-    seen = seen or {}
-    if seen[v] then return seen[v] end
-    local out = {}
-    seen[v] = out
-    for k, vv in pairs(v) do
-        out[k] = deepCopy(vv, seen)
-    end
-    return out
-end
+local normKey  = Util.NormKey
+local deepCopy = Util.DeepCopy
 
 local function existingSnapshot(db)
     local g = db.global

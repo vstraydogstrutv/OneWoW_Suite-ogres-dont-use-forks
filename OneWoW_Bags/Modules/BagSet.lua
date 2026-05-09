@@ -203,9 +203,8 @@ function BagSet:ApplyBagScripts(button)
     end
     if button._bagScriptsApplied then return end
     button._bagScriptsApplied = true
-    button._bagOrigOnClick = button:GetScript("OnClick")
-    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    button:SetScript("OnClick", function(myself, mouseButton)
+
+    button:HookScript("OnClick", function(myself, mouseButton)
         if mouseButton == "RightButton"
             and IsControlKeyDown()
             and OneWoW_Bags.bankOpen
@@ -213,18 +212,6 @@ function BagSet:ApplyBagScripts(button)
             and not CursorHasItem()
         then
             OneWoW_Bags.BankController:DepositBagButtonStack(myself)
-            return
-        end
-
-        if myself._bagOrigOnClick then
-            myself._bagOrigOnClick(myself, mouseButton)
-            return
-        end
-
-        if mouseButton == "RightButton" then
-            C_Container.UseContainerItem(myself.owb_bagID, myself.owb_slotID)
-        else
-            C_Container.PickupContainerItem(myself.owb_bagID, myself.owb_slotID)
         end
     end)
 end

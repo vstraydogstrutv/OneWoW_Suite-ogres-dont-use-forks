@@ -3,9 +3,44 @@ local _, OneWoW_Bags = ...
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
-local tinsert, tremove = tinsert, tremove
+local tinsert, tremove, pairs, ipairs = tinsert, tremove, pairs, ipairs
 
 OneWoW_Bags.CategoryManagerBase = {}
+
+--- Walk a list of item buttons, assign each one a category name (or clear it
+--- when the slot is empty / lacks itemInfo). Used by both bag and bank
+--- category managers — only the button source differs.
+---@param buttons table[] item-button list
+local function AssignCategoriesForButtons(buttons)
+    local Categories = OneWoW_Bags.Categories
+    for _, button in ipairs(buttons) do
+        if button.owb_hasItem and button.owb_itemInfo then
+            button.owb_categoryName = Categories:GetItemCategory(button.owb_bagID, button.owb_slotID, button.owb_itemInfo)
+        else
+            button.owb_categoryName = nil
+        end
+    end
+end
+
+--- Bucket a list of item buttons by their assigned `owb_categoryName`.
+--- Empty / uncategorized slots are skipped.
+---@param buttons table[] item-button list
+---@return table<string, table[]> itemsByCategory
+local function GroupButtonsByCategory(buttons)
+    local result = {}
+    for _, button in ipairs(buttons) do
+        if button.owb_hasItem and button.owb_categoryName then
+            if not result[button.owb_categoryName] then
+                result[button.owb_categoryName] = {}
+            end
+            tinsert(result[button.owb_categoryName], button)
+        end
+    end
+    return result
+end
+
+OneWoW_Bags.CategoryManagerBase.AssignCategoriesForButtons = AssignCategoriesForButtons
+OneWoW_Bags.CategoryManagerBase.GroupButtonsByCategory = GroupButtonsByCategory
 
 function OneWoW_Bags.CategoryManagerBase:Create()
     local cm = {}
@@ -13,6 +48,19 @@ function OneWoW_Bags.CategoryManagerBase:Create()
     local activeSections = {}
     local dividerPool = {}
     local activeDividers = {}
+
+    --- Subclasses set this in their constructor so the base AssignCategories /
+    --- GetItemsByCategory methods know which button list to iterate.
+    ---@return table[] buttons
+    function cm:GetSourceButtons() return {} end
+
+    function cm:AssignCategories()
+        AssignCategoriesForButtons(self:GetSourceButtons())
+    end
+
+    function cm:GetItemsByCategory()
+        return GroupButtonsByCategory(self:GetSourceButtons())
+    end
 
     function cm:AcquireSection(parent)
         local section

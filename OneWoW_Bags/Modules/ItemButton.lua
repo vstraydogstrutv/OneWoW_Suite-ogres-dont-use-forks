@@ -131,24 +131,24 @@ function Mixin:OWB_FullUpdate()
 
     local quality = info and info.quality
     local hasItem = info and info.hyperlink
+
+    local isJunk = false
+    if hasItem and info and info.itemID then
+        isJunk = PE:BuildProps(info.itemID, self.owb_bagID, self.owb_slotID, info).isJunk or false
+    end
+
     self:OWB_UpdateNewItemGlow(quality, hasItem)
-    self:OWB_UpdateJunkDim(quality, hasItem, info)
+    self:OWB_UpdateJunkDim(hasItem, isJunk)
     self:OWB_UpdateUnusableOverlay(hasItem, info)
 
-    self._owb_isJunk = hasItem and info and info.itemID
-        and PE:BuildProps(info.itemID, self.owb_bagID, self.owb_slotID, info).isJunk
-        or false
+    self._owb_isJunk = isJunk
 end
 
-function Mixin:OWB_UpdateJunkDim(_, hasItem, info)
+function Mixin:OWB_UpdateJunkDim(hasItem, isJunk)
     if not hasItem then
         self:SetAlpha(1.0)
         return
     end
-
-    local isJunk = info and info.itemID
-        and PE:BuildProps(info.itemID, self.owb_bagID, self.owb_slotID, info).isJunk
-        or false
 
     if OneWoW_Bags:ShouldDimJunkItem(isJunk) then
         self:SetAlpha(0.4)

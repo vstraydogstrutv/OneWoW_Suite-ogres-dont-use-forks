@@ -101,8 +101,7 @@ function OneWoW_Bags:IsAltShowActive()
 end
 
 function OneWoW_Bags:GetItemSortMode()
-    local db = self:GetDB()
-    return db.global.itemSort or "default"
+    return self:GetDB().global.itemSort
 end
 
 function OneWoW_Bags:ShouldShowItemQuality(isBank, quality)
@@ -367,7 +366,7 @@ function OneWoW_Bags:HookPetCageTooltip()
         tooltip:AddLine(" ")
         tooltip:AddLine(petData.petName, 1, 0.82, 0)
         if petData.petType and petData.petType > 0 then
-            local petTypeName = _G["BATTLE_PET_NAME_" .. petData.petType] or ("Type " .. petData.petType)
+            local petTypeName = _G["BATTLE_PET_NAME_" .. petData.petType] or (L["PET_TYPE_PREFIX"] .. petData.petType)
             tooltip:AddLine(petTypeName, 0.7, 0.7, 0.7)
         end
         local numCollected, limit = petData.numCollected, petData.limit
@@ -582,12 +581,7 @@ function OneWoW_Bags:QueueGuildBankRefresh()
     end
     self._guildBankUpdatePending = true
 
-    if not self._guildBankRefreshDriver then
-        self._guildBankRefreshDriver = CreateFrame("Frame")
-    end
-
-    self._guildBankRefreshDriver:SetScript("OnUpdate", function(frame)
-        frame:SetScript("OnUpdate", nil)
+    C_Timer.After(0, function()
         self._guildBankUpdatePending = false
         self:RefreshGuildBankContents()
     end)
@@ -842,12 +836,12 @@ function OneWoW_Bags:RegisterSlashCommands()
         local Serializer = OneWoW_Bags.ImportExport and OneWoW_Bags.ImportExport.Serializer
         local LibCopyPaste = LibStub and LibStub("LibCopyPaste-1.0", true)
         if not Serializer or not LibCopyPaste then
-            print("|cFFFF6060" .. L["ADDON_CHAT_PREFIX"] .. "|r Export unavailable (Serializer or LibCopyPaste missing).")
+            print("|cFFFF6060" .. L["ADDON_CHAT_PREFIX"] .. "|r " .. L["EXPORT_UNAVAILABLE_SERIALIZER"])
             return
         end
         local db = OneWoW_Bags.db
         if not db or not db.global then
-            print("|cFFFF6060" .. L["ADDON_CHAT_PREFIX"] .. "|r Export unavailable (database not ready).")
+            print("|cFFFF6060" .. L["ADDON_CHAT_PREFIX"] .. "|r " .. L["EXPORT_UNAVAILABLE_DB"])
             return
         end
         local title = L["EXPORT_DIALOG_TITLE"]

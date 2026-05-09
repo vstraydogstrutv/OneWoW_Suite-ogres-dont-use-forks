@@ -6,33 +6,15 @@ local Planner = OneWoW_Bags.ImportExport.Planner
 
 local Serializer = OneWoW_Bags.ImportExport.Serializer
 local Translators = OneWoW_Bags.ImportExport.SyntaxTranslators
+local Util = OneWoW_Bags.ImportExport.Util
+local L = OneWoW_Bags.L
 
 local pairs, ipairs, type, tostring, tonumber = pairs, ipairs, type, tostring, tonumber
 local tinsert = table.insert
-local strtrim = strtrim or function(s) return (s or ""):gsub("^%s+", ""):gsub("%s+$", "") end
-local string_lower = string.lower
 local string_format = string.format
 
--- ------------------------------------------------------------------
--- Helpers
--- ------------------------------------------------------------------
-
-local function normKey(name)
-    if type(name) ~= "string" then return "" end
-    return string_lower(strtrim(name))
-end
-
-local function deepCopy(v, seen)
-    if type(v) ~= "table" then return v end
-    seen = seen or {}
-    if seen[v] then return seen[v] end
-    local out = {}
-    seen[v] = out
-    for k, vv in pairs(v) do
-        out[k] = deepCopy(vv, seen)
-    end
-    return out
-end
+local normKey  = Util.NormKey
+local deepCopy = Util.DeepCopy
 
 local function addWarning(plan, severity, text, ref)
     tinsert(plan.warnings, { severity = severity, text = text, ref = ref })
@@ -187,27 +169,25 @@ function Planner:FromOneWowString(text, db)
 
     local payload, err = Serializer:Decode(text)
     if not payload then
-        addWarning(plan, "error", "Could not decode OneWoW export: " .. tostring(err))
+        addWarning(plan, "error", string_format(L["IMPORT_WARN_DECODE_FAILED"], tostring(err)))
         return plan
     end
     if type(payload) ~= "table" then
-        addWarning(plan, "error", "Decoded value was not a table")
+        addWarning(plan, "error", L["IMPORT_WARN_NOT_TABLE"])
         return plan
     end
     if payload.format ~= Serializer.FORMAT then
-        addWarning(plan, "error", "Not a OneWoW_Bags export (format=" .. tostring(payload.format) .. ")")
+        addWarning(plan, "error", string_format(L["IMPORT_WARN_NOT_OWB_EXPORT"], tostring(payload.format)))
         return plan
     end
     if tonumber(payload.version) ~= Serializer.VERSION then
         addWarning(plan, "warn",
-            string_format("Export version %s, expected %d. Attempting best-effort import.",
-                tostring(payload.version), Serializer.VERSION))
+            string_format(L["IMPORT_WARN_VERSION_MISMATCH"], tostring(payload.version), Serializer.VERSION))
     end
 
     if payload.exportedLocale and GetLocale and payload.exportedLocale ~= GetLocale() then
         addWarning(plan, "info",
-            string_format("Exported from '%s' client into '%s' client.",
-                payload.exportedLocale, GetLocale()))
+            string_format(L["IMPORT_INFO_LOCALE_MISMATCH"], payload.exportedLocale, GetLocale()))
     end
 
     for sid, sec in pairs(payload.sections or {}) do
@@ -413,7 +393,7 @@ function Planner:FromBaganatorDirect(db, options)
     local intermediate, err = BaganatorImport:DirectRead()
     if not intermediate then
         local plan = newPlan("baganator_direct")
-        addWarning(plan, "error", err or "Baganator direct-read failed")
+        addWarning(plan, "error", err or L["IMPORT_WARN_BAGANATOR_DIRECT_FAILED"])
         return plan
     end
     return planFromBaganatorIntermediate(intermediate, db, options)
@@ -429,7 +409,7 @@ function Planner:FromBaganatorString(text, db, options)
     local intermediate, err = BaganatorImport:ParseString(text)
     if not intermediate then
         local plan = newPlan("baganator_string")
-        addWarning(plan, "error", err or "Baganator string parse failed")
+        addWarning(plan, "error", err or L["IMPORT_WARN_BAGANATOR_STRING_FAILED"])
         return plan
     end
     return planFromBaganatorIntermediate(intermediate, db, options)
@@ -449,11 +429,11 @@ function Planner:FromTsmDirect(db, options)
 
     local TSM = OneWoW_Bags.TSMIntegration
     if not TSM or not TSM.IsAvailable or not TSM:IsAvailable() then
-        addWarning(plan, "error", "TSM is not available")
+        addWarning(plan, "error", L["IMPORT_WARN_TSM_UNAVAILABLE"])
         return plan
     end
     if not TSM.BuildPlan then
-        addWarning(plan, "error", "TSM integration does not expose BuildPlan")
+        addWarning(plan, "error", L["IMPORT_WARN_TSM_NO_BUILDPLAN"])
         return plan
     end
 

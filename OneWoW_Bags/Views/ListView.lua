@@ -20,7 +20,6 @@ function View:Layout(contentFrame, buttons, width, viewContext)
     end
 
     local showEmpty = db.global.showEmptySlots
-    if showEmpty == nil then showEmpty = true end
 
     local cols = floor((width + spacing) / (iconSize + spacing))
     cols = max(cols, 1)

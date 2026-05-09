@@ -1372,9 +1372,7 @@ function Settings:UpdateItemSortButtons(btns)
     if not btns then btns = Settings.itemSortBtns end
     if not btns then return end
     if btns.SetActiveByValue then
-        local db = GetDB()
-        local sortMode = db.global.itemSort or "default"
-        btns.SetActiveByValue(sortMode)
+        btns.SetActiveByValue(GetDB().global.itemSort)
     end
 end
 
