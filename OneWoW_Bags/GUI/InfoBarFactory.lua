@@ -7,15 +7,23 @@ local Constants = OneWoW_Bags.Constants
 local L = OneWoW_Bags.L
 local WH = OneWoW_Bags.WindowHelpers
 
+local C_Timer = C_Timer
+
 local floor = math.floor
 local ipairs = ipairs
+local max = math.max
+local min = math.min
+local strtrim = strtrim
 local tinsert = tinsert
+local CreateFrame = CreateFrame
+local IsMouseButtonDown = IsMouseButtonDown
 
 OneWoW_Bags.InfoBarFactory = {}
 
 function OneWoW_Bags.InfoBarFactory:Create(config)
     local bar = {}
     local infoBarFrame = nil
+    local searchHistoryMenu = nil
 
     local ROW1_H = 28
     local ROW2_H = 28
@@ -44,6 +52,157 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
 
     local function GetGUI()
         return OneWoW_Bags[config.guiTargetKey]
+    end
+
+    local function GetSearchHistoryLimit()
+        if config.searchHistory ~= true then return 0 end
+
+        local db = OneWoW_Bags:GetDB()
+        if not db then return 0 end
+
+        return min(max(floor(db.global.searchHistoryLimit or 0), 0), 10)
+    end
+
+    local function NormalizeSearchText(searchBox, text)
+        text = strtrim(text or "")
+        if text == "" or text == searchBox.placeholderText then return nil end
+        return text
+    end
+
+    local function HideSearchHistoryMenu()
+        if not searchHistoryMenu then return end
+        searchHistoryMenu:SetScript("OnUpdate", nil)
+        searchHistoryMenu:Hide()
+    end
+
+    local function AddSearchHistory(searchBox, text)
+        local limit = GetSearchHistoryLimit()
+        if limit <= 0 then return nil end
+
+        text = NormalizeSearchText(searchBox, text)
+        if not text then return nil end
+
+        local db = OneWoW_Bags:GetDB()
+        local currentHistory = db.global.searchHistory
+        local history = { text }
+        for _, entry in ipairs(currentHistory) do
+            if entry ~= text then
+                tinsert(history, entry)
+            end
+        end
+
+        db.global.searchHistory = history
+
+        while #history > limit do
+            history[#history] = nil
+        end
+
+        return text
+    end
+
+    local function CommitSearchText(searchBox)
+        AddSearchHistory(searchBox, searchBox:GetText())
+    end
+
+    local function IsMouseOverSearchHistory(searchBox)
+        return (searchHistoryMenu and searchHistoryMenu:IsShown() and searchHistoryMenu:IsMouseOver()) or searchBox:IsMouseOver()
+    end
+
+    local function StartHistoryOutsideClickWatcher(searchBox)
+        local mouseWasDown = IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")
+        searchHistoryMenu:SetScript("OnUpdate", function()
+            local mouseIsDown = IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton")
+            if mouseIsDown and not mouseWasDown and not IsMouseOverSearchHistory(searchBox) then
+                HideSearchHistoryMenu()
+            end
+            mouseWasDown = mouseIsDown
+        end)
+    end
+
+    local function ApplySearchHistorySelection(searchBox, text)
+        text = AddSearchHistory(searchBox, text)
+        if not text then return end
+
+        searchBox:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+        searchBox:SetText(text)
+        HideSearchHistoryMenu()
+    end
+
+    local function ShowSearchHistoryMenu(searchBox)
+        local limit = GetSearchHistoryLimit()
+        if limit <= 0 then
+            HideSearchHistoryMenu()
+            return
+        end
+
+        local db = OneWoW_Bags:GetDB()
+        local history = db.global.searchHistory
+        if #history == 0 then
+            HideSearchHistoryMenu()
+            return
+        end
+
+        if not searchHistoryMenu then
+            searchHistoryMenu = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+            searchHistoryMenu:SetFrameStrata("DIALOG")
+            searchHistoryMenu:SetBackdrop(OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS)
+            searchHistoryMenu:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            searchHistoryMenu:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+            searchHistoryMenu.rows = {}
+        end
+
+        HideSearchHistoryMenu()
+
+        local rowHeight = 22
+        local width = searchBox:GetWidth()
+        local count = min(#history, limit)
+
+        searchHistoryMenu:SetParent(UIParent)
+        searchHistoryMenu:ClearAllPoints()
+        searchHistoryMenu:SetPoint("TOPLEFT", searchBox, "BOTTOMLEFT", 0, -2)
+        searchHistoryMenu:SetSize(width, (count * rowHeight) + 4)
+
+        for i = 1, count do
+            local row = searchHistoryMenu.rows[i]
+            if not row then
+                row = CreateFrame("Button", nil, searchHistoryMenu)
+                row:SetHeight(rowHeight)
+                row:SetPoint("LEFT", searchHistoryMenu, "LEFT", 2, 0)
+                row:SetPoint("RIGHT", searchHistoryMenu, "RIGHT", -2, 0)
+
+                row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                row.text:SetPoint("LEFT", row, "LEFT", 6, 0)
+                row.text:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+                row.text:SetJustifyH("LEFT")
+
+                row:SetScript("OnEnter", function(myself)
+                    myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+                end)
+                row:SetScript("OnLeave", function(myself)
+                    myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+                end)
+                row:SetScript("OnMouseDown", function(myself)
+                    ApplySearchHistorySelection(searchBox, myself.historyText)
+                end)
+
+                searchHistoryMenu.rows[i] = row
+            end
+
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", searchHistoryMenu, "TOPLEFT", 2, -2 - ((i - 1) * rowHeight))
+            row:SetPoint("TOPRIGHT", searchHistoryMenu, "TOPRIGHT", -2, -2 - ((i - 1) * rowHeight))
+            row.historyText = history[i]
+            row.text:SetText(history[i])
+            row.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+            row:Show()
+        end
+
+        for i = count + 1, #searchHistoryMenu.rows do
+            searchHistoryMenu.rows[i]:Hide()
+        end
+
+        searchHistoryMenu:Show()
+        StartHistoryOutsideClickWatcher(searchBox)
     end
 
     local function GetFactoryChromeInsets()
@@ -116,6 +275,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         infoBarFrame:SetBackdrop(OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS)
         infoBarFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
         infoBarFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+        infoBarFrame:HookScript("OnHide", HideSearchHistoryMenu)
 
         local btnY   = -floor((ROW1_H - 22) / 2)
         local searchY = -(ROW1_H + floor((ROW2_H - 22) / 2))
@@ -308,6 +468,26 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         if OneWoW_GUI.AttachSearchTooltip then
             OneWoW_GUI:AttachSearchTooltip(searchBox)
         end
+        if config.searchHistory then
+            searchBox:HookScript("OnEditFocusGained", function(myself)
+                ShowSearchHistoryMenu(myself)
+            end)
+            searchBox:HookScript("OnEditFocusLost", function(myself)
+                CommitSearchText(myself)
+                C_Timer.After(0.05, function()
+                    if not IsMouseOverSearchHistory(myself) then
+                        HideSearchHistoryMenu()
+                    end
+                end)
+            end)
+            searchBox:HookScript("OnEnterPressed", function(myself)
+                CommitSearchText(myself)
+                myself:ClearFocus()
+            end)
+            searchBox:HookScript("OnEscapePressed", function()
+                HideSearchHistoryMenu()
+            end)
+        end
         infoBarFrame.searchBox = searchBox
         infoBarFrame.searchHelpBtn = bagsHelpBtn
 
@@ -347,6 +527,9 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         end
 
         if infoBarFrame.searchBox then
+            if not showSearch then
+                HideSearchHistoryMenu()
+            end
             infoBarFrame.searchBox:SetShown(showSearch)
         end
 
@@ -374,6 +557,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         if showSearch then newHeight = newHeight + ROW2_H end
 
         if newHeight == 0 then
+            HideSearchHistoryMenu()
             infoBarFrame:Hide()
         else
             infoBarFrame:SetHeight(newHeight)
@@ -445,6 +629,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
 
     function bar:ClearSearch()
         if infoBarFrame and infoBarFrame.searchBox then
+            HideSearchHistoryMenu()
             infoBarFrame.searchBox:SetText("")
             infoBarFrame.searchBox:ClearFocus()
             if infoBarFrame.searchBox.RestorePlaceholder then
@@ -462,6 +647,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
 
     function bar:Reset()
         if infoBarFrame then
+            HideSearchHistoryMenu()
             infoBarFrame:Hide()
             infoBarFrame:SetParent(UIParent)
         end

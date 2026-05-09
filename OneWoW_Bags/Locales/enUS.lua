@@ -212,6 +212,10 @@ OneWoW_Bags.Locales["enUS"] = {
     ["SORT_ITEM_LEVEL"] = "Item Level",
     ["SORT_TYPE"] = "Type",
 
+    ["SECTION_SEARCH"] = "Search",
+    ["SETTING_SEARCH_HISTORY_LIMIT"] = "Search History",
+    ["DESC_SEARCH_HISTORY_LIMIT"] = "Keep the last 0-10 searches. Set to 0 to disable.",
+
     ["SECTION_CATEGORIES"] = "Categories",
     ["SETTING_INVENTORY_SLOTS"] = "Split by Equipment Slot",
     ["DESC_INVENTORY_SLOTS"] = "Split Weapons and Armor into individual equipment slots (Head, Chest, Hands, etc.)",

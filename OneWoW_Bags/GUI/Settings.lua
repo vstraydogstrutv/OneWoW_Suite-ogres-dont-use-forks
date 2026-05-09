@@ -147,6 +147,17 @@ local function BuildSliderRow(container, label, yOffset, options)
     lbl:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
     yOffset = yOffset - lbl:GetStringHeight() - 4
 
+    if options.description then
+        local desc = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        desc:SetPoint("TOPLEFT", container, "TOPLEFT", 15, yOffset)
+        desc:SetPoint("RIGHT", container, "RIGHT", -15, 0)
+        desc:SetJustifyH("LEFT")
+        desc:SetWordWrap(true)
+        desc:SetText(options.description)
+        desc:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+        yOffset = yOffset - desc:GetStringHeight() - 6
+    end
+
     local slider = OneWoW_GUI:CreateSlider(container, options)
     slider:SetPoint("TOPLEFT", container, "TOPLEFT", 15, yOffset)
     yOffset = yOffset - 40
@@ -202,7 +213,7 @@ local function BuildGeneralTab(sc, L, db, GUI)
     sortY = itemSortFinalY - 8
     yOffset = FinalizeContainer(sortContainer, sortY, yOffset)
 
-    if _G.OneWoW then
+    if OneWoW then
         yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_INTEGRATION"], yOffset = yOffset })
         local intContainer = BuildContainer(sc, yOffset)
         local intY = -10
@@ -330,10 +341,10 @@ local function BuildBagsTab(sc, L, db, GUI)
         end,
     })
 
-    if _G.OneWoW then
+    if OneWoW then
         local overlayEnabled = false
-        if _G.OneWoW.SettingsFeatureRegistry then
-            overlayEnabled = _G.OneWoW.SettingsFeatureRegistry:IsEnabled("overlays", "general")
+        if OneWoW.SettingsFeatureRegistry then
+            overlayEnabled = OneWoW.SettingsFeatureRegistry:IsEnabled("overlays", "general")
         end
         dispY, _, _ = OneWoW_GUI:CreateToggleRow(dispContainer, {
             yOffset = dispY,
@@ -463,6 +474,21 @@ local function BuildBagsTab(sc, L, db, GUI)
     })
 
     yOffset = FinalizeContainer(dispContainer, dispY, yOffset)
+
+    yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_SEARCH"], yOffset = yOffset })
+    local searchContainer = BuildContainer(sc, yOffset)
+    local searchY = -10
+
+    searchY = BuildSliderRow(searchContainer, L["SETTING_SEARCH_HISTORY_LIMIT"], searchY, {
+        description = L["DESC_SEARCH_HISTORY_LIMIT"],
+        minVal = 0, maxVal = 10, step = 1, currentVal = db.global.searchHistoryLimit,
+        onChange = function(val)
+            ApplySetting("searchHistoryLimit", val)
+        end,
+        width = 240, fmt = "%d",
+    })
+
+    yOffset = FinalizeContainer(searchContainer, searchY, yOffset)
 
     yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_CATEGORIES"], yOffset = yOffset })
     local catContainer = BuildContainer(sc, yOffset)

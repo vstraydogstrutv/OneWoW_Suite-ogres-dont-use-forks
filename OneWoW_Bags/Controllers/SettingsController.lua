@@ -2,6 +2,10 @@ local _, OneWoW_Bags = ...
 
 local C_Timer = C_Timer
 
+local floor = math.floor
+local max = math.max
+local min = math.min
+
 OneWoW_Bags.SettingsController = {}
 local SettingsController = OneWoW_Bags.SettingsController
 
@@ -119,6 +123,20 @@ SettingsController.appliers = {
     showSearchBar = function(self, db, value)
         db.global.showSearchBar = value
         self.addon:RequestLayoutRefresh("bags")
+    end,
+    searchHistoryLimit = function(_, db, value)
+        local limit = min(max(floor(value or 0), 0), 10)
+        db.global.searchHistoryLimit = limit
+
+        local history = db.global.searchHistory
+        if limit == 0 then
+            db.global.searchHistory = {}
+            return
+        end
+
+        while #history > limit do
+            history[#history] = nil
+        end
     end,
     enableExpansionFilter = function(self, db, value)
         db.global.enableExpansionFilter = value
