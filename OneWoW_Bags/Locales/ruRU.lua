@@ -284,6 +284,7 @@ OneWoW_Bags.Locales["ruRU"] = {
     ["EQUIPMENT_SET_MULTIPLE"] = "Несколько",
     ["EQUIPMENT_SET_NONE"] = "Без комплекта",
     ["CAT_SORT"] = "Сортировка",
+    ["CAT_SUB_SORT"] = "Подсортировка",
     ["SECTION_ITEM_DISPLAY"] = "Отображение предметов",
     ["PRIORITY"] = "Приоритет",
     ["PRIORITY_LOWEST"] = "Наинизший",

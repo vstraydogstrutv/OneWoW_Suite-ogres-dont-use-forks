@@ -423,6 +423,11 @@ function CategoryController:SetCategorySortMode(categoryName, value)
     self:RefreshUI({ invalidate = false })
 end
 
+function CategoryController:SetCategorySubSortMode(categoryName, value)
+    self:GetCategoryModification(categoryName).subSortMode = value
+    self:RefreshUI({ invalidate = false })
+end
+
 function CategoryController:SetCategoryGroupBy(categoryName, value)
     self:GetCategoryModification(categoryName).groupBy = value
     self:RefreshUI({ invalidate = false })

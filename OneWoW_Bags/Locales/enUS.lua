@@ -331,6 +331,7 @@ OneWoW_Bags.Locales["enUS"] = {
     ["EQUIPMENT_SET_MULTIPLE"] = "Multiple",
     ["EQUIPMENT_SET_NONE"] = "No Set",
     ["CAT_SORT"] = "Sort",
+    ["CAT_SUB_SORT"] = "Sub-sort",
 
     ["SECTION_ITEM_DISPLAY"] = "Item Display",
 

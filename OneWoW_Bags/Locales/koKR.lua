@@ -284,6 +284,7 @@ OneWoW_Bags.Locales["koKR"] = {
     ["EQUIPMENT_SET_MULTIPLE"] = "여러 세트",
     ["EQUIPMENT_SET_NONE"] = "세트 없음",
     ["CAT_SORT"] = "정렬",
+    ["CAT_SUB_SORT"] = "보조 정렬",
     ["SECTION_ITEM_DISPLAY"] = "아이템 표시",
     ["PRIORITY"] = "우선순위",
     ["PRIORITY_LOWEST"] = "최저",

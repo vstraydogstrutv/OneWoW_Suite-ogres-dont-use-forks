@@ -572,7 +572,8 @@ function H.FilterItems(categoryName, itemsByCategory, filterSet, catMods, sortBu
     if #items == 0 then return nil end
     local mod = catMods[categoryName]
     local catSort = mod and mod.sortMode or nil
-    sortButtons(items, catSort)
+    local catSubSort = mod and mod.subSortMode or nil
+    sortButtons(items, catSort, catSubSort)
     items = H.StackItems(items, db, PE)
     return items
 end

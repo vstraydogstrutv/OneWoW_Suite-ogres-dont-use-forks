@@ -284,6 +284,7 @@ OneWoW_Bags.Locales["deDE"] = {
     ["EQUIPMENT_SET_MULTIPLE"] = "Mehrere",
     ["EQUIPMENT_SET_NONE"] = "Kein Set",
     ["CAT_SORT"] = "Sortieren",
+    ["CAT_SUB_SORT"] = "Untersortierung",
     ["SECTION_ITEM_DISPLAY"] = "Gegenstandsanzeige",
     ["PRIORITY"] = "Priorität",
     ["PRIORITY_LOWEST"] = "Niedrigste",

@@ -6,8 +6,8 @@ local Applier = OneWoW_Bags.ImportExport.Applier
 
 local Backup = OneWoW_Bags.ImportExport.Backup
 
-local pairs, ipairs, type, next = pairs, ipairs, type, next
-local tinsert, tremove = table.insert, table.remove
+local pairs, ipairs, type = pairs, ipairs, type
+local tinsert = table.insert
 local strtrim = strtrim or function(s) return (s or ""):gsub("^%s+", ""):gsub("%s+$", "") end
 local string_lower = string.lower
 
@@ -102,7 +102,7 @@ local function mergeModifications(existingMod, importedMod)
     if type(importedMod) ~= "table" then return existingMod end
     existingMod = existingMod or {}
 
-    for _, field in ipairs({ "sortMode", "groupBy", "priority", "color" }) do
+    for _, field in ipairs({ "sortMode", "subSortMode", "groupBy", "priority", "color" }) do
         if importedMod[field] ~= nil then
             existingMod[field] = importedMod[field]
         end
@@ -130,7 +130,7 @@ end
 -- Section handling
 -- ------------------------------------------------------------------
 
-local function ensureSection(g, section, controller, planIdToDbId)
+local function ensureSection(section, controller, planIdToDbId)
     if section.mergesWithExistingId then
         planIdToDbId[section.originalId or section] = section.mergesWithExistingId
         return section.mergesWithExistingId
@@ -170,7 +170,6 @@ end
 
 local function ensureBaganatorImportSection(controller, catchAllLabel)
     local db = controller:GetDB()
-    local g = db.global
     local snap = existingSnapshot(db)
     local hit = snap.sectionsByName[normKey(catchAllLabel)]
     if hit then return hit.id end
@@ -269,7 +268,6 @@ end
 local function wireSectionMembership(plan, controller, planIdToDbId, nameRemap)
     local db = controller:GetDB()
     local g = db.global
-    local SD = OneWoW_Bags.SectionDefaults
 
     for planSid, section in pairs(plan.sections) do
         local dbSid = planIdToDbId[planSid]
@@ -419,7 +417,7 @@ function Applier:Apply(plan, controller, db)
     -- 1. Sections (create new, resolve existing)
     for planSid, section in pairs(plan.sections) do
         section.originalId = section.originalId or planSid
-        local dbSid, err = ensureSection(db.global, section, controller, planIdToDbId)
+        local dbSid = ensureSection(section, controller, planIdToDbId)
         if dbSid then
             if section.isNew then
                 result.sectionsNew = result.sectionsNew + 1

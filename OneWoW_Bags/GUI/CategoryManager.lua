@@ -1293,6 +1293,34 @@ function CatMgrUI:RefreshRight()
     })
     yPos = yPos - ROW_H
 
+    BuildLabelRow("CAT_SUB_SORT", yPos)
+    local currentSubSort = catMod.subSortMode or "none"
+    local subSortDropdown, subSortDropdownText = OneWoW_GUI:CreateDropdown(rightTopWrapper, {
+        width = DROPDOWN_W,
+        height = DROPDOWN_H,
+        text = LabelFromOptions(SORT_OPTIONS, SORT_LABELS, currentSubSort, 1),
+    })
+    subSortDropdown:SetPoint("TOPLEFT", rightTopWrapper, "TOPLEFT", CONTROL_X, yPos + 2)
+    OneWoW_GUI:AttachFilterMenu(subSortDropdown, {
+        searchable = false,
+        buildItems = function()
+            local items = {}
+            for i, v in ipairs(SORT_OPTIONS) do
+                tinsert(items, { text = SORT_LABELS[i], value = v })
+            end
+            return items
+        end,
+        getActiveValue = function() return catMod.subSortMode or "none" end,
+        onSelect = function(value, text)
+            subSortDropdownText:SetText(text)
+            local controller = GetController()
+            if controller and controller.SetCategorySubSortMode then
+                controller:SetCategorySubSortMode(capCatName, value)
+            end
+        end,
+    })
+    yPos = yPos - ROW_H
+
     BuildLabelRow("GROUP_BY", yPos)
     local currentGroup = catMod.groupBy or "none"
     local groupDropdown, groupDropdownText = OneWoW_GUI:CreateDropdown(rightTopWrapper, {
