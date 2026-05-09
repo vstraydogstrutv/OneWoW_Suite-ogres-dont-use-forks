@@ -1,5 +1,5 @@
 ---
-description: Code comment guidance for OneWoW addon code. Encourages structural and rationale comments that durably aid readers; discourages restating-what-the-code-does, changelog noise, commented-out code, and brittle references.
+description: Guidance on code and public API LuaCATS doc comments for OneWoW addon code. Encourages structural and rationale comments that durably aid readers; discourages restating-what-the-code-does, changelog noise, commented-out code, and brittle references.
 globs: **/*.lua
 alwaysApply: false
 ---
