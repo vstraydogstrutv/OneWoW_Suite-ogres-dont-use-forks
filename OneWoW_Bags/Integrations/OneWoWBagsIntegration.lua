@@ -25,11 +25,11 @@ function OneWoW_Bags:FireItemButtonCallback(button, bagID, slotID)
 	local altShow = self:IsAltShowActive()
 	local db = self:GetDB()
 	if not altShow and db.global.stripJunkOverlays and button._owb_isJunk then
-		local engine = _G.OneWoW and _G.OneWoW.OverlayEngine
+		local engine = OneWoW and OneWoW.OverlayEngine
 		if engine then engine:CleanButton(button) end
 		return
 	end
-	for name, callback in pairs(callbacks) do
+	for _, callback in pairs(callbacks) do
 		pcall(callback, button, bagID, slotID)
 	end
 end
@@ -37,8 +37,8 @@ end
 function OneWoW_Bags:FireCallbacksOnAllButtons()
 	if not BagSet.slots then return end
 
-	for bagID, bagSlots in pairs(BagSet.slots) do
-		for slotID, button in pairs(bagSlots) do
+	for _, bagSlots in pairs(BagSet.slots) do
+		for _, button in pairs(bagSlots) do
 			if button and button:IsVisible() and button.owb_bagID and button.owb_slotID then
 				self:FireItemButtonCallback(button, button.owb_bagID, button.owb_slotID)
 			end
@@ -50,8 +50,8 @@ function OneWoW_Bags:FireCallbacksOnBankButtons()
 	if not self.BankController:Get("overlays") then return end
 
 	if BankSet.slots then
-		for bagID, bagSlots in pairs(BankSet.slots) do
-			for slotID, button in pairs(bagSlots) do
+		for _, bagSlots in pairs(BankSet.slots) do
+			for _, button in pairs(bagSlots) do
 				if button and button:IsVisible() and button.owb_bagID and button.owb_slotID then
 					self:FireItemButtonCallback(button, button.owb_bagID, button.owb_slotID)
 				end
@@ -62,11 +62,11 @@ function OneWoW_Bags:FireCallbacksOnBankButtons()
 end
 
 function OneWoW_Bags:ClearBankOverlays()
-	local engine = _G.OneWoW and _G.OneWoW.OverlayEngine
+	local engine = OneWoW and OneWoW.OverlayEngine
 
 	if BankSet.slots then
-		for bagID, bagSlots in pairs(BankSet.slots) do
-			for slotID, button in pairs(bagSlots) do
+		for _, bagSlots in pairs(BankSet.slots) do
+			for _, button in pairs(bagSlots) do
 				if button then
 					if engine then
 						engine:CleanButton(button)
@@ -79,11 +79,11 @@ function OneWoW_Bags:ClearBankOverlays()
 end
 
 function OneWoW_Bags:ClearGuildBankOverlays()
-	local engine = _G.OneWoW and _G.OneWoW.OverlayEngine
+	local engine = OneWoW and OneWoW.OverlayEngine
 
 	if GuildBankSet.slots then
-		for tabID, tabSlots in pairs(GuildBankSet.slots) do
-			for slotID, button in pairs(tabSlots) do
+		for _, tabSlots in pairs(GuildBankSet.slots) do
+			for _, button in pairs(tabSlots) do
 				if button then
 					if engine then
 						engine:CleanButton(button)

@@ -28,6 +28,10 @@ local function deepCopy(v, seen)
     return out
 end
 
+--- Save a deep-copy snapshot of import-managed category tables.
+---@param tag string|nil
+---@param db table
+---@return boolean ok
 function Backup:Snapshot(tag, db)
     if not db or not db.global then return false end
     local g = db.global
@@ -43,17 +47,27 @@ function Backup:Snapshot(tag, db)
     return true
 end
 
+--- Check whether an import backup exists.
+---@param db table
+---@return boolean hasBackup
 function Backup:HasBackup(db)
     if not db or not db.global then return false end
     local b = db.global.importBackup
     return b ~= nil and b.tables ~= nil
 end
 
+--- Return the current import backup payload.
+---@param db table
+---@return table|nil backup
 function Backup:GetBackupInfo(db)
     if not self:HasBackup(db) then return nil end
     return db.global.importBackup
 end
 
+--- Restore the last import backup and refresh category UI when possible.
+---@param db table
+---@param controller table|nil
+---@return boolean ok
 function Backup:Restore(db, controller)
     if not self:HasBackup(db) then return false end
     local g = db.global
@@ -73,6 +87,8 @@ function Backup:Restore(db, controller)
     return true
 end
 
+--- Remove the stored import backup.
+---@param db table
 function Backup:Clear(db)
     if not db or not db.global then return end
     db.global.importBackup = nil

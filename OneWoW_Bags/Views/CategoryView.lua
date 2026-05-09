@@ -4,7 +4,6 @@ local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
 local Constants = OneWoW_Bags.Constants
-local L = OneWoW_Bags.L
 local CategoryManager = OneWoW_Bags.CategoryManager
 local H = OneWoW_Bags.CategoryViewHelpers
 local PE = OneWoW_GUI.PredicateEngine

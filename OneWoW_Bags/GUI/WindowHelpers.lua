@@ -248,6 +248,10 @@ function WH:CreateScrollScaffold(config)
     return scrollFrame, contentFrame
 end
 
+--- Defer content width correction and refresh until the scroll frame has size.
+---@param scrollFrame table|nil
+---@param contentFrame table|nil
+---@param refreshCallback function|nil
 function WH:QueueContentRefresh(scrollFrame, contentFrame, refreshCallback)
     C_Timer.After(0, function()
         if scrollFrame and contentFrame then
@@ -262,6 +266,10 @@ function WH:QueueContentRefresh(scrollFrame, contentFrame, refreshCallback)
     end)
 end
 
+--- Register a PLAYER_REGEN_ENABLED cleanup for work deferred out of combat.
+--- `config` must provide shouldCleanup() and cleanup() callbacks.
+---@param config table
+---@return table eventFrame
 function WH:RegisterDeferredCleanup(config)
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -301,6 +309,11 @@ function WH:ResolveExpansionID(itemInfo, bagID, slotID)
     return nil
 end
 
+--- Filter item buttons with a PredicateEngine search expression.
+--- SAVED(Name) references are expanded before evaluation.
+---@param buttons table[]
+---@param searchText string|nil
+---@return table[] buttons
 function WH:FilterBySearch(buttons, searchText)
     if not searchText or searchText == "" then
         return buttons
@@ -322,6 +335,10 @@ function WH:FilterBySearch(buttons, searchText)
     return filtered
 end
 
+--- Filter item buttons to a single expansion ID.
+---@param buttons table[]
+---@param expacFilter number|nil
+---@return table[] buttons
 function WH:FilterByExpansion(buttons, expacFilter)
     if expacFilter == nil then
         return buttons
@@ -339,6 +356,10 @@ function WH:FilterByExpansion(buttons, expacFilter)
     return filtered
 end
 
+--- Filter item buttons to a bag/container tab.
+---@param buttons table[]
+---@param selectedTab number|nil
+---@return table[] buttons
 function WH:FilterByTab(buttons, selectedTab)
     if not selectedTab then return buttons end
 
@@ -351,6 +372,13 @@ function WH:FilterByTab(buttons, selectedTab)
     return filtered
 end
 
+--- Calculate grid metrics from the current database settings.
+---@param columnsDBKey string
+---@param defaultCols number
+---@return number cols
+---@return number iconSize
+---@return number spacing
+---@return number contentWidth
 function WH:GetLayoutMetrics(columnsDBKey, defaultCols)
     local db = OneWoW_Bags:GetDB()
     local cols = db.global[columnsDBKey] or defaultCols
@@ -360,6 +388,11 @@ function WH:GetLayoutMetrics(columnsDBKey, defaultCols)
     return cols, iconSize, spacing, contentWidth
 end
 
+--- Attach a resize grabber that saves window height and refreshes layout.
+---@param mainWindow table
+---@param gui table
+---@param positionDBKey string
+---@return table resizeBtn
 function WH:SetupResizeButton(mainWindow, gui, positionDBKey)
     local resizeBtn = CreateFrame("Button", nil, mainWindow)
     resizeBtn:SetSize(16, 16)
@@ -384,6 +417,9 @@ function WH:SetupResizeButton(mainWindow, gui, positionDBKey)
     return resizeBtn
 end
 
+--- Register a named window as a UISpecialFrame for Escape-key closing.
+---@param globalName string
+---@param mainWindow table
 function WH:RegisterSpecialFrame(globalName, mainWindow)
     _G[globalName] = mainWindow
     local alreadyRegistered = false
@@ -395,6 +431,9 @@ function WH:RegisterSpecialFrame(globalName, mainWindow)
     end
 end
 
+--- Restore a saved window position or fall back to center.
+---@param mainWindow table
+---@param positionDBKey string
 function WH:SaveAndRestorePosition(mainWindow, positionDBKey)
     local db = OneWoW_Bags:GetDB()
     local pos = DB:Ensure(db, "global", positionDBKey)
@@ -404,6 +443,11 @@ function WH:SaveAndRestorePosition(mainWindow, positionDBKey)
     WH:SnapFrameToPixel(mainWindow)
 end
 
+--- Apply standard OneWoW_Bags theme colors to window chrome.
+---@param mainWindow table
+---@param titleBar table|nil
+---@param infoBarRef table|nil
+---@param bottomBarRef table|nil
 function WH:ApplyBaseTheme(mainWindow, titleBar, infoBarRef, bottomBarRef)
     if not mainWindow then return end
 

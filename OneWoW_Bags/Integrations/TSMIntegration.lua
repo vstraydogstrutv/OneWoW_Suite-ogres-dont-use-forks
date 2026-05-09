@@ -10,7 +10,6 @@ local TSM = OneWoW_Bags.TSMIntegration
 
 local pairs, ipairs, tonumber, tostring = pairs, ipairs, tonumber, tostring
 local tinsert = table.insert
-local time, random = time, math.random
 
 function TSM:IsAvailable()
     return TSM_API ~= nil or (TSMAPI_FOUR and TSMAPI_FOUR.Groups) ~= nil
@@ -72,7 +71,7 @@ end
 
 -- BuildPlan populates plan.categories with TSM-derived entries. This is the
 -- pure planner: it does not mutate the addon database.
-function TSM:BuildPlan(plan, db, options)
+function TSM:BuildPlan(plan, _, options)
     options = options or {}
     local usePrefix = options.tsmPrefix ~= false
 

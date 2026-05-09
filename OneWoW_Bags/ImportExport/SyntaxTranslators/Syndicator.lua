@@ -10,9 +10,9 @@ local Syndicator = ST.Syndicator or {}
 ST.Syndicator = Syndicator
 
 local tinsert, tconcat = table.insert, table.concat
-local string_lower, string_gsub, string_match = string.lower, string.gsub, string.match
+local string_lower, string_gsub = string.lower, string.gsub
 local string_sub = string.sub
-local pairs, ipairs, type = pairs, ipairs, type
+local ipairs, type = ipairs, type
 
 -- English -> OneWoW canonical keyword map.
 -- Left-hand side is the canonical English form of a Syndicator keyword.
@@ -258,7 +258,7 @@ function Syndicator:Translate(input, context)
     local tokens = tokenize(text)
     local out = {}
     local translatable = true
-    for idx, tok in ipairs(tokens) do
+    for _, tok in ipairs(tokens) do
         if tok.kind == "atom" then
             local before = #warnings
             local atomOut = translateAtom(tok.value, context, warnings)

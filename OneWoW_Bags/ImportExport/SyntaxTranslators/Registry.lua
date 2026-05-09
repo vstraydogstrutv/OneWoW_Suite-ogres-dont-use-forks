@@ -9,6 +9,9 @@ ST.Registry = Registry
 
 local translators = {}
 
+--- Register a search-syntax translator by dialect name.
+---@param dialect string
+---@param translator table Must expose `Translate(input, context)`.
 function Registry:Register(dialect, translator)
     if type(dialect) ~= "string" or dialect == "" then
         error("Registry:Register: dialect must be a non-empty string")
@@ -19,10 +22,18 @@ function Registry:Register(dialect, translator)
     translators[dialect] = translator
 end
 
+--- Return the translator registered for a dialect.
+---@param dialect string
+---@return table|nil translator
 function Registry:Get(dialect)
     return translators[dialect]
 end
 
+--- Translate a source search expression into OneWoW PredicateEngine syntax.
+---@param dialect string
+---@param input string
+---@param context table|nil
+---@return table result `{ expression, warnings, translatable }`.
 function Registry:Translate(dialect, input, context)
     local t = translators[dialect]
     if not t then

@@ -76,8 +76,8 @@ function BankSet:Build()
 end
 
 function BankSet:ReleaseAll()
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             self:RestoreBankScripts(button)
             ItemPool:Release(button)
         end
@@ -99,7 +99,7 @@ function BankSet:UpdateDirtyBags(dirtyBags)
             if currentCount ~= numSlots then
                 self:RebuildBag(bagID, numSlots)
             else
-                for slotID, button in pairs(self.slots[bagID]) do
+                for _, button in pairs(self.slots[bagID]) do
                     button:OWB_MarkDirty()
                 end
             end
@@ -110,7 +110,7 @@ end
 
 function BankSet:RebuildBag(bagID, numSlots)
     if self.slots[bagID] then
-        for slotID, button in pairs(self.slots[bagID]) do
+        for _, button in pairs(self.slots[bagID]) do
             ItemPool:Release(button)
             self.totalSlots = self.totalSlots - 1
         end
@@ -134,8 +134,8 @@ end
 
 function BankSet:ProcessDirtySlots()
     self.freeSlots = 0
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             if button:OWB_IsDirty() then
                 button:OWB_FullUpdate()
             end
@@ -147,8 +147,8 @@ function BankSet:ProcessDirtySlots()
 end
 
 function BankSet:UpdateAllSlots()
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             button:OWB_MarkDirty()
         end
     end
@@ -158,8 +158,8 @@ end
 function BankSet:UpdateSlotsForItems(itemIDs)
     if not self.isBuilt or not itemIDs then return end
     local anyDirty = false
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             local info = button.owb_itemInfo
             local id = info and info.itemID
             if id and itemIDs[id] then
@@ -178,8 +178,8 @@ function BankSet:RefreshAllVisuals()
 end
 
 function BankSet:UpdateQualityColors()
-    for bagID, bagSlots in pairs(self.slots) do
-        for slotID, button in pairs(bagSlots) do
+    for _, bagSlots in pairs(self.slots) do
+        for _, button in pairs(bagSlots) do
             local quality = button.owb_itemInfo and button.owb_itemInfo.quality
             if OneWoW_Bags:ShouldShowItemQuality(true, quality) then
                 OneWoW_GUI:UpdateIconQuality(button, button.owb_itemInfo.quality)
@@ -239,23 +239,23 @@ function BankSet:ApplyBankScripts(button)
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     button:RegisterForDrag("LeftButton")
 
-    button.SplitStack = function(self, amount)
-        C_Container.SplitContainerItem(self.owb_bagID, self.owb_slotID, amount)
+    button.SplitStack = function(myself, amount)
+        C_Container.SplitContainerItem(myself.owb_bagID, myself.owb_slotID, amount)
     end
 
-    button:SetScript("OnClick", function(self, mouseButton)
-        local bagID = self.owb_bagID
-        local slotID = self.owb_slotID
+    button:SetScript("OnClick", function(myself, mouseButton)
+        local bagID = myself.owb_bagID
+        local slotID = myself.owb_slotID
         if not bagID or not slotID then return end
 
-        if self.owb_itemInfo and self.owb_itemInfo.hyperlink then
-            if HandleModifiedItemClick(self.owb_itemInfo.hyperlink) then return end
+        if myself.owb_itemInfo and myself.owb_itemInfo.hyperlink then
+            if HandleModifiedItemClick(selmyselff.owb_itemInfo.hyperlink) then return end
         end
 
-        if IsModifiedClick("SPLITSTACK") and self.owb_hasItem then
+        if IsModifiedClick("SPLITSTACK") and myself.owb_hasItem then
             local info = C_Container.GetContainerItemInfo(bagID, slotID)
             if info and info.stackCount and info.stackCount > 1 then
-                StackSplitFrame:OpenStackSplitFrame(info.stackCount, self, "BOTTOMLEFT", "TOPLEFT")
+                StackSplitFrame:OpenStackSplitFrame(info.stackCount, myself, "BOTTOMLEFT", "TOPLEFT")
             end
             return
         end
@@ -267,10 +267,10 @@ function BankSet:ApplyBankScripts(button)
         end
     end)
 
-    button:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        local bagID = self.owb_bagID
-        local slotID = self.owb_slotID
+    button:SetScript("OnEnter", function(myself)
+        GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
+        local bagID = myself.owb_bagID
+        local slotID = myself.owb_slotID
         if bagID and slotID then
             local info = C_Container.GetContainerItemInfo(bagID, slotID)
             if info and info.hyperlink then
@@ -284,12 +284,12 @@ function BankSet:ApplyBankScripts(button)
         GameTooltip:Hide()
     end)
 
-    button:SetScript("OnDragStart", function(self)
-        C_Container.PickupContainerItem(self.owb_bagID, self.owb_slotID)
+    button:SetScript("OnDragStart", function(myself)
+        C_Container.PickupContainerItem(myself.owb_bagID, myself.owb_slotID)
     end)
 
-    button:SetScript("OnReceiveDrag", function(self)
-        C_Container.PickupContainerItem(self.owb_bagID, self.owb_slotID)
+    button:SetScript("OnReceiveDrag", function(myself)
+        C_Container.PickupContainerItem(myself.owb_bagID, myself.owb_slotID)
     end)
 end
 

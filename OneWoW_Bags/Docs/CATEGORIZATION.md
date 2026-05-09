@@ -7,7 +7,7 @@ This document describes how items are assigned to categories, how category rows 
 1. **Assignment**: For each occupied bag/bank slot, `Categories:GetItemCategory(bagID, slotID, itemInfo)` returns a **category name** string. The function filters by `appliesIn` per container type at assignment time.
 2. **Bucket**: Buttons are grouped by that name (`CategoryManager:GetItemsByCategory` for bags; an inline loop in `BankCategoryView`).
 3. **Category row order**: `H.GetSectionedLayout` (in `CategoryViewHelpers.lua`, shared by bags and bank) when sections or `displayOrder` apply, or `H.GetSortedCategoryNames` / `Categories:SortCategories` for fallbacks.
-4. **Within-category presentation**: Optional search filter, then `SortButtons` (global `itemSort` and/or per-category `sortMode`), optional `stackItems`, optional `groupBy` sub-rows. All of these features are shared by both bags and bank via the `H.LayoutCategoryContent` pipeline.
+4. **Within-category presentation**: Optional search filter, then `SortButtons` (global `itemSort` and/or per-category `sortMode` + `subSortMode`), optional `stackItems`, optional `groupBy` sub-rows. All of these features are shared by both bags and bank via the `H.LayoutCategoryContent` pipeline.
 
 ---
 
@@ -93,7 +93,7 @@ Custom predicate categories and builtin search categories are collected into a *
 
 **Custom predicate candidates** — iterates all `customCategoriesV2` entries where `categoryData.enabled ~= false`. The `filterMode` is resolved via `InferFilterMode`: if `filterMode` is explicitly `"search"` or `"type"`, that mode is used; if `nil` (legacy data), it is inferred as `"search"` when `searchExpression` is non-empty, otherwise `"type"`. Only one matching path fires per category entry:
 
-- **Search path** — calls `PE:CheckItem(searchExpression, ...)`.
+- **Search path** — expands `SAVED(Name)` shortcuts via `SavedSearches:Expand(searchExpression)`, then calls `PE:CheckItem(expandedExpression, ...)`.
 - **Type/subtype path** — matches via `C_Item.GetItemClassInfo` / `GetItemSubClassInfo` (case-insensitive). When both type and subtype are set, `typeMatchMode == "or"` means OR; otherwise AND.
 
 Custom candidates carry `isCustom = true`.
@@ -215,7 +215,9 @@ If **`sectionOrder` is empty**, `GetSectionedLayout` returns `GetSortedCategoryN
 `OneWoW_Bags:SortButtons` (`Data/Sorting.lua`): `none`, `default` (bag ID then slot), `name`, `rarity`, `ilvl`, `type`, `expansion`.
 
 - Default mode from `db.global.itemSort` via `WindowLayoutController:CreateViewContext`.
-- **Per-category override**: `categoryModifications[categoryName].sortMode`. In both `CategoryView` and `BankCategoryView`, if set, it is passed as the override argument to `sortButtons`. Mode **`none`** leaves order unchanged (typically bag/slot from the pool).
+- **Per-category override**: `categoryModifications[categoryName].sortMode`. In both `CategoryView` and `BankCategoryView`, if set, it is passed as the primary override argument to `sortButtons`. Mode **`none`** leaves order unchanged (typically bag/slot from the pool).
+- **Per-category sub-sort**: `categoryModifications[categoryName].subSortMode` is an optional secondary criterion. When present and different from the primary sort mode, `SortButtons` compares primary sort first, then sub-sort, then `default` bag/slot order as the deterministic fallback.
+- **Legacy tie-breakers**: when no explicit sub-sort is configured, some primary modes keep their older built-in tie-breakers (`rarity -> name`, `ilvl -> rarity`, `type -> name`, `expansion -> rarity`) before falling back to `default`.
 
 ---
 
@@ -244,7 +246,7 @@ Shared by both `CategoryView` (bags) and `BankCategoryView` (bank) via `H.Layout
 
 The engine lives in `OneWoW_GUI` (`OneWoW_GUI.PredicateEngine`) and is acquired in Bags via `local PE = OneWoW_GUI.PredicateEngine`. Full reference: [`OneWoW_GUI/Docs/PREDICATE_ENGINE.md`](../../OneWoW_GUI/Docs/PREDICATE_ENGINE.md).
 
-Search strings use its expression language (`#keyword`, operators, etc.). `BuildProps` enriches items; `CheckItem(expr, ...)` evaluates membership. Both custom `searchExpression` categories and builtin search categories use this engine.
+Search strings use its expression language (`#keyword`, operators, etc.). `BuildProps` enriches items; `CheckItem(expr, ...)` evaluates membership. Both custom `searchExpression` categories and builtin search categories use this engine. Custom category expressions expand `SAVED(Name)` shortcuts before calling the engine; built-in category searches are static and do not use saved searches.
 
 **Bags-specific registration:** The `#recent` keyword is registered by `Data/Categories.lua` to delegate to `Categories:SlotMatchesRecent` (GUID map + duration are Bags-owned). `#catalyst` / `#catalystupgrade` are now registered by the engine itself and silently no-op when TransmogUpgradeMaster is absent.
 
@@ -255,7 +257,8 @@ Search strings use its expression language (`#keyword`, operators, etc.). `Build
 | Mechanism | Role |
 |-----------|------|
 | `customCategoriesV2` | Custom categories: `items`, `searchExpression`, `itemType` / `itemSubType`, `filterMode`, `typeMatchMode`, `enabled`, `sortOrder`, `isTSM`, etc. |
-| `categoryModifications[name]` | `sortMode`, `groupBy`, `priority`, `color`, `appliesIn`, `addedItems` |
+| `savedSearches` | Named predicate shortcuts expanded from `SAVED(Name)` before custom search categories are evaluated |
+| `categoryModifications[name]` | `sortMode`, `subSortMode`, `groupBy`, `priority`, `color`, `appliesIn`, `addedItems` |
 | `disabledCategories` | Disable builtin/custom by name; classification remaps to **Other** when applicable |
 | `enableJunkCategory` | Separate toggle for step 2 (default `true`); disabling skips the 1W Junk check entirely |
 | `enableUpgradeCategory` | Separate toggle for step 3 (default `true`); disabling skips the 1W Upgrades check entirely |
@@ -279,7 +282,7 @@ Both views are thin wrappers that delegate to the shared pipeline in `CategoryVi
 | Classification | `CategoryManager:AssignCategories()` (pre-walk `BagSet`) | Inline `Categories:GetItemCategory` per `BankSet` button |
 | Bucketing | `CategoryManager:GetItemsByCategory()` | Inline loop building `itemsByCategory` |
 | Sections / `displayOrder` | Yes (shared `H.GetSectionedLayout`) | Yes (shared `H.GetSectionedLayout`) |
-| Per-category `sortMode` | Yes | Yes |
+| Per-category `sortMode` / `subSortMode` | Yes | Yes |
 | Per-category `groupBy` | Yes | Yes |
 | `stackItems` | Yes | Yes |
 | `appliesIn` filtering | Yes (at assignment + layout) | Yes (at assignment + layout) |

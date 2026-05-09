@@ -290,6 +290,14 @@ local function CollectCustomPredicateCandidates(itemID, bagID, slotID, itemInfo,
     end
 end
 
+--- Resolve the display category for an item slot.
+--- Applies manual pins, OneWoW feature categories, custom predicate categories,
+--- built-in search categories, optional equipment-slot splitting, and cache
+--- reuse for stable item links.
+---@param bagID number
+---@param slotID number
+---@param itemInfo table|nil
+---@return string categoryName
 function Categories:GetItemCategory(bagID, slotID, itemInfo)
     if not itemInfo then return "Other" end
 
@@ -564,6 +572,13 @@ function Categories:OnPlayerBagDirtySnapshot(dirtyBags)
     end
 end
 
+--- Return the winning custom predicate category for an item, if any.
+---@param itemID number|nil
+---@param bagID number|nil
+---@param slotID number|nil
+---@param itemInfo table|nil
+---@return string|nil categoryName
+---@return string|nil categoryID
 function Categories:GetCustomCategoryForItem(itemID, bagID, slotID, itemInfo)
     if not itemID then return nil end
 
@@ -581,6 +596,13 @@ function Categories:GetCustomCategoryForItem(itemID, bagID, slotID, itemInfo)
     return best.name, best.tieKey
 end
 
+--- Find whether an item is manually pinned to a custom or built-in category.
+---@param itemID number|nil
+---@return table|nil pin
+---@return string|nil pin.kind
+---@return string|nil pin.categoryId
+---@return string|nil pin.categoryName
+---@return string|nil pin.displayName
 function Categories:FindManualPinForItem(itemID)
     if not itemID then return nil end
     local idstr = tostring(itemID)
@@ -606,6 +628,9 @@ function Categories:FindManualPinForItem(itemID)
     return nil
 end
 
+--- Create a custom category entry.
+---@param name string
+---@return string|nil categoryID
 function Categories:CreateCustomCategory(name)
     if not name or name == "" then
         return nil
@@ -625,6 +650,10 @@ function Categories:CreateCustomCategory(name)
     return categoryId
 end
 
+--- Manually pin an item ID to a custom category.
+---@param categoryID string
+---@param itemID number|string
+---@return boolean ok
 function Categories:AddItemToCustomCategory(categoryID, itemID)
     if not categoryID or not customCategoriesV2[categoryID] or not itemID then
         return false
@@ -639,6 +668,10 @@ function Categories:AddItemToCustomCategory(categoryID, itemID)
     return true
 end
 
+--- Remove a manual item pin from a custom category.
+---@param categoryID string
+---@param itemID number|string
+---@return boolean ok
 function Categories:RemoveItemFromCustomCategory(categoryID, itemID)
     if not categoryID or not customCategoriesV2[categoryID] or not itemID then
         return false
@@ -656,6 +689,9 @@ function Categories:RemoveItemFromCustomCategory(categoryID, itemID)
     return true
 end
 
+--- Delete a custom category entry.
+---@param categoryID string
+---@return boolean ok
 function Categories:DeleteCustomCategory(categoryID)
     if not categoryID or not customCategoriesV2[categoryID] then
         return false
@@ -668,24 +704,34 @@ function Categories:DeleteCustomCategory(categoryID)
     return true
 end
 
+--- Return the live custom category table.
+--- Callers that mutate this table must invalidate categorization afterwards.
+---@return table<string, table> customCategories
 function Categories:GetAllCustomCategories()
     return customCategoriesV2
 end
 
+--- Replace the in-memory custom category table from SavedVariables.
+---@param saved table<string, table>|nil
 function Categories:SetCustomCategories(saved)
     if saved then
         customCategoriesV2 = saved
     end
 end
 
+--- Return the custom category table for SavedVariables serialization.
+---@return table<string, table> customCategories
 function Categories:GetCustomCategoriesForSave()
     return customCategoriesV2
 end
 
+--- Clear cached item-to-category resolutions.
 function Categories:InvalidateCache()
     InvalidateCache()
 end
 
+--- Return built-in category names in definition order.
+---@return string[] names
 function Categories:GetAllCategoryNames()
     local names = {}
     for _, def in ipairs(CATEGORY_DEFINITIONS) do
@@ -694,10 +740,14 @@ function Categories:GetAllCategoryNames()
     return names
 end
 
+--- Return built-in category definition records.
+---@return table[] definitions
 function Categories:GetCategoryDefinitions()
     return CATEGORY_DEFINITIONS
 end
 
+--- Return built-in categories backed by PredicateEngine search expressions.
+---@return table[] searchCategories
 function Categories:GetSearchCategories()
     return SEARCH_CATEGORIES
 end
@@ -766,6 +816,10 @@ function Categories:GetCategoryDescription(categoryName)
     return key and L[key] or nil
 end
 
+--- Check whether a category is configured to apply to a container type.
+---@param catName string
+---@param containerType string|nil
+---@return boolean applies
 function Categories:CategoryAppliesTo(catName, containerType)
     local db = GetDB()
     return CategoryAppliesTo(catName, containerType, db.global.categoryModifications)

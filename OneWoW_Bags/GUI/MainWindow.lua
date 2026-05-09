@@ -16,7 +16,7 @@ local ListView = OneWoW_Bags.ListView
 local BagView = OneWoW_Bags.BagView
 local CategoryView = OneWoW_Bags.CategoryView
 
-local print, pcall, pairs = print, pcall, pairs
+local print, pcall = print, pcall
 local InCombatLockdown = InCombatLockdown
 
 OneWoW_Bags.GUI = OneWoW_Bags.GUI or {}
@@ -228,7 +228,7 @@ function GUI:RefreshLayout()
     })
 end
 
-function GUI:OnSearchChanged(text)
+function GUI:OnSearchChanged()
     self:RefreshLayout()
 end
 
@@ -330,7 +330,7 @@ end
 
 local altShowFrame = CreateFrame("Frame")
 altShowFrame:RegisterEvent("MODIFIER_STATE_CHANGED")
-altShowFrame:SetScript("OnEvent", function(self, event, key, down)
+altShowFrame:SetScript("OnEvent", function(_, _, key, down)
     if not MainWindow or not MainWindow:IsShown() then return end
     local db = GetDB()
     if not db.global.altToShow then return end

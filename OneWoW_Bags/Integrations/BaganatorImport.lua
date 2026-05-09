@@ -6,7 +6,7 @@ local BaganatorImport = OneWoW_Bags.Integrations.Baganator
 
 local pairs, ipairs, type, tostring, tonumber = pairs, ipairs, type, tostring, tonumber
 local tinsert = table.insert
-local string_sub, string_lower = string.sub, string.lower
+local string_sub = string.sub
 
 -- ------------------------------------------------------------------
 -- Helpers

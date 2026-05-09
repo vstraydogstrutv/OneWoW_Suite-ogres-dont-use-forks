@@ -170,6 +170,9 @@ encodeValue = function(v, indent, seen, out)
     end
 end
 
+--- Encode a Lua table into OneWoW's clipboard-safe export format.
+---@param tbl table
+---@return string text
 function Serializer:Encode(tbl)
     if type(tbl) ~= "table" then
         error("Serializer:Encode expected a table, got " .. type(tbl))
@@ -397,6 +400,10 @@ parseValue = function(s)
     end
 end
 
+--- Decode a OneWoW export string into a Lua value.
+---@param text string
+---@return table|nil payload
+---@return string|nil errorMessage
 function Serializer:Decode(text)
     if type(text) ~= "string" then
         return nil, "input must be a string"
@@ -463,6 +470,9 @@ local function copyAllowedSectionFields(sec, keepCategories)
     return out
 end
 
+--- Build the serializable OneWoW_Bags export payload from SavedVariables.
+---@param db table Database handle with `global` data.
+---@return table payload
 function Serializer:BuildExport(db)
     local g = db and db.global
     if not g then error("Serializer:BuildExport: missing db.global") end

@@ -5,7 +5,7 @@ if not OneWoW_GUI then return end
 
 local ItemPool = OneWoW_Bags.ItemPool
 
-local tonumber, pairs, ipairs = tonumber, pairs, ipairs
+local tonumber, pairs = tonumber, pairs
 local GameTooltip = GameTooltip
 local C_Item = C_Item
 
@@ -398,8 +398,8 @@ function GBSet:RefreshLockVisuals(tabSet)
 end
 
 function GBSet:UpdateQualityColors()
-    for tabID, tabSlots in pairs(self.slots) do
-        for slotID, button in pairs(tabSlots) do
+    for _, tabSlots in pairs(self.slots) do
+        for _, button in pairs(tabSlots) do
             local quality = button.owb_itemInfo and button.owb_itemInfo.quality
             if OneWoW_Bags:ShouldShowItemQuality(true, quality) then
                 OneWoW_GUI:UpdateIconQuality(button, button.owb_itemInfo.quality)
@@ -441,8 +441,8 @@ function GBSet:ApplyGuildBankScripts(button)
     button._gbOrigOnReceiveDrag = button:GetScript("OnReceiveDrag")
 
     button._gbOrigUpdateTooltip = button.UpdateTooltip
-    button.UpdateTooltip = function(self)
-        if not ShowTooltipForButton(self) then
+    button.UpdateTooltip = function(myself)
+        if not ShowTooltipForButton(myself) then
             GameTooltip:Hide()
         end
     end
@@ -450,23 +450,23 @@ function GBSet:ApplyGuildBankScripts(button)
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     button:RegisterForDrag("LeftButton")
 
-    button.SplitStack = function(self, amount)
-        SplitGuildBankItem(self.owb_bagID, self.owb_slotID, amount)
+    button.SplitStack = function(myself, amount)
+        SplitGuildBankItem(myself.owb_bagID, myself.owb_slotID, amount)
     end
 
-    button:SetScript("OnClick", function(self, mouseButton)
-        local tabID = self.owb_bagID
-        local slotID = self.owb_slotID
+    button:SetScript("OnClick", function(myself, mouseButton)
+        local tabID = myself.owb_bagID
+        local slotID = myself.owb_slotID
         if not tabID or not slotID then return end
 
-        if self.owb_itemInfo and self.owb_itemInfo.hyperlink then
-            if HandleModifiedItemClick(self.owb_itemInfo.hyperlink) then return end
+        if myself.owb_itemInfo and myself.owb_itemInfo.hyperlink then
+            if HandleModifiedItemClick(myself.owb_itemInfo.hyperlink) then return end
         end
 
-        if IsModifiedClick("SPLITSTACK") and self.owb_hasItem then
-            local texture, itemCount = GetGuildBankItemInfo(tabID, slotID)
+        if IsModifiedClick("SPLITSTACK") and myself.owb_hasItem then
+            local _, itemCount = GetGuildBankItemInfo(tabID, slotID)
             if itemCount and itemCount > 1 then
-                StackSplitFrame:OpenStackSplitFrame(itemCount, self, "BOTTOMLEFT", "TOPLEFT")
+                StackSplitFrame:OpenStackSplitFrame(itemCount, myself, "BOTTOMLEFT", "TOPLEFT")
             end
             return
         end
@@ -483,14 +483,14 @@ function GBSet:ApplyGuildBankScripts(button)
         end
 
         if mouseButton == "RightButton" then
-            if self.owb_hasItem then
+            if myself.owb_hasItem then
                 AutoStoreGuildBankItem(tabID, slotID)
             end
         else
             if tabID ~= GetCurrentGuildBankTab() then
                 SetCurrentGuildBankTab(tabID)
             end
-            local hadItem = self.owb_hasItem
+            local hadItem = myself.owb_hasItem
             local isPlacingItem = cursorType ~= nil
             OneWoW_Bags._wasPlacingBeforeGBOp = isPlacingItem
             OneWoW_Bags._destHadItemBeforeGBOp = hadItem and isPlacingItem
@@ -501,8 +501,8 @@ function GBSet:ApplyGuildBankScripts(button)
         end
     end)
 
-    button:SetScript("OnEnter", function(self)
-        if not ShowTooltipForButton(self) then
+    button:SetScript("OnEnter", function(myself)
+        if not ShowTooltipForButton(myself) then
             GameTooltip:Hide()
         end
     end)
@@ -511,14 +511,14 @@ function GBSet:ApplyGuildBankScripts(button)
         GameTooltip:Hide()
     end)
 
-    button:SetScript("OnDragStart", function(self)
-        local tabID = self.owb_bagID
-        local slotID = self.owb_slotID
+    button:SetScript("OnDragStart", function(myself)
+        local tabID = myself.owb_bagID
+        local slotID = myself.owb_slotID
         if not tabID or not slotID then return end
         if tabID ~= GetCurrentGuildBankTab() then
             SetCurrentGuildBankTab(tabID)
         end
-        local hadItem = self.owb_hasItem
+        local hadItem = myself.owb_hasItem
         OneWoW_Bags._wasPlacingBeforeGBOp = false
         PickupGuildBankItem(tabID, slotID)
         if hadItem then
@@ -526,17 +526,17 @@ function GBSet:ApplyGuildBankScripts(button)
         end
     end)
 
-    button:SetScript("OnReceiveDrag", function(self)
+    button:SetScript("OnReceiveDrag", function(myself)
         local cursorType = GetCursorInfo()
         if cursorType == "item" then
-            local tabID = self.owb_bagID
+            local tabID = myself.owb_bagID
             if tabID ~= GetCurrentGuildBankTab() then
                 SetCurrentGuildBankTab(tabID)
             end
             OneWoW_Bags:TrackGuildBankTransferTab(tabID)
             OneWoW_Bags._wasPlacingBeforeGBOp = true
-            OneWoW_Bags._destHadItemBeforeGBOp = self.owb_hasItem
-            PickupGuildBankItem(tabID, self.owb_slotID)
+            OneWoW_Bags._destHadItemBeforeGBOp = myself.owb_hasItem
+            PickupGuildBankItem(tabID, myself.owb_slotID)
         end
     end)
 end
@@ -569,8 +569,8 @@ end
 
 function GBSet:ReleaseAll()
     local Pool = OneWoW_Bags.ItemPool
-    for tabID, tabSlots in pairs(self.slots) do
-        for slotID, button in pairs(tabSlots) do
+    for _, tabSlots in pairs(self.slots) do
+        for _, button in pairs(tabSlots) do
             GBSet:RestoreButtonScripts(button)
             button.owb_isGuildBank = nil
             Pool:Release(button)
@@ -617,8 +617,8 @@ end
 
 function GBSet:RecountFreeSlots()
     self.freeSlots = 0
-    for tabID, tabSlots in pairs(self.slots) do
-        for slotID, button in pairs(tabSlots) do
+    for _, tabSlots in pairs(self.slots) do
+        for _, button in pairs(tabSlots) do
             if not button.owb_hasItem then
                 self.freeSlots = self.freeSlots + 1
             end

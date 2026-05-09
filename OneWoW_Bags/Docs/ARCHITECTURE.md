@@ -6,10 +6,11 @@ OneWoW_Bags is a unified bag/bank/guild bank replacement addon for World of Warc
 
 **SavedVariable:** `OneWoW_Bags_DB`, initialized via `OneWoW_GUI.DB:Init` in **single** mode (defaults and persisted data under `db.global`).
 
-**TOC:** `## Interface: 120001, 120005` (Retail + compatible build).
+**TOC:** `## Interface: 120005, 120007` (Retail + compatible build).
 
-**Hard dependency:** `OneWoW_GUI`  
-**Soft dependencies:** `OneWoW` (hub, overlays, item status, upgrade detection), `OneWoW_AltTracker`, `OneWoW_ShoppingList`, `TradeSkillMaster`, `Baganator` (profile import via `CategoryController`), `Pawn`
+**Hard dependencies:** `OneWoW`, `OneWoW_GUI`
+
+**Soft dependencies:** `OneWoW_AltTracker`, `OneWoW_ShoppingList`, `TradeSkillMaster`, `Baganator` (profile import via `CategoryController`), `Pawn`
 
 ---
 
@@ -34,8 +35,10 @@ Core\BagTypes.lua                  ← bag ID constants, reagent/player bag help
 Core\BankTypes.lua                 ← bank/warband tab constants
 Core\Events.lua                    ← event router (dirtyBags, RuntimeEvents)
 
+Data\SavedSearches.lua             ← user-defined SAVED(Name) search shortcuts
 Data\Sorting.lua                   ← item sort comparators (SortButtons)
 Data\Categories.lua                ← builtin category defs, classification engine (consumes OneWoW_GUI.PredicateEngine)
+Data\BaganatorDefaultMap.lua       ← Baganator default category name map
 
 Modules\ItemPool.lua               ← frame object pool (ItemButton recycling)
 Modules\ItemButton.lua             ← ItemButtonMixin + ApplyItemButtonMixin
@@ -47,8 +50,18 @@ Modules\CategoryManager.lua        ← bags: category assignment + bucketing
 Modules\BankCategoryManager.lua    ← bank: CategoryManagerBase instance (section pools)
 Modules\GuildBankCategoryManager.lua
 
+ImportExport\Serializer.lua        ← native category/section bundle encode/decode
+ImportExport\Backup.lua            ← pre-import snapshot / undo storage
+ImportExport\SyntaxTranslators\Registry.lua
+ImportExport\SyntaxTranslators\SyndicatorLocaleMap.lua
+ImportExport\SyntaxTranslators\Syndicator.lua
+ImportExport\Planner.lua           ← import preview plan builder
+ImportExport\Applier.lua           ← import plan applier
+
 Integrations\OneWoWBagsIntegration.lua  ← item-button callback hooks, overlay hooks
+Integrations\OneWoWTooltips.lua         ← keyword help tooltip integration
 Integrations\TSMIntegration.lua         ← TSM group import
+Integrations\BaganatorImport.lua        ← Baganator profile reader/parser
 
 Controllers\WindowLayoutController.lua  ← generic layout orchestrator
 Controllers\BagsController.lua
@@ -66,8 +79,8 @@ Views\BankTabView.lua              ← bank per-tab layout
 Views\GuildBankTabView.lua         ← guild bank per-tab layout
 
 GUI\WindowHelpers.lua              ← window shell, scroll scaffold, filtering helpers
-GUI\InfoBarFactory.lua             ← shared info bar builder (bank / guild bank)
-GUI\InfoBar.lua                    ← bags top bar (view mode dropdown, search, expansion filter)
+GUI\InfoBarFactory.lua             ← shared info bar builder (search history, saved search button, view dropdowns)
+GUI\InfoBar.lua                    ← bags top bar configuration (view mode dropdown, search, expansion filter)
 GUI\BagsBar.lua                    ← bags bottom bar (bag icons, gold, trackers)
 GUI\BankInfoBar.lua
 GUI\BarHelpers.lua                 ← shared bank/guild bank bar chrome (frame, gold, tab recycling)
@@ -77,6 +90,7 @@ GUI\GuildBankInfoBar.lua
 GUI\GuildBankBar.lua
 GUI\GuildBankLog.lua               ← transaction log panel (GUILDBANKLOG_UPDATE)
 GUI\GuildBankWindow.lua
+GUI\ImportPreview.lua              ← import plan preview and conflict resolution
 GUI\CategoryManager.lua            ← category management UI panel
 GUI\Settings.lua
 GUI\MainWindow.lua                 ← inventory main window
@@ -132,8 +146,8 @@ OneWoW_Bags uses a **layered hybrid MVC** pattern. It is not strict MVC—some o
                              │ reads
 ┌────────────────────────────▼─────────────────────────────────┐
 │                      Data Layer                              │
-│  Categories, Sorting, BagTypes, BankTypes                    │
-│  ─ Classification, sort comparators                          │
+│  SavedSearches, Categories, Sorting, BagTypes, BankTypes     │
+│  ─ Search shortcuts, classification, sort comparators        │
 │  ─ Categories uses OneWoW_GUI.PredicateEngine for search     │
 └────────────────────────────┬─────────────────────────────────┘
                              │ reads
@@ -298,16 +312,19 @@ CategoryManager:AssignCategories()
 Search uses `OneWoW_GUI.PredicateEngine` (tokenizer, AST, evaluation). For full engine internals and public API, see [`OneWoW_GUI/Docs/PREDICATE_ENGINE.md`](../../OneWoW_GUI/Docs/PREDICATE_ENGINE.md).
 
 - Keywords, properties, operators (`&` `|` `!`), parentheses, bare name text
+- `SAVED(Name)` shortcuts are expanded by `Data\SavedSearches.lua` before PredicateEngine evaluation. Saved searches are stored as `db.global.savedSearches[displayName] = predicate`.
 - `#recent` is registered at `Data\Categories.lua` load via `PE:RegisterKeyword` (Bags-only): GUID map + duration only. `#new` / `IsNew` in the engine use `C_NewItems` via `BuildProps` (can lag until `InvalidatePropsCache`); `#recent` does not use that cached flag for classification
 - `#catalyst` / `#catalystupgrade` are registered by the engine itself with call-time `TransmogUpgradeMaster_API` checks (no-op if the addon is absent)
-- `WH:FilterBySearch` compiles the expression once per refresh and evaluates per button via `PE:CheckItem`
+- `WH:FilterBySearch` expands saved searches, then compiles the expression once per refresh and evaluates per button via `PE:CheckItem`
+- Search history is UI-owned by `InfoBarFactory` and stored in `db.global.searchHistory` up to `db.global.searchHistoryLimit` entries; a limit of `0` disables history.
 
 ```
 InfoBar / BankInfoBar / GuildBankInfoBar: search changed
   └─→ *Controller:OnSearchChanged → *GUI:RefreshLayout
        └─→ filterButtons → WH:FilterBySearch
-            └─→ PE:CheckItem(expr, itemID, bagID, slotID, info)
-                 ├─→ Compile(expr) → cached AST
+            ├─→ SavedSearches:Expand(expr)
+            └─→ PE:CheckItem(expandedExpr, itemID, bagID, slotID, info)
+                 ├─→ Compile(expandedExpr) → cached AST
                  ├─→ BuildProps(...) → cached props (+ tooltip laziness inside props)
                  └─→ Evaluate AST → true/false
 ```
@@ -376,6 +393,7 @@ Per-button state includes `owb_bagID`, `owb_slotID`, `owb_itemInfo`, `owb_hasIte
 
 - `Build()` / `ReleaseAll()`, `UpdateDirtyBags` (bags + bank), `GetAllButtons`, `GetFreeSlotCount`, etc.
 - `bagContainerFrames[bagID]` — parent frames with `SetID(bagID)` for secure behavior on container template buttons.
+- **Bags:** `Ctrl+Right-click` on a bag item while the personal/warband bank is open delegates to `BankController:DepositBagButtonStack`. If "Stack identical items" produced a virtual stack, every underlying physical player-bag slot is queued. Each queued slot is revalidated and paced before `C_Container.UseContainerItem(..., bankType)` deposits into the active bank type.
 - **Guild bank:** tab/slot cache, `ApplyCacheToButtons`, money-cursor and guild-bank-specific scripts, `ClearCache` on close; fixed slot count per tab (98).
 
 ### CategoryManagerBase
@@ -419,7 +437,7 @@ Each view exposes `Layout(...)` and returns total content height.
 
 `CreateViewContext(config)` returns:
 
-- `sortButtons(buttons, overrideSortMode)` → `addon:SortButtons(..., overrideSortMode or config.sortMode)`
+- `sortButtons(buttons, overrideSortMode, overrideSubSortMode)` → `addon:SortButtons(..., overrideSortMode or config.sortMode, overrideSubSortMode)`
 - `acquireSection` / `acquireSectionHeader` / `acquireDivider` — delegate to `sectionManager` when present
 - `getCollapsed` / `setCollapsed` / `requestRelayout` / `containerType`
 
@@ -429,11 +447,20 @@ Each view exposes `Layout(...)` and returns total content height.
 - Bank category mode: `"category"`, `"section"` (shared section collapse state via `categorySections`); bank tab mode: `"tab"` (with legacy fallbacks to `collapsedBankSections` in getters)
 - Guild bank tab mode: `"tab"` (with legacy fallbacks to `collapsedGuildBankSections`)
 
+### SavedSearches (`Data\SavedSearches.lua`)
+
+Stores named search shortcuts in `db.global.savedSearches` and expands
+`SAVED(Name)` tokens before expressions reach PredicateEngine. Names are matched
+case-insensitively while preserving display casing. Missing, invalid, cyclic, or
+too-deep references expand to a never-match predicate. Renaming a saved search
+also updates references in other saved searches, search history, and custom
+category search expressions.
+
 ### PredicateEngine
 
 Lives in `OneWoW_GUI` as `OneWoW_GUI.PredicateEngine` (published by the `OneWoW_GUI-1.0` LibStub library). Bags consumes it via `local PE = OneWoW_GUI.PredicateEngine`. Full reference: [`OneWoW_GUI/Docs/PREDICATE_ENGINE.md`](../../OneWoW_GUI/Docs/PREDICATE_ENGINE.md).
 
-Used by Bags for: search filtering (`WH:FilterBySearch`), custom category expressions and builtin category search strings in `Data/Categories.lua`, item button state (`ItemButton` junk / new / upgrade flags), and keyword tooltips in `Integrations/OneWoWTooltips.lua`.
+Used by Bags for: search filtering (`WH:FilterBySearch` after saved-search expansion), custom category expressions and builtin category search strings in `Data/Categories.lua`, item button state (`ItemButton` junk / new / upgrade flags), and keyword tooltips in `Integrations/OneWoWTooltips.lua`.
 
 Cache invalidation boundary: `InvalidateCategorization("props")` on `BAG_UPDATE_DELAYED` calls `PE:InvalidatePropsCache()` (props + tooltip only). Full `PE:InvalidateCache()` runs on keyword/property registration, settings changes that reshape categorization, and manual refresh.
 
@@ -458,6 +485,11 @@ Three windows share the same structural pattern (shell from `WindowHelpers:Creat
 Modes: `none` (no reorder), `default` (bagID then slotID among occupied slots), `name`, `rarity`, `ilvl`, `type` (item class ID, subclass ID, then name), `expansion` (expansion ID via `WindowHelpers:ResolveExpansionID`, then quality). Empty slots are ordered last where the comparator considers `owb_hasItem`.
 
 Default in **fresh DB defaults** is `itemSort = "none"` (migration 5); `GetItemSortMode` returns `db.global.itemSort or "default"` if the key were absent.
+
+Per-category `categoryModifications[name].subSortMode` provides a secondary
+criterion after `sortMode`. When no explicit sub-sort is set, legacy tie-breakers
+remain for selected primary modes, then all sorts fall back to `default` bag/slot
+order.
 
 ### Width calculation (`WindowLayoutController:UpdateFixedWidth`)
 
@@ -498,6 +530,12 @@ Persisted layout and behavior state lives under `OneWoW_Bags_DB.global`. The def
 
 `viewMode`, `bagColumns`, `scale`, `iconSize`, `itemSort`, `compactCategories`, `compactGap`, `categorySpacing`, `showCategoryHeaders`, `showEmptySlots`, `hideScrollBar`, `showBagsBar`, `showMoneyBar`, `showCurrencyTrackerCapHighlight`, `showHeaderBar`, `showSearchBar`, `selectedBag`
 
+### Search
+
+`searchHistoryLimit` (0 disables history, 1-10 keeps recent committed searches),
+`searchHistory`, `savedSearches` (`displayName -> predicate string` used by
+`SAVED(Name)`).
+
 ### Display — personal bank / warband bank / guild bank
 
 Personal bank: `bankViewMode`, `bankColumns`, `bankCompactCategories`, `bankCompactGap`, `bankCategorySpacing`, `showBankCategoryHeaders`, `bankHideScrollBar`, `showBankBagsBar`, `showBankSearchBar`, `showBankHeaderBar`, `bankSelectedTab`, `collapsedBankTabSections`.
@@ -522,7 +560,7 @@ Shared: `bankShowWarband` (active mode), `bankFramePosition`, `collapsedBankCate
 
 ### Categories
 
-`customCategoriesV2`, `disabledCategories`, `categoryModifications`, `categorySort`, `categoryOrder`, `categorySections`, `sectionOrder`, `displayOrder`, `enableJunkCategory`, `enableUpgradeCategory`, `moveRecentToTop`, `moveOtherToBottom`, `pinnedCategoryShowsWhenDisabled`, `pinnedCategories`
+`customCategoriesV2`, `disabledCategories`, `categoryModifications` (including per-category `sortMode` and `subSortMode`), `categorySort`, `categoryOrder`, `categorySections`, `sectionOrder`, `displayOrder`, `enableJunkCategory`, `enableUpgradeCategory`, `moveRecentToTop`, `moveOtherToBottom`, `pinnedCategoryShowsWhenDisabled`, `pinnedCategories`
 
 ### Collapse
 
@@ -534,7 +572,7 @@ Shared: `bankShowWarband` (active mode), `bankFramePosition`, `collapsedBankCate
 
 ### Migrations
 
-`_migrationVersion` is advanced by `DB:RunMigrations` up to **16**:
+`_migrationVersion` is advanced by `DB:RunMigrations` up to **17**:
 
 1. `category_system_v2` — split Equipment/Consumables builtins; seed `categorySections` / `sectionOrder`  
 2. `junk_rename` — `OneWoW Junk` / `OneWoW Upgrades` → `1W Junk` / `1W Upgrades` in disabled/collapsed maps  
@@ -552,6 +590,7 @@ Shared: `bankShowWarband` (active mode), `bankFramePosition`, `collapsedBankCate
 14. `hide_in_to_applies_in` — convert `categoryModifications[*].hideIn` to `appliesIn` with inverted semantics
 15. `mats_crafting_category` — insert the `Mats` builtin before `Reagents` in all section/member/displayOrder lists so existing saves pick up the new crafting category
 16. `split_warband_bank_settings` — copy legacy `bank*` values into parallel `warbandBank*` keys when the warband key is not already set, preserving user settings during the personal/warband settings split
+17. `cleanup_legacy_root_keys` — remove stray legacy root-level SavedVariable keys while preserving supported root scopes such as `global`, `chars`, `realms`, and presets
 
 ---
 
@@ -646,4 +685,4 @@ The addon folder includes `API/` (`README.md`, `INTEGRATION_GUIDE.md`, `INDEX.md
 
 ## View Context Pattern
 
-`WindowLayoutController:CreateViewContext` builds the table passed into views. Callers (e.g. `MainWindow`, `BankWindow`, `GuildBankWindow`) supply `sectionManager`, `sortMode`, `containerType`, collapse getters/setters, and `requestRelayout` (typically `RefreshLayout` on that window). Views must not assume a single global collapse table—behavior is always wired through `viewContext`.
+`WindowLayoutController:CreateViewContext` builds the table passed into views. Callers (e.g. `MainWindow`, `BankWindow`, `GuildBankWindow`) supply `sectionManager`, `sortMode`, `containerType`, collapse getters/setters, and `requestRelayout` (typically `RefreshLayout` on that window). Category views can pass per-category `sortMode` and `subSortMode` through `viewContext.sortButtons`. Views must not assume a single global collapse table—behavior is always wired through `viewContext`.

@@ -60,6 +60,9 @@ local function newPlan(source)
     }
 end
 
+--- Create an empty import plan shell for a source type.
+---@param source string|nil
+---@return table plan
 function Planner:BuildEmpty(source)
     return newPlan(source or "unknown")
 end
@@ -107,6 +110,9 @@ end
 -- Conflict detection
 -- ------------------------------------------------------------------
 
+--- Annotate plan sections/categories with conflict metadata against current DB.
+---@param plan table
+---@param db table
 function Planner:DetectConflicts(plan, db)
     local snap = existingSnapshot(db)
 
@@ -162,6 +168,8 @@ local function recountEstimate(plan)
     end
 end
 
+--- Recalculate category counts after callers change plan resolutions.
+---@param plan table
 function Planner:RecomputeEstimate(plan)
     recountEstimate(plan)
 end
@@ -170,6 +178,10 @@ end
 -- FromOneWowString
 -- ------------------------------------------------------------------
 
+--- Build an import plan from a OneWoW_Bags export string.
+---@param text string
+---@param db table
+---@return table plan
 function Planner:FromOneWowString(text, db)
     local plan = newPlan("onewow_string")
 
@@ -241,9 +253,9 @@ end
 -- Baganator shared helper: intermediate shape -> Plan
 -- ------------------------------------------------------------------
 
-local function pushDefaultSections(plan, intermediate, db)
+local function pushDefaultSections(plan, intermediate)
     local BaganatorImport = OneWoW_Bags.Integrations.Baganator
-    local sections, _loose = BaganatorImport:ResolveOrderToSections(intermediate.category_display_order or {})
+    local sections = BaganatorImport:ResolveOrderToSections(intermediate.category_display_order or {})
     local defaultMap = OneWoW_Bags.BaganatorDefaultMap or {}
     local hints      = intermediate.display_hints or {}
     local displayHints = OneWoW_Bags.BaganatorDefaultDisplayHints or {}
@@ -307,7 +319,7 @@ local function pushDefaultSections(plan, intermediate, db)
     return unmappedSet
 end
 
-local function buildCategoriesFromCustom(plan, intermediate, options, context)
+local function buildCategoriesFromCustom(plan, intermediate, context)
     local customs    = intermediate.custom_categories or {}
     local defaultMap = OneWoW_Bags.BaganatorDefaultMap or {}
     local BaganatorImport = OneWoW_Bags.Integrations.Baganator
@@ -384,14 +396,18 @@ local function planFromBaganatorIntermediate(intermediate, db, options)
         liveSyndicator = rawget(_G, "Syndicator") ~= nil,
     }
 
-    pushDefaultSections(plan, intermediate, db)
-    buildCategoriesFromCustom(plan, intermediate, options, context)
+    pushDefaultSections(plan, intermediate)
+    buildCategoriesFromCustom(plan, intermediate, context)
 
     Planner:DetectConflicts(plan, db)
     recountEstimate(plan)
     return plan
 end
 
+--- Build an import plan by reading Baganator data directly when available.
+---@param db table
+---@param options table|nil
+---@return table plan
 function Planner:FromBaganatorDirect(db, options)
     local BaganatorImport = OneWoW_Bags.Integrations.Baganator
     local intermediate, err = BaganatorImport:DirectRead()
@@ -403,6 +419,11 @@ function Planner:FromBaganatorDirect(db, options)
     return planFromBaganatorIntermediate(intermediate, db, options)
 end
 
+--- Build an import plan from a Baganator clipboard export string.
+---@param text string
+---@param db table
+---@param options table|nil
+---@return table plan
 function Planner:FromBaganatorString(text, db, options)
     local BaganatorImport = OneWoW_Bags.Integrations.Baganator
     local intermediate, err = BaganatorImport:ParseString(text)
@@ -418,6 +439,10 @@ end
 -- FromTsmDirect
 -- ------------------------------------------------------------------
 
+--- Build an import plan from TradeSkillMaster group data.
+---@param db table
+---@param options table|nil
+---@return table plan
 function Planner:FromTsmDirect(db, options)
     local plan = newPlan("tsm_direct")
     plan.options = options or { tsmPrefix = true }

@@ -397,6 +397,13 @@ end
 -- Public entry point
 -- ------------------------------------------------------------------
 
+--- Apply an import plan to the live category database.
+--- Creates an undo snapshot before mutating data and returns import counts.
+---@param plan table
+---@param controller table CategoryController-like object.
+---@param db table|nil Database handle; defaults from controller when omitted.
+---@return table|nil result
+---@return string|nil errorMessage
 function Applier:Apply(plan, controller, db)
     db = db or (controller and controller:GetDB())
     if not plan or not controller or not db then

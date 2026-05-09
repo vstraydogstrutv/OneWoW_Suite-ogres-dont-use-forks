@@ -1,4 +1,4 @@
-local ADDON_NAME, OneWoW = ...
+local _, OneWoW = ...
 
 local function IsEnabled()
     local ov = OneWoW.db and OneWoW.db.global and OneWoW.db.global.settings and OneWoW.db.global.settings.overlays
@@ -30,7 +30,7 @@ local function ProcessButton(button, bagID, slotID)
 end
 
 local function SetupCallbacks()
-    local Bags = _G.OneWoW_Bags
+    local Bags = OneWoW_Bags
     if not Bags or not Bags.RegisterItemButtonCallback then return end
 
     Bags:RegisterItemButtonCallback("OneWoW_Overlays", function(button, bagID, slotID)

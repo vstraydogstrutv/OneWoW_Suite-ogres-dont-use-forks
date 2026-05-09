@@ -38,6 +38,43 @@ addons). For the public API, caches, and extension points, see
 | `vendorprice>100g` | Items that sell for more than 100 gold |
 | `>50s` | Same thing, for any price above 50 silver (shorthand) |
 | `#knowledge` | Profession knowledge study items |
+| `SAVED(Collected Toys)` | Expands a user-saved search shortcut before evaluation |
+
+---
+
+## Saved Search Shortcuts
+
+Users can save named predicate expressions from the bags search bar and reuse
+them anywhere Bags evaluates a search expression: the main search bar, custom
+category search rules, and other saved searches.
+
+Syntax:
+
+```text
+SAVED(Name)
+```
+
+Example:
+
+```text
+SAVED(Collected Toys)
+```
+
+If `Collected Toys` is saved as `#toy & #collected`, the expression above is
+expanded to that predicate string before `OneWoW_GUI.PredicateEngine` compiles
+or evaluates it. Nested saved searches are supported with a small recursion
+limit.
+
+Saved search name rules:
+
+- Names may contain letters, numbers, spaces, hyphen (`-`), underscore (`_`),
+  and plus (`+`).
+- Lookup is case-insensitive, but the saved display casing is preserved.
+- Missing, invalid, or cyclic references fail closed by expanding to a
+  never-match predicate instead of matching everything.
+
+Saved searches are stored in `db.global.savedSearches` as
+`displayName -> predicate string`.
 
 ---
 

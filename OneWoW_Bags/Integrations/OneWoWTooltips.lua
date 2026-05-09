@@ -1,4 +1,4 @@
-local ADDON_NAME, OneWoW_Bags = ...
+local _, OneWoW_Bags = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -52,7 +52,7 @@ local function FormatKeywordLines(keywords)
     return lines
 end
 
-local function KeywordProvider(tooltip, context)
+local function KeywordProvider(_, context)
     if context.type ~= "item" then return nil end
     if not context.itemID then return nil end
     if not IsEnabled() then return nil end
@@ -67,9 +67,8 @@ local function KeywordProvider(tooltip, context)
 end
 
 local function RegisterWithOneWoW()
-    local OW = _G.OneWoW
-    if not OW or not OW.TooltipEngine then return end
-    OW.TooltipEngine:RegisterProvider({
+    if not OneWoW or not OneWoW.TooltipEngine then return end
+    OneWoW.TooltipEngine:RegisterProvider({
         id = "bags_keywords",
         order = 99999,
         tooltipTypes = { "item" },

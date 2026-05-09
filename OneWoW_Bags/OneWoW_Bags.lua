@@ -84,6 +84,8 @@ local function EnsureTable(parent, key)
     return value
 end
 
+--- Return the addon database handle after initialization.
+---@return table db
 function OneWoW_Bags:GetDB()
     return self.db
 end
@@ -159,6 +161,8 @@ function OneWoW_Bags:InitializeControllers()
     self.ControllersInitialized = true
 end
 
+--- Clear category and predicate caches after settings or category data changes.
+---@param scope "props"|nil Use "props" when item-property inputs changed.
 function OneWoW_Bags:InvalidateCategorization(scope)
     local db = self:GetDB()
 
@@ -174,6 +178,8 @@ function OneWoW_Bags:InvalidateCategorization(scope)
     end
 end
 
+--- Refresh item layout for one or more windows.
+---@param target "bags"|"bank"|"guild"|"bank_related"|"all"|nil
 function OneWoW_Bags:RequestLayoutRefresh(target)
     ForEachTarget(self, target, GUI_TARGET_KEYS, function(gui)
         if gui.RefreshLayout then
@@ -182,9 +188,9 @@ function OneWoW_Bags:RequestLayoutRefresh(target)
     end)
 end
 
--- Re-renders only slots whose cached item matches one of the given itemIDs.
--- Used by GET_ITEM_INFO_RECEIVED streaming so we don't rebuild every slot
--- on every item-info callback.
+--- Re-render only slots whose cached item matches one of the given item IDs.
+--- Used by GET_ITEM_INFO_RECEIVED streaming to avoid rebuilding every slot.
+---@param itemIDs table<number, boolean>|number[]|nil
 function OneWoW_Bags:UpdateSlotsForItemIDs(itemIDs)
     if not itemIDs then return end
     for _, key in ipairs(VISUAL_TARGET_KEYS.all) do
@@ -195,6 +201,8 @@ function OneWoW_Bags:UpdateSlotsForItemIDs(itemIDs)
     end
 end
 
+--- Refresh item button visuals and then refresh layout for affected windows.
+---@param target "bags"|"bank"|"guild"|"bank_related"|"all"|nil
 function OneWoW_Bags:RequestVisualRefresh(target)
     ForEachTarget(self, target, VISUAL_TARGET_KEYS, function(setObj)
         if setObj.isBuilt == false then
@@ -221,6 +229,8 @@ function OneWoW_Bags:RequestVisualRefresh(target)
     end
 end
 
+--- Fully reset window frames and reopen windows that were visible.
+---@param target "bags"|"bank"|"guild"|"bank_related"|"all"|nil
 function OneWoW_Bags:RequestWindowReset(target)
     ForEachTarget(self, target, GUI_TARGET_KEYS, function(gui, key)
         if not gui.FullReset then return end
@@ -1052,6 +1062,9 @@ function OneWoW_Bags:GetMoneyDialog()
     return moneyDialog
 end
 
+--- Show the shared money input dialog for bank and guild-bank money actions.
+--- `config` may provide title, anchorFrame, onDeposit, and/or onWithdraw.
+---@param config table
 function OneWoW_Bags:ShowMoneyDialog(config)
     local dialog = self:GetMoneyDialog()
     dialog.frame:Hide()

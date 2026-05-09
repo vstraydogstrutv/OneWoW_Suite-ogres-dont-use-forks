@@ -1,4 +1,4 @@
-local ADDON_NAME, OneWoW_Bags = ...
+local _, OneWoW_Bags = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
@@ -140,7 +140,7 @@ function Mixin:OWB_FullUpdate()
         or false
 end
 
-function Mixin:OWB_UpdateJunkDim(quality, hasItem, info)
+function Mixin:OWB_UpdateJunkDim(_, hasItem, info)
     if not hasItem then
         self:SetAlpha(1.0)
         return
@@ -189,9 +189,8 @@ function Mixin:OWB_UpdateUnusableOverlay(hasItem, info)
 
     local canEquip = true
     if info.hyperlink then
-        local UD = _G.OneWoW and _G.OneWoW.UpgradeDetection
-        if UD then
-            canEquip = UD:CanPlayerUseItem(info.hyperlink)
+        if OneWoW and OneWoW.UpgradeDetection then
+            canEquip = OneWoW.UpgradeDetection:CanPlayerUseItem(info.hyperlink)
         end
 
         if canEquip then
