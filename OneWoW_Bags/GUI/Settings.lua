@@ -11,25 +11,10 @@ local C_Timer = C_Timer
 
 local L = OneWoW_Bags.L
 
-local BankGUI = OneWoW_Bags.BankGUI
-local GuildBankGUI = OneWoW_Bags.GuildBankGUI
-local Categories = OneWoW_Bags.Categories
-local BagSet = OneWoW_Bags.BagSet
-local BankSet = OneWoW_Bags.BankSet
-local GuildBankSet = OneWoW_Bags.GuildBankSet
-local InfoBar = OneWoW_Bags.InfoBar
-local BankInfoBar = OneWoW_Bags.BankInfoBar
-
 OneWoW_Bags.Settings = {}
 local Settings = OneWoW_Bags.Settings
 local settingsFrame = nil
 local isCreated = false
-local bagColTimer = nil
-local bankColTimer = nil
-local catSpaceTimer = nil
-local bankCatSpaceTimer = nil
-local compactGapTimer = nil
-local bankCompactGapTimer = nil
 local COMPACT_GAP_STEPS = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.5, 2, 2.5, 3 }
 
 local function GetDB()
@@ -165,7 +150,7 @@ local function BuildSliderRow(container, label, yOffset, options)
     return yOffset, slider, lbl
 end
 
-local function BuildGeneralTab(sc, L, db, GUI)
+local function BuildGeneralTab(sc, db)
     local yOffset = OneWoW_GUI:CreateSettingsPanel(sc, { yOffset = -15, addonName = "OneWoW_Bags" })
     yOffset = yOffset - 10
 
@@ -310,7 +295,7 @@ local function BuildGeneralTab(sc, L, db, GUI)
     sc:SetHeight(abs(yOffset) + 40)
 end
 
-local function BuildBagsTab(sc, L, db, GUI)
+local function BuildBagsTab(sc, db)
     local yOffset = -15
 
     yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_DISPLAY"], yOffset = yOffset })
@@ -551,7 +536,7 @@ local function BuildBagsTab(sc, L, db, GUI)
 
         local slider = gapSlider:GetChildren()
         if slider then
-            slider:HookScript("OnValueChanged", function(self, val)
+            slider:HookScript("OnValueChanged", function(_, val)
                 local idx = floor(val + 0.5)
                 local realVal = CompactGapFromIndex(idx)
                 for _, region in pairs({gapSlider:GetRegions()}) do
@@ -768,7 +753,7 @@ local function ResetSharedBankRefreshers()
     sharedApplyEnabledFns = {}
 end
 
-local function BuildBankTabFor(mode, sc, L, db, GUI)
+local function BuildBankTabFor(mode, sc, db)
     local keys = MODE_KEYS[mode]
     local dbKeys = keys.db
     local applierKeys = keys.applier
@@ -1017,7 +1002,7 @@ local function BuildBankTabFor(mode, sc, L, db, GUI)
 
         local slider = gapSlider:GetChildren()
         if slider then
-            slider:HookScript("OnValueChanged", function(self, val)
+            slider:HookScript("OnValueChanged", function(_, val)
                 local idx = floor(val + 0.5)
                 local realVal = CompactGapFromIndex(idx)
                 for _, region in pairs({gapSlider:GetRegions()}) do
@@ -1050,7 +1035,6 @@ end
 function Settings:Create()
     if isCreated then return settingsFrame end
 
-    local GUI = OneWoW_Bags.GUI
     local db = GetDB()
 
     local dialog = OneWoW_GUI:CreateDialog({
@@ -1111,11 +1095,11 @@ function Settings:Create()
         sf.scrollFrame = scrollFrame
         sf.scrollContent = scrollContent
         tabContents[i] = sf
-        scrollFrame:HookScript("OnSizeChanged", function(self)
-            local w = self:GetWidth()
+        scrollFrame:HookScript("OnSizeChanged", function(myself)
+            local w = myself:GetWidth()
             if w and w > 0 then
                 scrollContent:SetWidth(w)
-                self:UpdateScrollChildRect()
+                myself:UpdateScrollChildRect()
                 ReflowWrappedFontStrings(scrollContent)
             end
         end)
@@ -1135,10 +1119,10 @@ function Settings:Create()
         sf:Hide()
     end
 
-    BuildGeneralTab(tabContents[1].scrollContent, L, db, GUI)
-    BuildBagsTab(tabContents[2].scrollContent, L, db, GUI)
-    BuildBankTabFor("personal", tabContents[3].scrollContent, L, db, GUI)
-    BuildBankTabFor("warband", tabContents[4].scrollContent, L, db, GUI)
+    BuildGeneralTab(tabContents[1].scrollContent, db)
+    BuildBagsTab(tabContents[2].scrollContent, db)
+    BuildBankTabFor("personal", tabContents[3].scrollContent, db)
+    BuildBankTabFor("warband", tabContents[4].scrollContent, db)
 
     SwitchTab(1)
 
