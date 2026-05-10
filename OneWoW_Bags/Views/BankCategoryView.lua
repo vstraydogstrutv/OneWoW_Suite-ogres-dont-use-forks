@@ -7,7 +7,6 @@ local Constants = OneWoW_Bags.Constants
 local H = OneWoW_Bags.CategoryViewHelpers
 local PE = OneWoW_GUI.PredicateEngine
 
-local ipairs = ipairs
 local floor, max = math.floor, math.max
 
 OneWoW_Bags.BankCategoryView = {}
@@ -30,19 +29,12 @@ function View:Layout(contentFrame, width, filteredButtons, viewContext)
     local verticalSpacing = (BC:Get("categorySpacing") or 1.0)
     local compactGapSlots = BC:Get("compactGap") or 1
 
-    local filterSet
-    if filteredButtons then
-        filterSet = {}
-        for _, btn in ipairs(filteredButtons) do
-            filterSet[btn] = true
-        end
-    end
+    local filterToken = filteredButtons and filteredButtons._owb_filterToken
 
     local containerType = viewContext.containerType
 
     local BankCategoryManager = OneWoW_Bags.BankCategoryManager
-    BankCategoryManager:AssignCategories()
-    local itemsByCategory = BankCategoryManager:GetItemsByCategory()
+    local itemsByCategory = BankCategoryManager:AssignAndGroupCategories()
 
     local layout = H.GetSectionedLayout(itemsByCategory, containerType)
 
@@ -65,7 +57,7 @@ function View:Layout(contentFrame, width, filteredButtons, viewContext)
         leftPadding = leftPadding,
         cellSize = cellSize,
         iconSize = iconSize,
-        filterSet = filterSet,
+        filterToken = filterToken,
         db = db,
         PE = PE,
         AcquireLabel = AcquireLabel,

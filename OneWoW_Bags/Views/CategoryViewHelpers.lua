@@ -13,6 +13,7 @@ local SetItemButtonCount = SetItemButtonCount
 
 OneWoW_Bags.CategoryViewHelpers = {}
 local H = OneWoW_Bags.CategoryViewHelpers
+local filterScratchByCategory = {}
 
 function H.CreateLabelPool()
     local pool = {}
@@ -559,13 +560,19 @@ function H.StackItems(items, db, PE)
     return result
 end
 
-function H.FilterItems(categoryName, itemsByCategory, filterSet, catMods, sortButtons, db, PE)
+function H.FilterItems(categoryName, itemsByCategory, filterToken, catMods, sortButtons, db, PE)
     local items = itemsByCategory[categoryName]
     if not items then return nil end
-    if filterSet then
-        local filtered = {}
+    if filterToken then
+        local filtered = filterScratchByCategory[categoryName]
+        if not filtered then
+            filtered = {}
+            filterScratchByCategory[categoryName] = filtered
+        else
+            wipe(filtered)
+        end
         for _, btn in ipairs(items) do
-            if filterSet[btn] then
+            if btn._owb_filterToken == filterToken then
                 tinsert(filtered, btn)
             end
         end
@@ -580,17 +587,17 @@ function H.FilterItems(categoryName, itemsByCategory, filterSet, catMods, sortBu
     return items
 end
 
-function H.GroupItemsBy(items, groupBy, PE)
+function H.GroupItemsBy(items, groupBy)
     local groups = {}
     local groupOrder = {}
 
     if groupBy == "expansion" then
         for _, btn in ipairs(items) do
-            local expID = -1
-            if btn.owb_itemInfo then
-                local props = PE:BuildProps(btn.owb_itemInfo.itemID, btn.owb_bagID, btn.owb_slotID, btn.owb_itemInfo)
-                expID = props.expansionID or -1
+            local expID = btn._owb_expansionID
+            if expID == nil and btn.owb_itemInfo then
+                expID = OneWoW_Bags.WindowHelpers:GetButtonExpansionID(btn)
             end
+            expID = expID or -1
             local expName = OneWoW_GUI:GetExpansionName(expID)
             if not groups[expName] then
                 groups[expName] = {}
@@ -604,7 +611,7 @@ function H.GroupItemsBy(items, groupBy, PE)
         for _, btn in ipairs(items) do
             local typeName = OTHER
             if btn.owb_itemInfo then
-                local props = PE:BuildProps(btn.owb_itemInfo.itemID, btn.owb_bagID, btn.owb_slotID, btn.owb_itemInfo)
+                local props = OneWoW_Bags:GetButtonProps(btn)
                 typeName = props.itemType or OTHER
             end
             if not groups[typeName] then
@@ -619,7 +626,7 @@ function H.GroupItemsBy(items, groupBy, PE)
         for _, btn in ipairs(items) do
             local slotName = OTHER
             if btn.owb_itemInfo then
-                local props = PE:BuildProps(btn.owb_itemInfo.itemID, btn.owb_bagID, btn.owb_slotID, btn.owb_itemInfo)
+                local props = OneWoW_Bags:GetButtonProps(btn)
                 local equipLoc = props.equipLoc
                 if equipLoc and equipLoc ~= "" then
                     slotName = _G[equipLoc] or equipLoc
@@ -649,7 +656,7 @@ function H.GroupItemsBy(items, groupBy, PE)
         for _, btn in ipairs(items) do
             local key = NONE
             if btn.owb_itemInfo then
-                local props = PE:BuildProps(btn.owb_itemInfo.itemID, btn.owb_bagID, btn.owb_slotID, btn.owb_itemInfo)
+                local props = OneWoW_Bags:GetButtonProps(btn)
                 local list = props.equipmentSetList
                 if list and #list > 1 then
                     key = MULTI
@@ -690,7 +697,7 @@ function H.LayoutCategoryContent(config)
     local leftPadding = config.leftPadding
     local cellSize = config.cellSize
     local iconSize = config.iconSize
-    local filterSet = config.filterSet
+    local filterToken = config.filterToken
     local db = config.db
     local PE = config.PE
     local containerType = config.containerType
@@ -727,7 +734,7 @@ function H.LayoutCategoryContent(config)
     end
 
     local function DoFilterItems(categoryName)
-        return H.FilterItems(categoryName, itemsByCategory, filterSet, catMods, sortButtons, db, PE)
+        return H.FilterItems(categoryName, itemsByCategory, filterToken, catMods, sortButtons, db, PE)
     end
 
     local function RenderCategoryStacked(categoryName)
@@ -752,7 +759,7 @@ function H.LayoutCategoryContent(config)
                 section.content:SetHeight(1)
 
                 if groupBy and groupBy ~= "none" then
-                    local groups, groupOrder = H.GroupItemsBy(items, groupBy, PE)
+                    local groups, groupOrder = H.GroupItemsBy(items, groupBy)
 
                     if groups and groupOrder then
                         local subY = 0

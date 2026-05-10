@@ -3,7 +3,7 @@ local _, OneWoW_Bags = ...
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
-local tinsert, tremove = tinsert, tremove
+local tinsert, tremove, select = tinsert, tremove, select
 local pairs = pairs
 local PixelUtil = PixelUtil
 
@@ -13,6 +13,17 @@ local Pool = OneWoW_Bags.ItemPool
 local available = {}
 local active = {}
 local totalCreated = 0
+
+local function HideDynamicChildren(button)
+    local baseCount = button._owb_baseChildCount or 0
+    local childCount = select("#", button:GetChildren())
+    for i = baseCount + 1, childCount do
+        local child = select(i, button:GetChildren())
+        if child and child ~= button.ProfessionQualityOverlay then
+            child:Hide()
+        end
+    end
+end
 
 function Pool:Preallocate(count)
     for _ = 1, count do
@@ -114,6 +125,11 @@ function Pool:ResetButton(button)
     button.owb_bagID = nil
     button.owb_slotID = nil
     button.owb_itemInfo = nil
+    button._owb_sortName = nil
+    button._owb_ilvl = nil
+    button._owb_expansionID = nil
+    button._owb_classID = nil
+    button._owb_subClassID = nil
     button._owb_stackCount = nil
     button._owb_virtualStackButtons = nil
     button.owb_categoryName = nil
@@ -130,13 +146,7 @@ function Pool:ResetButton(button)
     if button.SetItemButtonQuality then
         button:SetItemButtonQuality(nil, nil, true)
     end
-    local baseCount = button._owb_baseChildCount or 0
-    local children = {button:GetChildren()}
-    for i = baseCount + 1, #children do
-        if children[i] ~= button.ProfessionQualityOverlay then
-            children[i]:Hide()
-        end
-    end
+    HideDynamicChildren(button)
     Pool:ClearNewItemGlow(button)
     SetItemButtonTexture(button, nil)
     SetItemButtonCount(button, 0)

@@ -8,7 +8,7 @@ local DB = OneWoW_GUI.DB
 local Constants = OneWoW_Bags.Constants
 local PE = OneWoW_GUI.PredicateEngine
 
-local tinsert, sort = tinsert, sort
+local tinsert, sort, wipe = tinsert, sort, wipe
 local ipairs, pairs = ipairs, pairs
 local type = type
 local floor = math.floor
@@ -20,6 +20,20 @@ local WH = OneWoW_Bags.WindowHelpers
 
 local ITEM_GRID_H_PADDING = 2
 local SCROLLBAR_RESERVE_WIDTH = 12
+local scratchTables = {}
+
+---@param key string
+---@return table scratch
+function WH:GetScratchTable(key)
+    local scratch = scratchTables[key]
+    if not scratch then
+        scratch = {}
+        scratchTables[key] = scratch
+    else
+        wipe(scratch)
+    end
+    return scratch
+end
 
 function WH:GetItemGridChromeInsets(hideScrollbar)
     local gutter = hideScrollbar and 0 or SCROLLBAR_RESERVE_WIDTH
@@ -309,12 +323,27 @@ function WH:ResolveExpansionID(itemInfo, bagID, slotID)
     return nil
 end
 
+---@param button table
+---@return number|nil expansionID
+function WH:GetButtonExpansionID(button)
+    local itemInfo = button.owb_itemInfo
+    if button._owb_expansionID ~= nil and not (button._owb_expansionID == -1 and itemInfo and itemInfo.hyperlink) then
+        return button._owb_expansionID
+    end
+    if not button.owb_hasItem or not itemInfo or not itemInfo.itemID then
+        return nil
+    end
+    local props = OneWoW_Bags:GetButtonProps(button)
+    return props.expansionID
+end
+
 --- Filter item buttons with a PredicateEngine search expression.
 --- SAVED(Name) references are expanded before evaluation.
 ---@param buttons table[]
 ---@param searchText string|nil
+---@param dest table[]|nil
 ---@return table[] buttons
-function WH:FilterBySearch(buttons, searchText)
+function WH:FilterBySearch(buttons, searchText, dest)
     if not searchText or searchText == "" then
         return buttons
     end
@@ -323,10 +352,17 @@ function WH:FilterBySearch(buttons, searchText)
         searchText = OneWoW_Bags.SavedSearches:Expand(searchText)
     end
 
-    local filtered = {}
+    local filtered = dest or {}
+    wipe(filtered)
+    local compiled = PE:Compile(searchText)
+    if not compiled then
+        return filtered
+    end
+
     for _, button in ipairs(buttons) do
         if button.owb_hasItem and button.owb_itemInfo and button.owb_itemInfo.itemID then
-            if PE:CheckItem(searchText, button.owb_itemInfo.itemID, button.owb_bagID, button.owb_slotID, button.owb_itemInfo) then
+            local props = OneWoW_Bags:GetButtonProps(button)
+            if PE:SafeEvaluate(compiled, props) then
                 tinsert(filtered, button)
             end
         end
@@ -338,16 +374,18 @@ end
 --- Filter item buttons to a single expansion ID.
 ---@param buttons table[]
 ---@param expacFilter number|nil
+---@param dest table[]|nil
 ---@return table[] buttons
-function WH:FilterByExpansion(buttons, expacFilter)
+function WH:FilterByExpansion(buttons, expacFilter, dest)
     if expacFilter == nil then
         return buttons
     end
 
-    local filtered = {}
+    local filtered = dest or {}
+    wipe(filtered)
     for _, button in ipairs(buttons) do
         if button.owb_hasItem and button.owb_itemInfo and button.owb_itemInfo.itemID then
-            local expansionID = self:ResolveExpansionID(button.owb_itemInfo, button.owb_bagID, button.owb_slotID)
+            local expansionID = self:GetButtonExpansionID(button)
             if expansionID == expacFilter then
                 tinsert(filtered, button)
             end
@@ -359,11 +397,13 @@ end
 --- Filter item buttons to a bag/container tab.
 ---@param buttons table[]
 ---@param selectedTab number|nil
+---@param dest table[]|nil
 ---@return table[] buttons
-function WH:FilterByTab(buttons, selectedTab)
+function WH:FilterByTab(buttons, selectedTab, dest)
     if not selectedTab then return buttons end
 
-    local filtered = {}
+    local filtered = dest or {}
+    wipe(filtered)
     for _, btn in ipairs(buttons) do
         if btn.owb_bagID == selectedTab then
             tinsert(filtered, btn)

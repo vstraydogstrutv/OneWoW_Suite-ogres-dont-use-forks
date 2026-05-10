@@ -7,11 +7,10 @@ local BagTypes = OneWoW_Bags.BagTypes
 local ItemPool = OneWoW_Bags.ItemPool
 local PE = OneWoW_GUI.PredicateEngine
 
-local pairs, select = pairs, select
+local pairs = pairs
 
 local UnitLevel = UnitLevel
 local C_Container = C_Container
-local C_Item = C_Item
 local PixelUtil = PixelUtil
 
 OneWoW_Bags.ItemButtonMixin = {}
@@ -32,7 +31,7 @@ function Mixin:OWB_IsDirty()
     return self.owb_dirty
 end
 
-function Mixin:OWB_UpdateNewItemGlow(quality, hasItem)
+function Mixin:OWB_UpdateNewItemGlow(quality, hasItem, props)
     local db = OneWoW_Bags:GetDB()
     local bagID, slotID = self.owb_bagID, self.owb_slotID
 
@@ -46,12 +45,11 @@ function Mixin:OWB_UpdateNewItemGlow(quality, hasItem)
         return
     end
 
-    local infoForProps = self.owb_itemInfo
-    if not infoForProps or not infoForProps.itemID then
+    if not props or not props.id then
         ItemPool:ClearNewItemGlow(self)
         return
     end
-    if not PE:BuildProps(infoForProps.itemID, bagID, slotID, infoForProps).isNew then
+    if not props.isNew then
         ItemPool:ClearNewItemGlow(self)
         return
     end
@@ -61,8 +59,7 @@ function Mixin:OWB_UpdateNewItemGlow(quality, hasItem)
         return
     end
 
-    local isBattlePay = C_Container.IsBattlePayItem(bagID, slotID)
-    if isBattlePay and self.BattlepayItemTexture then
+    if props.isBattlePayItem and self.BattlepayItemTexture then
         if self.flashAnim and self.flashAnim:IsPlaying() then self.flashAnim:Stop() end
         if self.newitemglowAnim and self.newitemglowAnim:IsPlaying() then self.newitemglowAnim:Stop() end
         newItemTexture:Hide()
@@ -95,6 +92,7 @@ function Mixin:OWB_FullUpdate()
 
     local info = C_Container.GetContainerItemInfo(self.owb_bagID, self.owb_slotID)
     self.owb_itemInfo = info
+    local props = info and info.itemID and PE:BuildProps(info.itemID, self.owb_bagID, self.owb_slotID, info) or nil
 
     if info and info.hyperlink then
         SetItemButtonTexture(self, info.iconFileID)
@@ -117,6 +115,11 @@ function Mixin:OWB_FullUpdate()
         end
 
         self.owb_hasItem = true
+        self._owb_sortName = props and props.nameRaw ~= "" and props.nameRaw or nil
+        self._owb_ilvl = props and props.ilvl and props.ilvl > 0 and props.ilvl or nil
+        self._owb_expansionID = props and props.expansionID or nil
+        self._owb_classID = props and props.classID or nil
+        self._owb_subClassID = props and props.subClassID or nil
     else
         SetItemButtonTexture(self, nil)
         SetItemButtonCount(self, 0)
@@ -125,6 +128,11 @@ function Mixin:OWB_FullUpdate()
             self:SetItemButtonQuality(nil, nil, true)
         end
         self.owb_hasItem = false
+        self._owb_sortName = nil
+        self._owb_ilvl = nil
+        self._owb_expansionID = nil
+        self._owb_classID = nil
+        self._owb_subClassID = nil
     end
 
     self:OWB_RefreshCooldown()
@@ -133,13 +141,13 @@ function Mixin:OWB_FullUpdate()
     local hasItem = info and info.hyperlink
 
     local isJunk = false
-    if hasItem and info and info.itemID then
-        isJunk = PE:BuildProps(info.itemID, self.owb_bagID, self.owb_slotID, info).isJunk or false
+    if hasItem and props then
+        isJunk = props.isJunk or false
     end
 
-    self:OWB_UpdateNewItemGlow(quality, hasItem)
+    self:OWB_UpdateNewItemGlow(quality, hasItem, props)
     self:OWB_UpdateJunkDim(hasItem, isJunk)
-    self:OWB_UpdateUnusableOverlay(hasItem, info)
+    self:OWB_UpdateUnusableOverlay(hasItem, info, props)
 
     self._owb_isJunk = isJunk
 end
@@ -169,7 +177,7 @@ function Mixin:OWB_UpdateJunkDim(hasItem, isJunk)
     end
 end
 
-function Mixin:OWB_UpdateUnusableOverlay(hasItem, info)
+function Mixin:OWB_UpdateUnusableOverlay(hasItem, info, props)
     local db = OneWoW_Bags:GetDB()
     if not db.global.showUnusableOverlay then
         if self._owbUnusableOverlay then self._owbUnusableOverlay:Hide() end
@@ -181,8 +189,7 @@ function Mixin:OWB_UpdateUnusableOverlay(hasItem, info)
         return
     end
 
-    local isEquippable = C_Item.IsEquippableItem(info.itemID)
-    if not isEquippable then
+    if not props or not props.isEquipment then
         if self._owbUnusableOverlay then self._owbUnusableOverlay:Hide() end
         return
     end
@@ -194,7 +201,7 @@ function Mixin:OWB_UpdateUnusableOverlay(hasItem, info)
         end
 
         if canEquip then
-            local reqLevel = select(5, C_Item.GetItemInfo(info.hyperlink))
+            local reqLevel = props.reqLevel
             if reqLevel and reqLevel > 0 and UnitLevel("player") < reqLevel then
                 canEquip = false
             end

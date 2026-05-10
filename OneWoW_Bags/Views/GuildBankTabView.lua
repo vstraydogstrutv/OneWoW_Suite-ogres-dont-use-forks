@@ -6,7 +6,7 @@ if not OneWoW_GUI then return end
 local Constants = OneWoW_Bags.Constants
 local GuildBankSet = OneWoW_Bags.GuildBankSet
 
-local ipairs, tinsert = ipairs, tinsert
+local ipairs = ipairs
 local floor, max = math.floor, math.max
 
 OneWoW_Bags.GuildBankTabView = {}
@@ -22,13 +22,7 @@ function View:Layout(contentFrame, width, filteredButtons, viewContext)
     local spacing = Constants.GUI.ITEM_BUTTON_SPACING
     local padding = 2
 
-    local filterSet
-    if filteredButtons then
-        filterSet = {}
-        for _, btn in ipairs(filteredButtons) do
-            filterSet[btn] = true
-        end
-    end
+    local filterToken = filteredButtons and filteredButtons._owb_filterToken
 
     local sortButtons = viewContext.sortButtons
     local acquireSection = viewContext.acquireSection
@@ -50,14 +44,18 @@ function View:Layout(contentFrame, width, filteredButtons, viewContext)
         end
 
         if not skip then
-            if filterSet then
-                local filtered = {}
-                for _, btn in ipairs(buttons) do
-                    if filterSet[btn] then
-                        tinsert(filtered, btn)
+            if filterToken then
+                local writeIndex = 1
+                for readIndex = 1, #buttons do
+                    local btn = buttons[readIndex]
+                    if btn._owb_filterToken == filterToken then
+                        buttons[writeIndex] = btn
+                        writeIndex = writeIndex + 1
                     end
                 end
-                buttons = filtered
+                for index = writeIndex, #buttons do
+                    buttons[index] = nil
+                end
             end
 
             if #buttons > 0 then

@@ -5,7 +5,7 @@ if not OneWoW_GUI then return end
 
 local ItemPool = OneWoW_Bags.ItemPool
 
-local tonumber, pairs, tinsert = tonumber, pairs, tinsert
+local tonumber, pairs, tinsert, wipe, select = tonumber, pairs, tinsert, wipe, select
 local GameTooltip = GameTooltip
 local C_Item = C_Item
 
@@ -19,8 +19,23 @@ GBSet.isBuilt = false
 GBSet.bagContainerFrames = {}
 GBSet.numTabs = 0
 GBSet.cache = {}
+GBSet.buttonList = {}
+GBSet.tabRanges = {}
+GBSet._allButtonsScratch = {}
+GBSet._tabButtonsScratch = {}
 
 local SLOTS_PER_TAB = 98
+
+local function CopyRange(source, startIndex, stopIndex, dest)
+    wipe(dest)
+    if not startIndex or not stopIndex then
+        return dest
+    end
+    for index = startIndex, stopIndex do
+        tinsert(dest, source[index])
+    end
+    return dest
+end
 
 local function CreateSummary()
     return {
@@ -148,10 +163,11 @@ end
 
 local function HideDynamicChildren(button)
     local baseCount = button._owb_baseChildCount or 0
-    local children = {button:GetChildren()}
-    for i = baseCount + 1, #children do
-        if children[i] ~= button.ProfessionQualityOverlay then
-            children[i]:Hide()
+    local childCount = select("#", button:GetChildren())
+    for i = baseCount + 1, childCount do
+        local child = select(i, button:GetChildren())
+        if child and child ~= button.ProfessionQualityOverlay then
+            child:Hide()
         end
     end
 end
@@ -179,6 +195,11 @@ local function ClearGuildBankButton(button)
 
     button.owb_itemInfo = nil
     button.owb_hasItem = false
+    button._owb_sortName = nil
+    button._owb_ilvl = nil
+    button._owb_expansionID = nil
+    button._owb_classID = nil
+    button._owb_subClassID = nil
 end
 
 local function GetOrCreateGuildBankFrame(tabID)
@@ -190,6 +211,27 @@ local function GetOrCreateGuildBankFrame(tabID)
         frame:SetSize(1, 1)
     end
     return frame
+end
+
+function GBSet:RebuildButtonList()
+    wipe(self.buttonList)
+    wipe(self.tabRanges)
+
+    for tabID = 1, self.numTabs do
+        local tabSlots = self.slots[tabID]
+        if tabSlots then
+            local startIndex = #self.buttonList + 1
+            for slotID = 1, SLOTS_PER_TAB do
+                local button = tabSlots[slotID]
+                if button then
+                    tinsert(self.buttonList, button)
+                end
+            end
+            if #self.buttonList >= startIndex then
+                self.tabRanges[tabID] = { startIndex, #self.buttonList }
+            end
+        end
+    end
 end
 
 function GBSet:Build()
@@ -218,6 +260,7 @@ function GBSet:Build()
     end
 
     self.isBuilt = true
+    self:RebuildButtonList()
     self:UpdateAllSlots()
 end
 
@@ -286,6 +329,12 @@ local function ApplyCachedItemToButton(button, cached)
             quality = cached.quality,
             iconFileID = cached.texture,
         }
+        local props = OneWoW_Bags:GetButtonProps(button)
+        button._owb_sortName = props.nameRaw ~= "" and props.nameRaw or nil
+        button._owb_ilvl = props.ilvl and props.ilvl > 0 and props.ilvl or nil
+        button._owb_expansionID = props.expansionID
+        button._owb_classID = props.classID
+        button._owb_subClassID = props.subClassID
 
         if button.SetItemButtonQuality then
             button:SetItemButtonQuality(cached.quality, cached.itemLink, false)
@@ -574,6 +623,10 @@ function GBSet:ReleaseAll()
     end
     self.slots = {}
     self.bagContainerFrames = {}
+    wipe(self.buttonList)
+    wipe(self.tabRanges)
+    wipe(self._allButtonsScratch)
+    wipe(self._tabButtonsScratch)
     self.totalSlots = 0
     self.freeSlots = 0
     self.numTabs = 0
@@ -585,30 +638,17 @@ function GBSet:ClearCache()
 end
 
 function GBSet:GetAllButtons()
-    local buttons = {}
-    for tabID = 1, self.numTabs do
-        if self.slots[tabID] then
-            for slotID = 1, SLOTS_PER_TAB do
-                local button = self.slots[tabID][slotID]
-                if button then
-                    tinsert(buttons, button)
-                end
-            end
-        end
-    end
-    return buttons
+    return CopyRange(self.buttonList, 1, #self.buttonList, self._allButtonsScratch)
 end
 
-function GBSet:GetButtonsByTab(tabID)
-    local buttons = {}
-    if self.slots[tabID] then
-        for slotID = 1, SLOTS_PER_TAB do
-            if self.slots[tabID][slotID] then
-                tinsert(buttons, self.slots[tabID][slotID])
-            end
-        end
-    end
-    return buttons
+function GBSet:GetButtonList()
+    return self.buttonList
+end
+
+function GBSet:GetButtonsByTab(tabID, dest)
+    local scratch = dest or self._tabButtonsScratch
+    local range = self.tabRanges[tabID]
+    return CopyRange(self.buttonList, range and range[1], range and range[2], scratch)
 end
 
 function GBSet:RecountFreeSlots()

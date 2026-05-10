@@ -39,14 +39,30 @@ local function GetItemID(button)
     return button and button.owb_itemInfo and button.owb_itemInfo.itemID
 end
 
+local function GetSortName(button, itemID)
+    local name = button and button._owb_sortName
+    if not name or name == "" then
+        name = C_Item.GetItemNameByID(itemID) or ""
+    end
+    return name
+end
+
+local function GetItemLevel(button, itemLink)
+    local ilvl = button and button._owb_ilvl
+    if ilvl == nil or (ilvl == 0 and itemLink) then
+        ilvl = itemLink and (select(4, C_Item.GetItemInfo(itemLink)) or 0) or 0
+    end
+    return ilvl
+end
+
 local function CompareName(a, b)
     local aID = GetItemID(a)
     local bID = GetItemID(b)
     local result = CompareValues(aID and 1 or 0, bID and 1 or 0, true)
     if result ~= 0 then return result end
     if not aID or not bID then return 0 end
-    local aName = C_Item.GetItemNameByID(aID) or ""
-    local bName = C_Item.GetItemNameByID(bID) or ""
+    local aName = GetSortName(a, aID)
+    local bName = GetSortName(b, bID)
     return CompareValues(aName, bName)
 end
 
@@ -59,8 +75,8 @@ end
 local function CompareItemLevel(a, b)
     local aLink = a and a.owb_itemInfo and a.owb_itemInfo.hyperlink
     local bLink = b and b.owb_itemInfo and b.owb_itemInfo.hyperlink
-    local aIlvl = aLink and (select(4, C_Item.GetItemInfo(aLink)) or 0) or 0
-    local bIlvl = bLink and (select(4, C_Item.GetItemInfo(bLink)) or 0) or 0
+    local aIlvl = GetItemLevel(a, aLink)
+    local bIlvl = GetItemLevel(b, bLink)
     return CompareValues(aIlvl, bIlvl, true)
 end
 
@@ -70,8 +86,16 @@ local function CompareType(a, b)
     local result = CompareValues(aID and 1 or 0, bID and 1 or 0, true)
     if result ~= 0 then return result end
     if not aID or not bID then return 0 end
-    local _, _, _, _, _, aClass, aSub = C_Item.GetItemInfoInstant(aID)
-    local _, _, _, _, _, bClass, bSub = C_Item.GetItemInfoInstant(bID)
+    local aClass, aSub = a._owb_classID, a._owb_subClassID
+    local bClass, bSub = b._owb_classID, b._owb_subClassID
+    if aClass == nil then
+        local props = OneWoW_Bags:GetButtonProps(a)
+        aClass, aSub = props.classID, props.subClassID
+    end
+    if bClass == nil then
+        local props = OneWoW_Bags:GetButtonProps(b)
+        bClass, bSub = props.classID, props.subClassID
+    end
     aClass = aClass or 0
     bClass = bClass or 0
     result = CompareValues(aClass, bClass)
@@ -82,9 +106,16 @@ local function CompareType(a, b)
 end
 
 local function CompareExpansion(a, b)
-    local WH = OneWoW_Bags.WindowHelpers
-    local aExp = a and a.owb_itemInfo and WH:ResolveExpansionID(a.owb_itemInfo, a.owb_bagID, a.owb_slotID) or -1
-    local bExp = b and b.owb_itemInfo and WH:ResolveExpansionID(b.owb_itemInfo, b.owb_bagID, b.owb_slotID) or -1
+    local aExp = a and a._owb_expansionID
+    local bExp = b and b._owb_expansionID
+    if aExp == nil and a and a.owb_itemInfo then
+        aExp = OneWoW_Bags.WindowHelpers:GetButtonExpansionID(a)
+    end
+    if bExp == nil and b and b.owb_itemInfo then
+        bExp = OneWoW_Bags.WindowHelpers:GetButtonExpansionID(b)
+    end
+    aExp = aExp or -1
+    bExp = bExp or -1
     return CompareValues(aExp, bExp, true)
 end
 

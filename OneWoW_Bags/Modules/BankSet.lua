@@ -6,7 +6,7 @@ if not OneWoW_GUI then return end
 local BankTypes = OneWoW_Bags.BankTypes
 local ItemPool = OneWoW_Bags.ItemPool
 
-local ipairs, pairs, tinsert = ipairs, pairs, tinsert
+local ipairs, pairs, tinsert, wipe = ipairs, pairs, tinsert, wipe
 local C_Bank, C_Container = C_Bank, C_Container
 
 OneWoW_Bags.BankSet = {}
@@ -17,6 +17,21 @@ BankSet.totalSlots = 0
 BankSet.freeSlots = 0
 BankSet.isBuilt = false
 BankSet.bagContainerFrames = {}
+BankSet.buttonList = {}
+BankSet.bagRanges = {}
+BankSet._allButtonsScratch = {}
+BankSet._bagButtonsScratch = {}
+
+local function CopyRange(source, startIndex, stopIndex, dest)
+    wipe(dest)
+    if not startIndex or not stopIndex then
+        return dest
+    end
+    for index = startIndex, stopIndex do
+        tinsert(dest, source[index])
+    end
+    return dest
+end
 
 local function GetOrCreateBankFrame(bagID)
     local name = "OneWoW_BankContainerFrame" .. bagID
@@ -39,6 +54,31 @@ function BankSet:GetActiveTabs()
         return BankTypes:GetWarbandTabIDs()
     else
         return BankTypes:GetBankTabIDs()
+    end
+end
+
+function BankSet:RebuildButtonList()
+    wipe(self.buttonList)
+    wipe(self.bagRanges)
+
+    for _, bagID in ipairs(self:GetActiveTabs()) do
+        local bagSlots = self.slots[bagID]
+        if bagSlots then
+            local startIndex = #self.buttonList + 1
+            local maxSlot = 0
+            for slotID in pairs(bagSlots) do
+                if slotID > maxSlot then maxSlot = slotID end
+            end
+            for slotID = 1, maxSlot do
+                local button = bagSlots[slotID]
+                if button then
+                    tinsert(self.buttonList, button)
+                end
+            end
+            if #self.buttonList >= startIndex then
+                self.bagRanges[bagID] = { startIndex, #self.buttonList }
+            end
+        end
     end
 end
 
@@ -72,6 +112,7 @@ function BankSet:Build()
     end
 
     self.isBuilt = true
+    self:RebuildButtonList()
     self:UpdateAllSlots()
 end
 
@@ -84,6 +125,10 @@ function BankSet:ReleaseAll()
     end
     self.slots = {}
     self.bagContainerFrames = {}
+    wipe(self.buttonList)
+    wipe(self.bagRanges)
+    wipe(self._allButtonsScratch)
+    wipe(self._bagButtonsScratch)
     self.totalSlots = 0
     self.freeSlots = 0
     self.isBuilt = false
@@ -130,6 +175,7 @@ function BankSet:RebuildBag(bagID, numSlots)
         self.slots[bagID][slotID] = button
         self.totalSlots = self.totalSlots + 1
     end
+    self:RebuildButtonList()
 end
 
 function BankSet:ProcessDirtySlots()
@@ -191,38 +237,17 @@ function BankSet:UpdateQualityColors()
 end
 
 function BankSet:GetAllButtons()
-    local buttons = {}
-    for _, bagID in ipairs(self:GetActiveTabs()) do
-        if self.slots[bagID] then
-            local maxSlot = 0
-            for slotID in pairs(self.slots[bagID]) do
-                if slotID > maxSlot then maxSlot = slotID end
-            end
-            for slotID = 1, maxSlot do
-                local button = self.slots[bagID][slotID]
-                if button then
-                    tinsert(buttons, button)
-                end
-            end
-        end
-    end
-    return buttons
+    return CopyRange(self.buttonList, 1, #self.buttonList, self._allButtonsScratch)
 end
 
-function BankSet:GetButtonsByBag(bagID)
-    local buttons = {}
-    if self.slots[bagID] then
-        local maxSlot = 0
-        for slotID in pairs(self.slots[bagID]) do
-            if slotID > maxSlot then maxSlot = slotID end
-        end
-        for slotID = 1, maxSlot do
-            if self.slots[bagID][slotID] then
-                tinsert(buttons, self.slots[bagID][slotID])
-            end
-        end
-    end
-    return buttons
+function BankSet:GetButtonList()
+    return self.buttonList
+end
+
+function BankSet:GetButtonsByBag(bagID, dest)
+    local scratch = dest or self._bagButtonsScratch
+    local range = self.bagRanges[bagID]
+    return CopyRange(self.buttonList, range and range[1], range and range[2], scratch)
 end
 
 function BankSet:ApplyBankScripts(button)

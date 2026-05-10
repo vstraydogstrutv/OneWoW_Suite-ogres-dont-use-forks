@@ -173,8 +173,8 @@ function GUI:RefreshLayout()
             return BagSet:GetAllButtons()
         end,
         filterButtons = function(allButtons)
-            local filteredButtons = WH:FilterBySearch(allButtons, InfoBar:GetSearchText())
-            return WH:FilterByExpansion(filteredButtons, OneWoW_Bags.activeExpansionFilter)
+            local filteredButtons = WH:FilterBySearch(allButtons, InfoBar:GetSearchText(), WH:GetScratchTable("mainSearch"))
+            return WH:FilterByExpansion(filteredButtons, OneWoW_Bags.activeExpansionFilter, WH:GetScratchTable("mainExpansion"))
         end,
         layoutButtons = function(filteredButtons)
             local _, _, _, contentWidth = WH:GetLayoutMetrics("bagColumns", 15)

@@ -104,6 +104,22 @@ function OneWoW_Bags:GetItemSortMode()
     return self:GetDB().global.itemSort
 end
 
+--- Build PredicateEngine props for a button without treating guild-bank tab/slot
+--- coordinates as C_Container bag/slot coordinates.
+---@param button table
+---@return table props
+function OneWoW_Bags:GetButtonProps(button)
+    local info = button and button.owb_itemInfo
+    local itemID = info and info.itemID
+    if not itemID then return {} end
+
+    if button.owb_isGuildBank then
+        return PE:BuildProps(itemID, nil, nil, info.hyperlink or info)
+    end
+
+    return PE:BuildProps(itemID, button.owb_bagID, button.owb_slotID, info)
+end
+
 function OneWoW_Bags:ShouldShowItemQuality(isBank, quality)
     if self:IsAltShowActive() then return true end
     if not quality or quality < 1 then return false end
@@ -811,7 +827,7 @@ function OneWoW_Bags:OnItemLockChanged(bagID, slotID)
     end
 end
 
-function OneWoW_Bags:OnCooldownUpdate()
+function OneWoW_Bags:RefreshCooldowns()
     if not self.BagSet.isBuilt then return end
     for _, bagSlots in pairs(self.BagSet.slots) do
         for _, button in pairs(bagSlots) do
@@ -820,6 +836,15 @@ function OneWoW_Bags:OnCooldownUpdate()
             end
         end
     end
+end
+
+function OneWoW_Bags:OnCooldownUpdate()
+    if self._cooldownRefreshPending then return end
+    self._cooldownRefreshPending = true
+    C_Timer.After(0.05, function()
+        self._cooldownRefreshPending = false
+        self:RefreshCooldowns()
+    end)
 end
 
 function OneWoW_Bags:RegisterSlashCommands()

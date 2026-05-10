@@ -43,6 +43,11 @@ function WindowLayoutController:Refresh(config)
     if config.filterButtons then
         buttons = config.filterButtons(buttons)
     end
+    self.filterToken = (self.filterToken or 0) + 1
+    buttons._owb_filterToken = self.filterToken
+    for _, button in ipairs(buttons) do
+        button._owb_filterToken = self.filterToken
+    end
 
     local layoutHeight = config.layoutButtons and config.layoutButtons(buttons) or 1
     if config.contentFrame then

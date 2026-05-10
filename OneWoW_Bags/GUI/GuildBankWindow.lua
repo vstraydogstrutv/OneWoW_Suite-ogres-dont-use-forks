@@ -185,8 +185,8 @@ function GuildBankGUI:RefreshLayout()
             return GuildBankSet:GetAllButtons()
         end,
         filterButtons = function(allButtons)
-            local visibleButtons = WH:FilterByTab(allButtons, db.global.guildBankSelectedTab)
-            return WH:FilterBySearch(visibleButtons, GuildBankInfoBar:GetSearchText())
+            local visibleButtons = WH:FilterByTab(allButtons, db.global.guildBankSelectedTab, WH:GetScratchTable("guildBankTab"))
+            return WH:FilterBySearch(visibleButtons, GuildBankInfoBar:GetSearchText(), WH:GetScratchTable("guildBankSearch"))
         end,
         layoutButtons = function(filteredButtons)
             local _, _, _, contentWidth = WH:GetLayoutMetrics("bankColumns", 15)

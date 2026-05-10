@@ -473,9 +473,9 @@ function BankGUI:RefreshLayout()
             if ShouldShowPurchasePrompt() then
                 return {}
             end
-            local visibleButtons = WH:FilterByTab(allButtons, OneWoW_Bags.BankController:Get("selectedTab"))
-            local filteredButtons = WH:FilterBySearch(visibleButtons, BankInfoBar:GetSearchText())
-            return WH:FilterByExpansion(filteredButtons, OneWoW_Bags.activeBankExpansionFilter)
+            local visibleButtons = WH:FilterByTab(allButtons, OneWoW_Bags.BankController:Get("selectedTab"), WH:GetScratchTable("bankTab"))
+            local filteredButtons = WH:FilterBySearch(visibleButtons, BankInfoBar:GetSearchText(), WH:GetScratchTable("bankSearch"))
+            return WH:FilterByExpansion(filteredButtons, OneWoW_Bags.activeBankExpansionFilter, WH:GetScratchTable("bankExpansion"))
         end,
         layoutButtons = function(filteredButtons)
             if ShouldShowPurchasePrompt() then

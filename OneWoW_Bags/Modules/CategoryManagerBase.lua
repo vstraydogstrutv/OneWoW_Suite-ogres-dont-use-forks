@@ -3,7 +3,7 @@ local _, OneWoW_Bags = ...
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
-local tinsert, tremove, pairs, ipairs = tinsert, tremove, pairs, ipairs
+local tinsert, tremove, pairs, ipairs, wipe = tinsert, tremove, pairs, ipairs, wipe
 
 OneWoW_Bags.CategoryManagerBase = {}
 
@@ -39,6 +39,13 @@ local function GroupButtonsByCategory(buttons)
     return result
 end
 
+local function ClearActiveBuckets(activeBuckets)
+    for _, bucket in pairs(activeBuckets) do
+        wipe(bucket)
+    end
+    wipe(activeBuckets)
+end
+
 OneWoW_Bags.CategoryManagerBase.AssignCategoriesForButtons = AssignCategoriesForButtons
 OneWoW_Bags.CategoryManagerBase.GroupButtonsByCategory = GroupButtonsByCategory
 
@@ -48,6 +55,8 @@ function OneWoW_Bags.CategoryManagerBase:Create()
     local activeSections = {}
     local dividerPool = {}
     local activeDividers = {}
+    local categoryBuckets = {}
+    local activeCategoryBuckets = {}
 
     --- Subclasses set this in their constructor so the base AssignCategories /
     --- GetItemsByCategory methods know which button list to iterate.
@@ -55,11 +64,40 @@ function OneWoW_Bags.CategoryManagerBase:Create()
     function cm:GetSourceButtons() return {} end
 
     function cm:AssignCategories()
-        AssignCategoriesForButtons(self:GetSourceButtons())
+        self:AssignAndGroupCategories(self:GetSourceButtons())
     end
 
     function cm:GetItemsByCategory()
-        return GroupButtonsByCategory(self:GetSourceButtons())
+        if not self._itemsByCategory then
+            self:AssignAndGroupCategories(self:GetSourceButtons())
+        end
+        return self._itemsByCategory
+    end
+
+    function cm:AssignAndGroupCategories(buttons)
+        local Categories = OneWoW_Bags.Categories
+        ClearActiveBuckets(activeCategoryBuckets)
+
+        for _, button in ipairs(buttons or self:GetSourceButtons()) do
+            if button.owb_hasItem and button.owb_itemInfo then
+                local categoryName = Categories:GetItemCategory(button.owb_bagID, button.owb_slotID, button.owb_itemInfo)
+                button.owb_categoryName = categoryName
+                if categoryName then
+                    local bucket = categoryBuckets[categoryName]
+                    if not bucket then
+                        bucket = {}
+                        categoryBuckets[categoryName] = bucket
+                    end
+                    activeCategoryBuckets[categoryName] = bucket
+                    tinsert(bucket, button)
+                end
+            else
+                button.owb_categoryName = nil
+            end
+        end
+
+        self._itemsByCategory = activeCategoryBuckets
+        return activeCategoryBuckets
     end
 
     function cm:AcquireSection(parent)

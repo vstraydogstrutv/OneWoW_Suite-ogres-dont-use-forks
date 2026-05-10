@@ -6,7 +6,7 @@ if not OneWoW_GUI then return end
 local BagTypes = OneWoW_Bags.BagTypes
 local ItemPool = OneWoW_Bags.ItemPool
 
-local pairs, ipairs, tinsert = pairs, ipairs, tinsert
+local pairs, ipairs, tinsert, wipe = pairs, ipairs, tinsert, wipe
 
 local C_Container = C_Container
 local CursorHasItem = CursorHasItem
@@ -20,6 +20,42 @@ BagSet.totalSlots = 0
 BagSet.freeSlots = 0
 BagSet.isBuilt = false
 BagSet.bagContainerFrames = {}
+BagSet.buttonList = {}
+BagSet.bagRanges = {}
+BagSet._allButtonsScratch = {}
+BagSet._bagButtonsScratch = {}
+
+local function CopyRange(source, startIndex, stopIndex, dest)
+    wipe(dest)
+    if not startIndex or not stopIndex then
+        return dest
+    end
+    for index = startIndex, stopIndex do
+        tinsert(dest, source[index])
+    end
+    return dest
+end
+
+function BagSet:RebuildButtonList()
+    wipe(self.buttonList)
+    wipe(self.bagRanges)
+
+    for _, bagID in ipairs(BagTypes:GetPlayerBagIDs()) do
+        local bagSlots = self.slots[bagID]
+        if bagSlots then
+            local startIndex = #self.buttonList + 1
+            for slotID = 1, #bagSlots do
+                local button = bagSlots[slotID]
+                if button then
+                    tinsert(self.buttonList, button)
+                end
+            end
+            if #self.buttonList >= startIndex then
+                self.bagRanges[bagID] = { startIndex, #self.buttonList }
+            end
+        end
+    end
+end
 
 local function GetOrCreateBagFrame(bagID)
     local name = "OneWoW_BagContainerFrame" .. bagID
@@ -55,6 +91,7 @@ function BagSet:Build()
     end
 
     self.isBuilt = true
+    self:RebuildButtonList()
     self:UpdateAllSlots()
 end
 
@@ -65,6 +102,10 @@ function BagSet:ReleaseAll()
         end
     end
     self.slots = {}
+    wipe(self.buttonList)
+    wipe(self.bagRanges)
+    wipe(self._allButtonsScratch)
+    wipe(self._bagButtonsScratch)
     self.totalSlots = 0
     self.freeSlots = 0
     self.isBuilt = false
@@ -114,6 +155,7 @@ function BagSet:RebuildBag(bagID, numSlots)
         self.slots[bagID][slotID] = button
         self.totalSlots = self.totalSlots + 1
     end
+    self:RebuildButtonList()
 end
 
 function BagSet:ProcessDirtySlots()
@@ -171,30 +213,17 @@ function BagSet:UpdateQualityColors()
 end
 
 function BagSet:GetAllButtons()
-    local buttons = {}
-    for _, bagID in ipairs(BagTypes:GetPlayerBagIDs()) do
-        if self.slots[bagID] then
-            for slotID = 1, #self.slots[bagID] do
-                local button = self.slots[bagID][slotID]
-                if button then
-                    tinsert(buttons, button)
-                end
-            end
-        end
-    end
-    return buttons
+    return CopyRange(self.buttonList, 1, #self.buttonList, self._allButtonsScratch)
 end
 
-function BagSet:GetButtonsByBag(bagID)
-    local buttons = {}
-    if self.slots[bagID] then
-        for slotID = 1, #self.slots[bagID] do
-            if self.slots[bagID][slotID] then
-                tinsert(buttons, self.slots[bagID][slotID])
-            end
-        end
-    end
-    return buttons
+function BagSet:GetButtonList()
+    return self.buttonList
+end
+
+function BagSet:GetButtonsByBag(bagID, dest)
+    local scratch = dest or self._bagButtonsScratch
+    local range = self.bagRanges[bagID]
+    return CopyRange(self.buttonList, range and range[1], range and range[2], scratch)
 end
 
 function BagSet:ApplyBagScripts(button)
