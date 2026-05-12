@@ -222,6 +222,10 @@ OneWoW_Bags.Locales["koKR"] = {
     ["DESC_LOCK"] = "가방 창을 움직이지 못하게 합니다.",
     ["SECTION_INTEGRATION"] = "OneWoW 연동",
     ["DESC_OVERLAY"] = "가방 아이템에 OneWoW 오버레이를 켜거나 끕니다.",
+
+    ["SECTION_MASQUE"] = "Masque",
+    ["SETTING_USE_MASQUE"] = "Use Masque Skins",
+    ["DESC_USE_MASQUE"] = "Let Masque skin the OneWoW Bags item buttons (bags, bank, warband bank, guild bank, and bag-bar slots). Configure individual skins in Masque's own settings.",
     ["GOLD_TOOLTIP_PERSONAL"] = "개인",
     ["GOLD_TOOLTIP_TOTAL"] = "총 골드",
     ["GOLD_TOOLTIP_WARBAND"] = "전역 은행",

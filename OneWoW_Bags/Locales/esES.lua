@@ -222,6 +222,10 @@ OneWoW_Bags.Locales["esES"] = {
     ["DESC_LOCK"] = "Impedir que se mueva la ventana.",
     ["SECTION_INTEGRATION"] = "Integracion OneWoW",
     ["DESC_OVERLAY"] = "Activar/desactivar superposiciones OneWoW en los objetos.",
+
+    ["SECTION_MASQUE"] = "Masque",
+    ["SETTING_USE_MASQUE"] = "Use Masque Skins",
+    ["DESC_USE_MASQUE"] = "Let Masque skin the OneWoW Bags item buttons (bags, bank, warband bank, guild bank, and bag-bar slots). Configure individual skins in Masque's own settings.",
     ["GOLD_TOOLTIP_PERSONAL"] = "Personal",
     ["GOLD_TOOLTIP_TOTAL"] = "Oro total",
     ["GOLD_TOOLTIP_WARBAND"] = "Banco de la banda guerrera",

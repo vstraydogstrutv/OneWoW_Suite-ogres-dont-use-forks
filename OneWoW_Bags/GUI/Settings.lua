@@ -461,6 +461,26 @@ local function BuildGeneralTab(sc, db)
         yOffset = FinalizeContainer(intContainer, intY, yOffset)
     end
 
+    if OneWoW_Bags.Masque and OneWoW_Bags.Masque.available then
+        yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_MASQUE"], yOffset = yOffset })
+        local masqueContainer = BuildContainer(sc, yOffset)
+        local masqueY = -10
+
+        masqueY, _, _ = OneWoW_GUI:CreateToggleRow(masqueContainer, {
+            yOffset = masqueY,
+            label = L["SETTING_USE_MASQUE"],
+            description = L["DESC_USE_MASQUE"],
+            isEnabled = true,
+            value = db.global.useMasque ~= false,
+            onLabel = L["TOGGLE_ON"], offLabel = L["TOGGLE_OFF"],
+            onValueChange = function(newVal)
+                ApplySetting("useMasque", newVal)
+            end,
+        })
+
+        yOffset = FinalizeContainer(masqueContainer, masqueY, yOffset)
+    end
+
     yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_CAT_PLACEMENT"], yOffset = yOffset })
     local placeContainer = BuildContainer(sc, yOffset)
     local placeY = -10

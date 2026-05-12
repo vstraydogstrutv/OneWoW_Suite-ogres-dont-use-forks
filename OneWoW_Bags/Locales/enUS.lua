@@ -251,6 +251,10 @@ OneWoW_Bags.Locales["enUS"] = {
     ["SECTION_INTEGRATION"] = "OneWoW Integration",
     ["DESC_OVERLAY"] = "Toggle OneWoW item overlay displays on bag items.",
 
+    ["SECTION_MASQUE"] = "Masque",
+    ["SETTING_USE_MASQUE"] = "Use Masque Skins",
+    ["DESC_USE_MASQUE"] = "Let Masque skin the OneWoW Bags item buttons (bags, bank, warband bank, guild bank, and bag-bar slots). Configure individual skins in Masque's own settings.",
+
     ["GOLD_TOOLTIP_PERSONAL"] = "Personal",
     ["GOLD_TOOLTIP_TOTAL"] = "Total Gold",
     ["GOLD_TOOLTIP_WARBAND"] = "Warband Bank",

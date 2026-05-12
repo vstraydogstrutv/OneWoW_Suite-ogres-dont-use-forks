@@ -189,6 +189,7 @@ function BankBar:CreateTabButton(parent, bagID, tabIndex, isPurchased)
     local icon = btn:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()
     btn.icon = icon
+    btn.Icon = icon
     btn.bagID = bagID
     btn.tabIndex = tabIndex
     btn.isPurchased = isPurchased
@@ -207,6 +208,10 @@ function BankBar:CreateTabButton(parent, bagID, tabIndex, isPurchased)
 
     btn._skinnedIcon = icon
     OneWoW_GUI:SkinIconFrame(btn, { preset = "clean" })
+    if OneWoW_Bags.Masque then
+        local showWarband = db.global.bankShowWarband
+        OneWoW_Bags.Masque:SkinBagBarButton(btn, showWarband and "warband" or "bank")
+    end
 
     btn:SetScript("OnEnter", function(myself)
         GameTooltip:SetOwner(myself, "ANCHOR_TOP")

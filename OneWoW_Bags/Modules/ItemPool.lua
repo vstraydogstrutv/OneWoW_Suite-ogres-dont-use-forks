@@ -47,6 +47,9 @@ end
 
 function Pool:Release(button)
     if not button then return end
+    if OneWoW_Bags.Masque then
+        OneWoW_Bags.Masque:UnskinItemButton(button)
+    end
     Pool:ResetButton(button)
     button.inUse = false
     active[button] = nil

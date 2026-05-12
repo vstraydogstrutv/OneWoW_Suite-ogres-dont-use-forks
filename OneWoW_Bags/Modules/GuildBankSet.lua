@@ -256,6 +256,9 @@ function GBSet:Build()
             self.totalSlots = self.totalSlots + 1
 
             GBSet:ApplyGuildBankScripts(button)
+            if OneWoW_Bags.Masque then
+                OneWoW_Bags.Masque:SkinItemButton(button, "guild")
+            end
         end
     end
 
@@ -336,18 +339,23 @@ local function ApplyCachedItemToButton(button, cached)
         button._owb_classID = props.classID
         button._owb_subClassID = props.subClassID
 
+        local masqueActive = OneWoW_Bags.Masque and OneWoW_Bags.Masque:IsActive()
         if button.SetItemButtonQuality then
             button:SetItemButtonQuality(cached.quality, cached.itemLink, false)
-            if button.IconBorder then button.IconBorder:Hide() end
+            if button.IconBorder and not masqueActive then
+                button.IconBorder:Hide()
+            end
             if button.ProfessionQualityOverlay then
                 button.ProfessionQualityOverlay:SetDrawLayer("OVERLAY", 7)
             end
         end
 
-        if OneWoW_Bags:ShouldShowItemQuality(true, cached.quality) then
-            OneWoW_GUI:UpdateIconQuality(button, cached.quality)
-        else
-            OneWoW_GUI:UpdateIconQuality(button, nil)
+        if not masqueActive then
+            if OneWoW_Bags:ShouldShowItemQuality(true, cached.quality) then
+                OneWoW_GUI:UpdateIconQuality(button, cached.quality)
+            else
+                OneWoW_GUI:UpdateIconQuality(button, nil)
+            end
         end
 
         button.owb_hasItem = true

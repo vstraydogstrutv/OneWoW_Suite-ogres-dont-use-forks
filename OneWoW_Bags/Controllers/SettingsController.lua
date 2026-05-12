@@ -63,6 +63,10 @@ SettingsController.appliers = {
     showKeywordsInTooltips = function(_, db, value)
         db.global.showKeywordsInTooltips = value
     end,
+    useMasque = function(self, db, value)
+        db.global.useMasque = value
+        self.addon:RequestWindowReset("all")
+    end,
     moveRecentToTop = function(self, db, value)
         db.global.moveRecentToTop = value
         self.addon:RequestLayoutRefresh("all")

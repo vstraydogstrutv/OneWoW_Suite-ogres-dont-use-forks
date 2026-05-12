@@ -5,7 +5,7 @@
 ## Author: OneWoW Dev Team
 
 ## RequiredDeps: OneWoW_GUI
-## OptionalDeps: OneWoW, OneWoW_AltTracker, OneWoW_ShoppingList, TradeSkillMaster, Baganator
+## OptionalDeps: OneWoW, OneWoW_AltTracker, OneWoW_ShoppingList, TradeSkillMaster, Baganator, Masque
 ## Category: OneWoW
 ## Group: OneWoW
 ## IconTexture: Interface\AddOns\OneWoW_GUI\Media\neutral-mini.png
@@ -64,6 +64,7 @@ Integrations\OneWoWBagsIntegration.lua
 Integrations\OneWoWTooltips.lua
 Integrations\TSMIntegration.lua
 Integrations\BaganatorImport.lua
+Integrations\Masque.lua
 
 # Controllers
 Controllers\WindowLayoutController.lua

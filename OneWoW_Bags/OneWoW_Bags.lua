@@ -306,6 +306,10 @@ function OneWoW_Bags:OnAddonLoaded(loadedAddon)
     self:InitializeControllers()
     OneWoW_GUI:MigrateSettings(self.db.global)
 
+    if self.Masque and self.Masque.OnLoad then
+        self.Masque:OnLoad()
+    end
+
     ApplyTheme()
     ApplyLanguage()
 

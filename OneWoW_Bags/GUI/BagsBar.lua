@@ -750,8 +750,12 @@ function BagsBar:CreateBagButton(parent, bagIndex, xOffset)
     icon:SetAllPoints()
     icon:SetTexture(iconTexture)
     btn.icon = icon
+    btn.Icon = icon
     btn._skinnedIcon = icon
     OneWoW_GUI:SkinIconFrame(btn, { preset = "clean" })
+    if OneWoW_Bags.Masque then
+        OneWoW_Bags.Masque:SkinBagBarButton(btn, "bags")
+    end
 
     btn:SetPoint("LEFT", parent, "LEFT", xOffset, 0)
     btn.bagIndex = bagIndex
@@ -790,15 +794,20 @@ end
 function BagsBar:UpdateBagHighlights()
     local db = GetDB()
     local selected = db.global.selectedBag
+    local masque = OneWoW_Bags.Masque
+    local masqueActive = masque and masque:IsActive()
     for idx, btn in pairs(bagButtons) do
-        if btn._skinBorder then
-            if selected ~= nil and selected == idx then
+        local isSelected = selected ~= nil and selected == idx
+        if masqueActive then
+            masque:UpdateBagBarSelection(btn, isSelected)
+        elseif btn._skinBorder then
+            if isSelected then
                 btn._skinBorder:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
             else
                 btn._skinBorder:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
             end
         elseif btn.border then
-            if selected ~= nil and selected == idx then
+            if isSelected then
                 btn.border:SetVertexColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
             else
                 btn.border:SetVertexColor(OneWoW_GUI:GetThemeColor("ACCENT_MUTED"))

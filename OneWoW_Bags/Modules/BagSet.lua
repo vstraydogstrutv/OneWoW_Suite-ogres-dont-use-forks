@@ -85,6 +85,9 @@ function BagSet:Build()
             OneWoW_Bags:ApplyItemButtonMixin(button)
             button:OWB_SetSlot(bagID, slotID)
             self:ApplyBagScripts(button)
+            if OneWoW_Bags.Masque then
+                OneWoW_Bags.Masque:SkinItemButton(button, "bags")
+            end
             self.slots[bagID][slotID] = button
             self.totalSlots = self.totalSlots + 1
         end
@@ -151,6 +154,9 @@ function BagSet:RebuildBag(bagID, numSlots)
         OneWoW_Bags:ApplyItemButtonMixin(button)
         button:OWB_SetSlot(bagID, slotID)
         self:ApplyBagScripts(button)
+        if OneWoW_Bags.Masque then
+            OneWoW_Bags.Masque:SkinItemButton(button, "bags")
+        end
         button:OWB_MarkDirty()
         self.slots[bagID][slotID] = button
         self.totalSlots = self.totalSlots + 1

@@ -156,6 +156,7 @@ function GuildBankBar:CreateTabButton(parent, tabID, tabName, tabIcon, isViewabl
     local icon = btn:CreateTexture(nil, "ARTWORK")
     icon:SetAllPoints()
     btn.icon = icon
+    btn.Icon = icon
     btn.tabID = tabID
     btn.tabName = tabName
     btn.isViewable = isViewable
@@ -171,6 +172,9 @@ function GuildBankBar:CreateTabButton(parent, tabID, tabName, tabIcon, isViewabl
 
     btn._skinnedIcon = icon
     OneWoW_GUI:SkinIconFrame(btn, { preset = "clean" })
+    if OneWoW_Bags.Masque then
+        OneWoW_Bags.Masque:SkinBagBarButton(btn, "guild")
+    end
 
     btn:SetScript("OnEnter", function(myself)
         GameTooltip:SetOwner(myself, "ANCHOR_TOP")

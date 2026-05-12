@@ -99,16 +99,21 @@ function Mixin:OWB_FullUpdate()
         SetItemButtonCount(self, info.stackCount)
         SetItemButtonDesaturated(self, info.isLocked)
 
+        local masqueActive = OneWoW_Bags.Masque and OneWoW_Bags.Masque:IsActive()
         local quality = info.quality
-        if OneWoW_Bags:ShouldShowItemQuality(self.owb_isBank, quality) then
-            OneWoW_GUI:UpdateIconQuality(self, quality)
-        else
-            OneWoW_GUI:UpdateIconQuality(self, nil)
+        if not masqueActive then
+            if OneWoW_Bags:ShouldShowItemQuality(self.owb_isBank, quality) then
+                OneWoW_GUI:UpdateIconQuality(self, quality)
+            else
+                OneWoW_GUI:UpdateIconQuality(self, nil)
+            end
         end
 
         if self.SetItemButtonQuality then
             self:SetItemButtonQuality(quality, info.hyperlink, false)
-            if self.IconBorder then self.IconBorder:Hide() end
+            if self.IconBorder and not masqueActive then
+                self.IconBorder:Hide()
+            end
             if self.ProfessionQualityOverlay then
                 self.ProfessionQualityOverlay:SetDrawLayer("OVERLAY", 7)
             end

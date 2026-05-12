@@ -99,12 +99,16 @@ function BankSet:Build()
 
         if tabIdx <= numPurchased then
             local numSlots = C_Container.GetContainerNumSlots(bagID)
+            local masqueKind = showWarband and "warband" or "bank"
             for slotID = 1, numSlots do
                 local button = ItemPool:Acquire()
                 button:SetParent(bagFrame)
                 OneWoW_Bags:ApplyItemButtonMixin(button)
                 button:OWB_SetSlot(bagID, slotID)
                 self:ApplyBankScripts(button)
+                if OneWoW_Bags.Masque then
+                    OneWoW_Bags.Masque:SkinItemButton(button, masqueKind)
+                end
                 self.slots[bagID][slotID] = button
                 self.totalSlots = self.totalSlots + 1
             end
@@ -165,12 +169,16 @@ function BankSet:RebuildBag(bagID, numSlots)
     self.bagContainerFrames[bagID] = bagFrame
 
     self.slots[bagID] = {}
+    local masqueKind = self:IsWarband() and "warband" or "bank"
     for slotID = 1, numSlots do
         local button = ItemPool:Acquire()
         button:SetParent(bagFrame)
         OneWoW_Bags:ApplyItemButtonMixin(button)
         button:OWB_SetSlot(bagID, slotID)
         self:ApplyBankScripts(button)
+        if OneWoW_Bags.Masque then
+            OneWoW_Bags.Masque:SkinItemButton(button, masqueKind)
+        end
         button:OWB_MarkDirty()
         self.slots[bagID][slotID] = button
         self.totalSlots = self.totalSlots + 1

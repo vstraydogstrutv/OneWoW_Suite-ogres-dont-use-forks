@@ -41,9 +41,14 @@ function BH:RecycleTabButtons(buttons)
 end
 
 function BH:UpdateTabHighlights(buttons, selectedTab)
+    local masque = OneWoW_Bags.Masque
+    local masqueActive = masque and masque:IsActive()
     for id, btn in pairs(buttons) do
-        if btn._skinBorder then
-            if selectedTab ~= nil and selectedTab == id then
+        local isSelected = selectedTab ~= nil and selectedTab == id
+        if masqueActive then
+            masque:UpdateBagBarSelection(btn, isSelected)
+        elseif btn._skinBorder then
+            if isSelected then
                 btn._skinBorder:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
             else
                 btn._skinBorder:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))

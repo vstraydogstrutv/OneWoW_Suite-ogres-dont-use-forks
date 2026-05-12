@@ -114,6 +114,7 @@ local defaults = {
         moveRecentToTop = false,
         pinnedCategoryShowsWhenDisabled = true,
         showKeywordsInTooltips = true,
+        useMasque = true,
     },
 }
 
