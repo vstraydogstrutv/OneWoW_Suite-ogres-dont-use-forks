@@ -69,6 +69,7 @@ local function GetOrCreateBagFrame(bagID)
 end
 
 function BagSet:Build()
+    self._building = true
     local Profile = OneWoW_Bags.Profile
     Profile:Start("BagSet:Build")
 
@@ -110,6 +111,8 @@ function BagSet:Build()
     Profile:Stop("BagSet:Build.UpdateAllSlots")
 
     Profile:Stop("BagSet:Build")
+    self._building = false
+    OneWoW_Bags:RequestLayoutRefresh("bags")
 end
 
 function BagSet:ReleaseAll()
@@ -201,8 +204,10 @@ function BagSet:UpdateAllSlots()
     self:ProcessDirtySlots()
 end
 
+--- Returns true when at least one slot was matched and re-rendered, so
+--- callers can issue a layout refresh only for sets that actually changed.
 function BagSet:UpdateSlotsForItems(itemIDs)
-    if not self.isBuilt or not itemIDs then return end
+    if not self.isBuilt or not itemIDs then return false end
     local anyDirty = false
     for _, bagSlots in pairs(self.slots) do
         for _, button in pairs(bagSlots) do
@@ -217,6 +222,7 @@ function BagSet:UpdateSlotsForItems(itemIDs)
     if anyDirty then
         self:ProcessDirtySlots()
     end
+    return anyDirty
 end
 
 function BagSet:UpdateQualityColors()

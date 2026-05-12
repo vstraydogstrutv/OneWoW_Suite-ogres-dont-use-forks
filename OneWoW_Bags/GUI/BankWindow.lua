@@ -392,7 +392,9 @@ function BankGUI:SyncBuiltTabState()
 
     if lastBuiltBankType ~= bankType or lastPurchasedTabCount ~= purchasedTabCount then
         forcedPurchasePromptBankType = nil
-        BankSet:ReleaseAll()
+        -- Build() materializes any newly-purchased tabs and keeps the
+        -- cached opposite mode resident; on a pure type change it's a
+        -- near no-op that just toggles container-frame visibility.
         BankSet:Build()
     end
 
@@ -572,16 +574,15 @@ function BankGUI:OnBankTypeChanged()
         BankFrame.BankPanel:SetBankType(newBankType)
     end
 
-    BankSet:ReleaseAll()
+    -- Mode toggle: Build() now keeps both modes' buttons resident across
+    -- toggles (see BankSet.builtTabs). On the first toggle to a given mode
+    -- it materializes that mode's tabs; on subsequent toggles it's a near
+    -- no-op that just flips container-frame visibility.
     BankSet:Build()
     TrackBuiltBankState()
 
     BankBar:BuildTabButtons()
     BankBar:UpdateModeButtons()
-
-    WH:QueueContentRefresh(contentScrollFrame, contentFrame, function()
-        BankGUI:RefreshLayout()
-    end)
 end
 
 function BankGUI:Show()
@@ -597,8 +598,12 @@ function BankGUI:Show()
 
     MainWindow:Show()
 
+    -- BankSet:Build() emits its own RequestLayoutRefresh("bank") on completion.
+    -- For the warm path (already built), kick off a coalesced refresh ourselves.
     if not BankSet.isBuilt then
         BankSet:Build()
+    else
+        OneWoW_Bags:RequestLayoutRefresh("bank")
     end
     TrackBuiltBankState()
 
@@ -606,13 +611,12 @@ function BankGUI:Show()
     OneWoW_Bags.BankBar:BuildTabButtons()
     OneWoW_Bags.BankBar:UpdateGold()
 
-    WH:QueueContentRefresh(contentScrollFrame, contentFrame, function()
-        BankGUI:RefreshLayout()
-    end)
-
+    -- Safety-net refresh: catches late GET_ITEM_INFO_RECEIVED arrivals that
+    -- happened to slip in just before/after Build but didn't trigger another
+    -- refresh. Routed through the scheduler so it dedupes with anything else.
     C_Timer.After(0.5, function()
         if MainWindow and MainWindow:IsShown() then
-            BankGUI:RefreshLayout()
+            OneWoW_Bags:RequestLayoutRefresh("bank")
         end
     end)
 end

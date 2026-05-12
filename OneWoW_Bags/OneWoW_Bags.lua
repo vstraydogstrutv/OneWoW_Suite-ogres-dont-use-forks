@@ -65,6 +65,15 @@ local VISUAL_TARGET_KEYS = {
     all = { "BagSet", "BankSet", "GuildBankSet" },
 }
 
+local GUI_TO_SET = {
+    GUI = "BagSet",
+    BankGUI = "BankSet",
+    GuildBankGUI = "GuildBankSet",
+}
+
+local pendingRefresh = {}
+local refreshScheduled = false
+
 local function ForEachTarget(owner, targetKey, targetMap, callback)
     local keys = targetMap[targetKey or "all"] or targetMap.all
     for _, key in ipairs(keys) do
@@ -193,9 +202,25 @@ function OneWoW_Bags:InvalidateCategorization(scope)
     end
 end
 
---- Refresh item layout for one or more windows.
+--- Refresh item layout for one or more windows. Coalesced: multiple calls
+--- in the same frame collapse to a single deferred flush. Hidden windows
+--- and windows whose backing Set is mid-Build are skipped.
 ---@param target "bags"|"bank"|"guild"|"bank_related"|"all"|nil
 function OneWoW_Bags:RequestLayoutRefresh(target)
+    ForEachTarget(self, target, GUI_TARGET_KEYS, function(_, key)
+        pendingRefresh[key] = true
+    end)
+    if not refreshScheduled then
+        refreshScheduled = true
+        C_Timer.After(0, function() self:FlushPendingLayoutRefreshes() end)
+    end
+end
+
+--- Synchronous escape hatch for callers that cannot tolerate the
+--- coalescer's one-frame delay. Skips visibility/build gating so a hidden
+--- window can pre-warm its layout before being shown. Use sparingly.
+---@param target "bags"|"bank"|"guild"|"bank_related"|"all"|nil
+function OneWoW_Bags:RequestLayoutRefreshNow(target)
     ForEachTarget(self, target, GUI_TARGET_KEYS, function(gui)
         if gui.RefreshLayout then
             gui:RefreshLayout()
@@ -203,15 +228,47 @@ function OneWoW_Bags:RequestLayoutRefresh(target)
     end)
 end
 
+--- Flush pending coalesced refresh requests. Skips windows that are
+--- hidden or whose backing Set is in the middle of a Build.
+function OneWoW_Bags:FlushPendingLayoutRefreshes()
+    refreshScheduled = false
+    local Profile = self.Profile
+    if Profile then Profile:Start("RequestLayoutRefresh.Flush") end
+    for guiKey in pairs(pendingRefresh) do
+        pendingRefresh[guiKey] = nil
+        local gui = self[guiKey]
+        local setKey = GUI_TO_SET[guiKey]
+        local backingSet = setKey and self[setKey]
+        local visible = gui and (gui.IsShown == nil or gui:IsShown())
+        local building = backingSet and backingSet._building == true
+        if gui and gui.RefreshLayout and visible and not building then
+            gui:RefreshLayout()
+        end
+    end
+    if Profile then Profile:Stop("RequestLayoutRefresh.Flush") end
+end
+
+local SET_TO_TARGET = {
+    BagSet = "bags",
+    BankSet = "bank",
+    GuildBankSet = "guild",
+}
+
 --- Re-render only slots whose cached item matches one of the given item IDs.
 --- Used by GET_ITEM_INFO_RECEIVED streaming to avoid rebuilding every slot.
+--- Emits a coalesced layout refresh only for the sets that actually matched
+--- one of the item IDs, so e.g. bank-only item-info batches don't refresh
+--- the bags window.
 ---@param itemIDs table<number, boolean>|number[]|nil
 function OneWoW_Bags:UpdateSlotsForItemIDs(itemIDs)
     if not itemIDs then return end
     for _, key in ipairs(VISUAL_TARGET_KEYS.all) do
         local setObj = self[key]
         if setObj and setObj.isBuilt and setObj.UpdateSlotsForItems then
-            setObj:UpdateSlotsForItems(itemIDs)
+            local matched = setObj:UpdateSlotsForItems(itemIDs)
+            if matched then
+                self:RequestLayoutRefresh(SET_TO_TARGET[key])
+            end
         end
     end
 end
@@ -514,9 +571,7 @@ function OneWoW_Bags:RefreshGuildBankContents()
         self.GuildBankBar:UpdateFreeSlots(self.GuildBankSet:GetFreeSlotCount(), self.GuildBankSet:GetSlotCount())
     end
 
-    if self.GuildBankGUI and self.GuildBankGUI:IsShown() then
-        self.GuildBankGUI:RefreshLayout()
-    end
+    self:RequestLayoutRefresh("guild")
 end
 
 function OneWoW_Bags:TrackGuildBankTransferTab(tabID)
@@ -673,11 +728,9 @@ end
 
 function OneWoW_Bags:OnGuildBankTabsUpdated()
     if self.guildBankOpen then
+        -- GuildBankSet:Build() already emits a coalesced RequestLayoutRefresh("guild").
         self.GuildBankSet:Build()
         self.GuildBankBar:BuildTabButtons()
-        if self.GuildBankGUI and self.GuildBankGUI:IsShown() then
-            self.GuildBankGUI:RefreshLayout()
-        end
     end
 end
 
@@ -723,7 +776,8 @@ function OneWoW_Bags:OnBankTabsChanged(bankType)
     end
 
     if self.BankSet then
-        self.BankSet:ReleaseAll()
+        -- Build() materializes only newly-purchased tabs (others remain
+        -- cached); it also emits a coalesced RequestLayoutRefresh("bank").
         self.BankSet:Build()
     end
 
@@ -731,10 +785,6 @@ function OneWoW_Bags:OnBankTabsChanged(bankType)
         self.BankBar:BuildTabButtons()
         self.BankBar:UpdateTabHighlights()
         self.BankBar:UpdateGold()
-    end
-
-    if self.BankGUI and self.BankGUI.RefreshLayout then
-        self.BankGUI:RefreshLayout()
     end
 end
 
@@ -806,16 +856,28 @@ end
 
 function OneWoW_Bags:ProcessBagUpdate(dirtyBags)
     self.Categories:OnPlayerBagDirtySnapshot(dirtyBags)
-    if self.BagSet.isBuilt then
-        self.BagSet:UpdateDirtyBags(dirtyBags)
-        self.GUI:RefreshLayout()
+
+    -- Partition dirty bagIDs by container domain so we only refresh the
+    -- windows that actually had data change. During bank-open the server
+    -- streams BAG_UPDATEs for bank tabs only - the bags window does not
+    -- need to re-layout for those, and vice versa.
+    local bagsDirty, bankDirty = false, false
+    for bagID in pairs(dirtyBags) do
+        if self.BagTypes:IsPlayerBag(bagID) then
+            bagsDirty = true
+        elseif self.BankTypes:IsPersonalBankTab(bagID) or self.BankTypes:IsWarbandTab(bagID) then
+            bankDirty = true
+        end
     end
 
-    if self.bankOpen then
-        if self.BankSet.isBuilt then
-            self.BankSet:UpdateDirtyBags(dirtyBags)
-            self.BankGUI:RefreshLayout()
-        end
+    if self.BagSet.isBuilt and bagsDirty then
+        self.BagSet:UpdateDirtyBags(dirtyBags)
+        self:RequestLayoutRefresh("bags")
+    end
+
+    if self.bankOpen and self.BankSet.isBuilt and bankDirty then
+        self.BankSet:UpdateDirtyBags(dirtyBags)
+        self:RequestLayoutRefresh("bank")
     end
 end
 

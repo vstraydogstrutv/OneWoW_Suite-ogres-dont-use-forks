@@ -250,13 +250,13 @@ function GUI:Show()
 
     MainWindow:Show()
 
+    -- BagSet:Build() emits its own RequestLayoutRefresh("bags") on completion.
+    -- For the warm path (already built), kick off a coalesced refresh ourselves.
     if not BagSet.isBuilt then
         BagSet:Build()
+    else
+        OneWoW_Bags:RequestLayoutRefresh("bags")
     end
-
-    WH:QueueContentRefresh(contentScrollFrame, contentFrame, function()
-        GUI:RefreshLayout()
-    end)
 
     Categories:BeginRecentExpiryTicker()
 end

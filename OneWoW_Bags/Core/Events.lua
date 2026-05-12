@@ -66,7 +66,9 @@ end
 -- refresh path here rebuilds every slot on every event, causing flashing
 -- when the server re-queries items (e.g. failed Warband soulbound inserts).
 -- Instead, coalesce itemIDs until next frame and re-render only the slots
--- holding those specific items.
+-- holding those specific items. UpdateSlotsForItemIDs now emits its own
+-- per-set layout refreshes for any set that actually matched, so we no
+-- longer issue a blanket "all" refresh here.
 function Events:OnItemInfoReceived(itemID)
     if not itemID then return end
 
@@ -78,7 +80,6 @@ function Events:OnItemInfoReceived(itemID)
             local ids = pendingItemIDs
             pendingItemIDs = nil
             OneWoW_Bags:UpdateSlotsForItemIDs(ids)
-            OneWoW_Bags:RequestLayoutRefresh("all")
         end)
     end
     pendingItemIDs[itemID] = true

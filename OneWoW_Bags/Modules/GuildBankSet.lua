@@ -235,6 +235,7 @@ function GBSet:RebuildButtonList()
 end
 
 function GBSet:Build()
+    self._building = true
     local Profile = OneWoW_Bags.Profile
     Profile:Start("GuildBankSet:Build")
 
@@ -279,6 +280,8 @@ function GBSet:Build()
     Profile:Stop("GuildBankSet:Build.UpdateAllSlots")
 
     Profile:Stop("GuildBankSet:Build")
+    self._building = false
+    OneWoW_Bags:RequestLayoutRefresh("guild")
 end
 
 function GBSet:CacheTab(tabID)

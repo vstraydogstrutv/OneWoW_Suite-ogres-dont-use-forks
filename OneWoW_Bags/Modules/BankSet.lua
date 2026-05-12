@@ -21,6 +21,17 @@ BankSet.buttonList = {}
 BankSet.bagRanges = {}
 BankSet._allButtonsScratch = {}
 BankSet._bagButtonsScratch = {}
+-- Tracks which bag tabs have had their item buttons materialized this bank
+-- session. Used to keep both personal and warband modes resident after their
+-- first build so toggling between them is near-instant.
+BankSet.builtTabs = {}
+
+local function MasqueKindFor(bagID)
+    if BankTypes:IsWarbandTab(bagID) then
+        return "warband"
+    end
+    return "bank"
+end
 
 local function CopyRange(source, startIndex, stopIndex, dest)
     wipe(dest)
@@ -80,58 +91,116 @@ function BankSet:RebuildButtonList()
             end
         end
     end
+
+    self.totalSlots = #self.buttonList
+end
+
+-- Materialize item buttons for a single bag tab. Idempotent at the slot
+-- level: existing buttons in the tab are kept, missing slots are filled.
+function BankSet:BuildTab(bagID, masqueKind, numSlots)
+    local bagFrame = GetOrCreateBankFrame(bagID)
+    self.bagContainerFrames[bagID] = bagFrame
+    if not self.slots[bagID] then
+        self.slots[bagID] = {}
+    end
+
+    for slotID = 1, numSlots do
+        if not self.slots[bagID][slotID] then
+            local button = ItemPool:Acquire()
+            button:SetParent(bagFrame)
+            OneWoW_Bags:ApplyItemButtonMixin(button)
+            button:OWB_SetSlot(bagID, slotID)
+            self:ApplyBankScripts(button)
+            if OneWoW_Bags.Masque then
+                OneWoW_Bags.Masque:SkinItemButton(button, masqueKind)
+            end
+            self.slots[bagID][slotID] = button
+        end
+    end
+
+    self.builtTabs[bagID] = true
+end
+
+-- Show container frames for the active mode's tabs, hide others. Also
+-- rebuilds buttonList so downstream consumers (layout, search, sort) see
+-- only active-mode buttons.
+function BankSet:SetActiveModeVisibility(showWarband)
+    if showWarband == nil then
+        showWarband = self:IsWarband()
+    end
+
+    local activeTabs = showWarband and BankTypes:GetWarbandTabIDs() or BankTypes:GetBankTabIDs()
+    local activeSet = {}
+    for _, bagID in ipairs(activeTabs) do
+        activeSet[bagID] = true
+    end
+
+    for bagID, frame in pairs(self.bagContainerFrames) do
+        if activeSet[bagID] then
+            frame:Show()
+        else
+            frame:Hide()
+        end
+    end
+
+    self:RebuildButtonList()
 end
 
 function BankSet:Build()
+    self._building = true
     local Profile = OneWoW_Bags.Profile
     Profile:Start("BankSet:Build")
-
-    Profile:Start("BankSet:Build.ReleaseAll")
-    self:ReleaseAll()
-    Profile:Stop("BankSet:Build.ReleaseAll")
-    self.totalSlots = 0
-    self.freeSlots = 0
 
     local showWarband = self:IsWarband()
     local bankType = showWarband and Enum.BankType.Account or Enum.BankType.Character
     local numPurchased = C_Bank.FetchNumPurchasedBankTabs(bankType) or 0
+    local masqueKind = showWarband and "warband" or "bank"
+    local createLabel = showWarband and "BankSet:Build.CreateButtons[warband]" or "BankSet:Build.CreateButtons[bank]"
 
-    Profile:Start(showWarband and "BankSet:Build.CreateButtons[warband]" or "BankSet:Build.CreateButtons[bank]")
-    local bagList = self:GetActiveTabs()
-    for tabIdx, bagID in ipairs(bagList) do
-        local bagFrame = GetOrCreateBankFrame(bagID)
-        self.bagContainerFrames[bagID] = bagFrame
-        self.slots[bagID] = {}
+    local newTabsBuilt = false
 
-        if tabIdx <= numPurchased then
+    Profile:Start(createLabel)
+    for tabIdx, bagID in ipairs(self:GetActiveTabs()) do
+        if not self.builtTabs[bagID] and tabIdx <= numPurchased then
             local numSlots = C_Container.GetContainerNumSlots(bagID)
-            local masqueKind = showWarband and "warband" or "bank"
-            for slotID = 1, numSlots do
-                local button = ItemPool:Acquire()
-                button:SetParent(bagFrame)
-                OneWoW_Bags:ApplyItemButtonMixin(button)
-                button:OWB_SetSlot(bagID, slotID)
-                self:ApplyBankScripts(button)
-                if OneWoW_Bags.Masque then
-                    OneWoW_Bags.Masque:SkinItemButton(button, masqueKind)
-                end
-                self.slots[bagID][slotID] = button
-                self.totalSlots = self.totalSlots + 1
+            self:BuildTab(bagID, masqueKind, numSlots)
+            newTabsBuilt = true
+        elseif not self.bagContainerFrames[bagID] then
+            -- Ensure unpurchased active-mode tabs still have an empty
+            -- container frame so the layout controller has something to
+            -- iterate; matches the original Build's behavior.
+            local bagFrame = GetOrCreateBankFrame(bagID)
+            self.bagContainerFrames[bagID] = bagFrame
+            if not self.slots[bagID] then
+                self.slots[bagID] = {}
             end
         end
     end
-    Profile:Stop(showWarband and "BankSet:Build.CreateButtons[warband]" or "BankSet:Build.CreateButtons[bank]")
+    Profile:Stop(createLabel)
 
     self.isBuilt = true
-    Profile:Start("BankSet:Build.RebuildButtonList")
-    self:RebuildButtonList()
-    Profile:Stop("BankSet:Build.RebuildButtonList")
 
-    Profile:Start("BankSet:Build.UpdateAllSlots")
-    self:UpdateAllSlots()
-    Profile:Stop("BankSet:Build.UpdateAllSlots")
+    Profile:Start("BankSet:Build.SetActiveMode")
+    self:SetActiveModeVisibility(showWarband)
+    Profile:Stop("BankSet:Build.SetActiveMode")
+
+    -- Only refresh slot data when new tabs were just materialized. The
+    -- cached inactive mode is kept fresh via UpdateDirtyBags as BAG_UPDATE
+    -- events arrive, so a pure toggle to a previously-built mode does no
+    -- per-button work here.
+    if newTabsBuilt then
+        Profile:Start("BankSet:Build.UpdateAllSlots")
+        self:UpdateAllSlots()
+        Profile:Stop("BankSet:Build.UpdateAllSlots")
+    else
+        Profile:Start("BankSet:Build.ProcessDirtySlots")
+        self:ProcessDirtySlots()
+        Profile:Stop("BankSet:Build.ProcessDirtySlots")
+    end
 
     Profile:Stop("BankSet:Build")
+    self._building = false
+    OneWoW_Bags:RequestLayoutRefresh("bank")
 end
 
 function BankSet:ReleaseAll()
@@ -141,8 +210,14 @@ function BankSet:ReleaseAll()
             ItemPool:Release(button)
         end
     end
+    for _, frame in pairs(self.bagContainerFrames) do
+        if frame and frame.Hide then
+            frame:Hide()
+        end
+    end
     self.slots = {}
     self.bagContainerFrames = {}
+    wipe(self.builtTabs)
     wipe(self.buttonList)
     wipe(self.bagRanges)
     wipe(self._allButtonsScratch)
@@ -174,16 +249,22 @@ end
 function BankSet:RebuildBag(bagID, numSlots)
     if self.slots[bagID] then
         for _, button in pairs(self.slots[bagID]) do
+            self:RestoreBankScripts(button)
             ItemPool:Release(button)
-            self.totalSlots = self.totalSlots - 1
         end
     end
 
     local bagFrame = GetOrCreateBankFrame(bagID)
     self.bagContainerFrames[bagID] = bagFrame
-
     self.slots[bagID] = {}
-    local masqueKind = self:IsWarband() and "warband" or "bank"
+
+    if numSlots <= 0 then
+        self.builtTabs[bagID] = nil
+        self:RebuildButtonList()
+        return
+    end
+
+    local masqueKind = MasqueKindFor(bagID)
     for slotID = 1, numSlots do
         local button = ItemPool:Acquire()
         button:SetParent(bagFrame)
@@ -195,21 +276,27 @@ function BankSet:RebuildBag(bagID, numSlots)
         end
         button:OWB_MarkDirty()
         self.slots[bagID][slotID] = button
-        self.totalSlots = self.totalSlots + 1
     end
+    self.builtTabs[bagID] = true
     self:RebuildButtonList()
 end
 
+-- Processes any dirty buttons across BOTH modes so the cached inactive
+-- mode stays correct for instant toggles. Free-slot counter is scoped to
+-- the active mode (buttonList already filters to it).
 function BankSet:ProcessDirtySlots()
-    self.freeSlots = 0
     for _, bagSlots in pairs(self.slots) do
         for _, button in pairs(bagSlots) do
             if button:OWB_IsDirty() then
                 button:OWB_FullUpdate()
             end
-            if not button.owb_hasItem then
-                self.freeSlots = self.freeSlots + 1
-            end
+        end
+    end
+
+    self.freeSlots = 0
+    for _, button in ipairs(self.buttonList) do
+        if not button.owb_hasItem then
+            self.freeSlots = self.freeSlots + 1
         end
     end
 end
@@ -223,8 +310,10 @@ function BankSet:UpdateAllSlots()
     self:ProcessDirtySlots()
 end
 
+--- Returns true when at least one slot was matched and re-rendered, so
+--- callers can issue a layout refresh only for sets that actually changed.
 function BankSet:UpdateSlotsForItems(itemIDs)
-    if not self.isBuilt or not itemIDs then return end
+    if not self.isBuilt or not itemIDs then return false end
     local anyDirty = false
     for _, bagSlots in pairs(self.slots) do
         for _, button in pairs(bagSlots) do
@@ -239,6 +328,7 @@ function BankSet:UpdateSlotsForItems(itemIDs)
     if anyDirty then
         self:ProcessDirtySlots()
     end
+    return anyDirty
 end
 
 function BankSet:RefreshAllVisuals()

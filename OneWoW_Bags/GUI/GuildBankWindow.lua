@@ -243,18 +243,18 @@ function GuildBankGUI:Show()
 
     MainWindow:Show()
 
+    -- GuildBankSet:Build() emits its own RequestLayoutRefresh("guild") on completion.
+    -- For the warm path (already built), kick off a coalesced refresh ourselves.
     if not GuildBankSet.isBuilt then
         GuildBankSet:Build()
+    else
+        OneWoW_Bags:RequestLayoutRefresh("guild")
     end
 
     GuildBankBar:BuildTabButtons()
     GuildBankBar:UpdateTabHighlights()
     GuildBankBar:UpdateGold()
     GuildBankInfoBar:UpdateViewButtons()
-
-    WH:QueueContentRefresh(contentScrollFrame, contentFrame, function()
-        GuildBankGUI:RefreshLayout()
-    end)
 end
 
 function GuildBankGUI:Hide()
