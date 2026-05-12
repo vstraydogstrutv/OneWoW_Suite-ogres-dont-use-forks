@@ -88,11 +88,17 @@ function Mixin:OWB_UpdateNewItemGlow(quality, hasItem, props)
 end
 
 function Mixin:OWB_FullUpdate()
+    local Profile = OneWoW_Bags.Profile
+    local tFull = Profile:Mark()
     self.owb_dirty = false
 
+    local tGCII = Profile:Mark()
     local info = C_Container.GetContainerItemInfo(self.owb_bagID, self.owb_slotID)
+    Profile:Add("C_Container.GetContainerItemInfo[OWB_FullUpdate]", tGCII)
     self.owb_itemInfo = info
+    local tBP = Profile:Mark()
     local props = info and info.itemID and PE:BuildProps(info.itemID, self.owb_bagID, self.owb_slotID, info) or nil
+    Profile:Add("PE:BuildProps[OWB_FullUpdate]", tBP)
 
     if info and info.hyperlink then
         SetItemButtonTexture(self, info.iconFileID)
@@ -155,6 +161,7 @@ function Mixin:OWB_FullUpdate()
     self:OWB_UpdateUnusableOverlay(hasItem, info, props)
 
     self._owb_isJunk = isJunk
+    Profile:Add("OWB_FullUpdate", tFull)
 end
 
 function Mixin:OWB_UpdateJunkDim(hasItem, isJunk)

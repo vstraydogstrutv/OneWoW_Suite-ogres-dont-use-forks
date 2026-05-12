@@ -25,6 +25,7 @@ Locales\ruRU.lua
 Locales\deDE.lua
 
 # Core
+Core\Profile.lua
 Core\Constants.lua
 Core\SectionDefaults.lua
 Core\Database.lua

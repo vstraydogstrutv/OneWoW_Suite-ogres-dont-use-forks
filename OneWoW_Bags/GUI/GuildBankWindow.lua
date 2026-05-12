@@ -157,6 +157,9 @@ function GuildBankGUI:RefreshLayout()
     local controller = GetLayoutController()
     if not controller or not controller.Refresh then return end
 
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("GuildBankGUI:RefreshLayout")
+
     controller:Refresh({
         mainWindow = MainWindow,
         isBuilt = function()
@@ -217,6 +220,8 @@ function GuildBankGUI:RefreshLayout()
             GuildBankBar:UpdateFreeSlots(GuildBankSet:GetFreeSlotCount(), GuildBankSet:GetSlotCount())
         end,
     })
+
+    Profile:Stop("GuildBankGUI:RefreshLayout")
 end
 
 function GuildBankGUI:OnSearchChanged()

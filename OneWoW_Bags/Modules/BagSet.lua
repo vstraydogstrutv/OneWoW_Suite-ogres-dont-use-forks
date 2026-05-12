@@ -69,10 +69,16 @@ local function GetOrCreateBagFrame(bagID)
 end
 
 function BagSet:Build()
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("BagSet:Build")
+
+    Profile:Start("BagSet:Build.ReleaseAll")
     self:ReleaseAll()
+    Profile:Stop("BagSet:Build.ReleaseAll")
     self.totalSlots = 0
     self.freeSlots = 0
 
+    Profile:Start("BagSet:Build.CreateButtons")
     for _, bagID in ipairs(BagTypes:GetPlayerBagIDs()) do
         local bagFrame = GetOrCreateBagFrame(bagID)
         self.bagContainerFrames[bagID] = bagFrame
@@ -92,10 +98,18 @@ function BagSet:Build()
             self.totalSlots = self.totalSlots + 1
         end
     end
+    Profile:Stop("BagSet:Build.CreateButtons")
 
     self.isBuilt = true
+    Profile:Start("BagSet:Build.RebuildButtonList")
     self:RebuildButtonList()
+    Profile:Stop("BagSet:Build.RebuildButtonList")
+
+    Profile:Start("BagSet:Build.UpdateAllSlots")
     self:UpdateAllSlots()
+    Profile:Stop("BagSet:Build.UpdateAllSlots")
+
+    Profile:Stop("BagSet:Build")
 end
 
 function BagSet:ReleaseAll()

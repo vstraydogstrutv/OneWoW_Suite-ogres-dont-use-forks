@@ -83,7 +83,12 @@ function BankSet:RebuildButtonList()
 end
 
 function BankSet:Build()
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("BankSet:Build")
+
+    Profile:Start("BankSet:Build.ReleaseAll")
     self:ReleaseAll()
+    Profile:Stop("BankSet:Build.ReleaseAll")
     self.totalSlots = 0
     self.freeSlots = 0
 
@@ -91,6 +96,7 @@ function BankSet:Build()
     local bankType = showWarband and Enum.BankType.Account or Enum.BankType.Character
     local numPurchased = C_Bank.FetchNumPurchasedBankTabs(bankType) or 0
 
+    Profile:Start(showWarband and "BankSet:Build.CreateButtons[warband]" or "BankSet:Build.CreateButtons[bank]")
     local bagList = self:GetActiveTabs()
     for tabIdx, bagID in ipairs(bagList) do
         local bagFrame = GetOrCreateBankFrame(bagID)
@@ -114,10 +120,18 @@ function BankSet:Build()
             end
         end
     end
+    Profile:Stop(showWarband and "BankSet:Build.CreateButtons[warband]" or "BankSet:Build.CreateButtons[bank]")
 
     self.isBuilt = true
+    Profile:Start("BankSet:Build.RebuildButtonList")
     self:RebuildButtonList()
+    Profile:Stop("BankSet:Build.RebuildButtonList")
+
+    Profile:Start("BankSet:Build.UpdateAllSlots")
     self:UpdateAllSlots()
+    Profile:Stop("BankSet:Build.UpdateAllSlots")
+
+    Profile:Stop("BankSet:Build")
 end
 
 function BankSet:ReleaseAll()

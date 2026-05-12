@@ -235,10 +235,16 @@ function GBSet:RebuildButtonList()
 end
 
 function GBSet:Build()
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("GuildBankSet:Build")
+
+    Profile:Start("GuildBankSet:Build.ReleaseAll")
     self:ReleaseAll()
+    Profile:Stop("GuildBankSet:Build.ReleaseAll")
     self.totalSlots = 0
     self.numTabs = GetNumGuildBankTabs() or 0
 
+    Profile:Start("GuildBankSet:Build.CreateButtons")
     for tabID = 1, self.numTabs do
         self.slots[tabID] = {}
         local gbFrame = GetOrCreateGuildBankFrame(tabID)
@@ -261,10 +267,18 @@ function GBSet:Build()
             end
         end
     end
+    Profile:Stop("GuildBankSet:Build.CreateButtons")
 
     self.isBuilt = true
+    Profile:Start("GuildBankSet:Build.RebuildButtonList")
     self:RebuildButtonList()
+    Profile:Stop("GuildBankSet:Build.RebuildButtonList")
+
+    Profile:Start("GuildBankSet:Build.UpdateAllSlots")
     self:UpdateAllSlots()
+    Profile:Stop("GuildBankSet:Build.UpdateAllSlots")
+
+    Profile:Stop("GuildBankSet:Build")
 end
 
 function GBSet:CacheTab(tabID)
@@ -309,6 +323,8 @@ function GBSet:CacheAllTabs()
 end
 
 local function ApplyCachedItemToButton(button, cached)
+    local Profile = OneWoW_Bags.Profile
+    local tApply = Profile:Mark()
     OneWoW_Bags.ItemPool:ClearNewItemGlow(button)
 
     if cached and cached.texture then
@@ -332,7 +348,9 @@ local function ApplyCachedItemToButton(button, cached)
             quality = cached.quality,
             iconFileID = cached.texture,
         }
+        local tProps = Profile:Mark()
         local props = OneWoW_Bags:GetButtonProps(button)
+        Profile:Add("GuildBankSet:GetButtonProps", tProps)
         button._owb_sortName = props.nameRaw ~= "" and props.nameRaw or nil
         button._owb_ilvl = props.ilvl and props.ilvl > 0 and props.ilvl or nil
         button._owb_expansionID = props.expansionID
@@ -362,6 +380,7 @@ local function ApplyCachedItemToButton(button, cached)
     else
         ClearGuildBankButton(button)
     end
+    Profile:Add("GuildBankSet:ApplyCachedItemToButton", tApply)
 end
 
 function GBSet:ApplyCacheToButtons(tabSet)
@@ -403,8 +422,14 @@ function GBSet:UpdateTabs(tabSet)
 end
 
 function GBSet:UpdateAllSlots()
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("GuildBankSet:UpdateAllSlots.CacheAllTabs")
     local summary = self:CacheAllTabs()
+    Profile:Stop("GuildBankSet:UpdateAllSlots.CacheAllTabs")
+
+    Profile:Start("GuildBankSet:UpdateAllSlots.ApplyCacheToButtons")
     self:ApplyCacheToButtons()
+    Profile:Stop("GuildBankSet:UpdateAllSlots.ApplyCacheToButtons")
     return summary
 end
 

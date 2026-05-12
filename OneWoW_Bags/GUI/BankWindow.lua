@@ -439,6 +439,9 @@ function BankGUI:RefreshLayout()
     local controller = GetLayoutController()
     if not controller or not controller.Refresh then return end
 
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("BankGUI:RefreshLayout")
+
     self:SyncBuiltTabState()
 
     controller:Refresh({
@@ -549,6 +552,8 @@ function BankGUI:RefreshLayout()
             BankGUI:RefreshPurchasePrompt(layoutHeight)
         end,
     })
+
+    Profile:Stop("BankGUI:RefreshLayout")
 end
 
 function BankGUI:OnSearchChanged()
