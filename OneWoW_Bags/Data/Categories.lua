@@ -11,6 +11,7 @@ local Constants = OneWoW_Bags.Constants
 local tinsert, sort, wipe = tinsert, sort, wipe
 local ipairs, pairs = ipairs, pairs
 local type, time, tostring = type, time, tostring
+local strfind = string.find
 local C_Item = C_Item
 local C_Container = C_Container
 local C_NewItems = C_NewItems
@@ -86,6 +87,18 @@ local recentExpiryTicker = nil
 
 local customCategoriesV2 = {}
 
+-- Precomputed mirror of customCategoriesV2 with slot-invariant fields baked
+-- in (filterMode, lowercased itemType/itemSubType, needsExpand flag). Rebuilt
+-- whenever customCategoriesV2 mutates so the per-slot
+-- CollectCustomPredicateCandidates loop can skip a lot of repeat work.
+local precomputedCustomCands = {}
+
+-- C_Item.GetItemClassInfo / GetItemSubClassInfo return localized strings that
+-- are stable for the entire session. Cache the lowercased forms so type-mode
+-- custom categories don't pay the Blizzard API + :lower() cost per slot.
+local classNameLowerCache = {}
+local subClassNameLowerCache = {}
+
 -- Two-tier category cache:
 --   categoryCache:     slot-keyed final result (per-slot overlays applied).
 --                      Hot path for repeat lookups of the same slot.
@@ -115,9 +128,91 @@ local function GetSlotCategoryName(equipLoc)
     return nil
 end
 
+local function InferFilterMode(categoryData)
+    local fm = categoryData.filterMode
+    if fm then return fm end
+    if categoryData.searchExpression and categoryData.searchExpression ~= "" then
+        return "search"
+    end
+    return "type"
+end
+
+-- True iff the expression references a saved search via SAVED(name). Lets the
+-- per-slot loop skip SavedSearches:Expand entirely for expressions that have
+-- nothing to expand (the common case for inline expressions).
+local function NeedsSavedExpand(expression)
+    return type(expression) == "string" and strfind(expression, "SAVED(", 1, true) ~= nil
+end
+
+-- Cache C_Item.GetItemClassInfo(classID):lower(). The returned string is a
+-- localized name that is stable for the entire session, so the first lookup
+-- per classID is the only one that pays the Blizzard API cost. Cached `false`
+-- is used to memoize "no name available" so we don't retry every slot.
+local function GetClassNameLower(classID)
+    if classID == nil then return nil end
+    local cached = classNameLowerCache[classID]
+    if cached ~= nil then return cached or nil end
+    local name = C_Item.GetItemClassInfo(classID)
+    classNameLowerCache[classID] = name and name:lower() or false
+    return classNameLowerCache[classID] or nil
+end
+
+local function GetSubClassNameLower(classID, subClassID)
+    if classID == nil or subClassID == nil then return nil end
+    local subCache = subClassNameLowerCache[classID]
+    if not subCache then
+        subCache = {}
+        subClassNameLowerCache[classID] = subCache
+    end
+    local cached = subCache[subClassID]
+    if cached ~= nil then return cached or nil end
+    local name = C_Item.GetItemSubClassInfo(classID, subClassID)
+    subCache[subClassID] = name and name:lower() or false
+    return subCache[subClassID] or nil
+end
+
+-- Rebuild the precomputed mirror of customCategoriesV2 with slot-invariant
+-- fields baked in. Called whenever custom categories mutate (Set, Create,
+-- Delete, field edits). Per-slot CollectCustomPredicateCandidates iterates
+-- this array instead of the raw map so it doesn't have to recompute
+-- InferFilterMode, :lower(), or needsExpand on every slot.
+local function RebuildCustomCandsArray()
+    wipe(precomputedCustomCands)
+    for categoryId, categoryData in pairs(customCategoriesV2) do
+        if categoryData.name then
+            local fm = InferFilterMode(categoryData)
+            local entry = {
+                categoryId   = categoryId,
+                categoryData = categoryData,
+                name         = categoryData.name,
+                filterMode   = fm,
+            }
+            if fm == "search" then
+                local expr = categoryData.searchExpression
+                if type(expr) == "string" and expr ~= "" then
+                    entry.expression  = expr
+                    entry.needsExpand = NeedsSavedExpand(expr)
+                end
+            else
+                local hasType    = categoryData.itemType and categoryData.itemType ~= ""
+                local hasSubType = categoryData.itemSubType and categoryData.itemSubType ~= ""
+                if hasType or hasSubType then
+                    entry.hasType          = hasType or false
+                    entry.hasSubType       = hasSubType or false
+                    entry.lowerItemType    = hasType and categoryData.itemType:lower() or nil
+                    entry.lowerItemSubType = hasSubType and categoryData.itemSubType:lower() or nil
+                    entry.typeMatchMode    = categoryData.typeMatchMode
+                end
+            end
+            tinsert(precomputedCustomCands, entry)
+        end
+    end
+end
+
 local function InvalidateCache()
     wipe(categoryCache)
     wipe(baseCategoryCache)
+    RebuildCustomCandsArray()
 end
 
 local ALWAYS_APPLY = { ["Other"] = true, ["Empty"] = true }
@@ -254,63 +349,53 @@ local function ResolveManualCategoryName(itemID, db, disabled, containerType)
     return best and best.name or nil
 end
 
-local function InferFilterMode(categoryData)
-    local fm = categoryData.filterMode
-    if fm then return fm end
-    if categoryData.searchExpression and categoryData.searchExpression ~= "" then
-        return "search"
-    end
-    return "type"
-end
-
 local function CollectCustomPredicateCandidates(itemID, bagID, slotID, itemInfo, disabled, cands)
-    for categoryId, categoryData in pairs(customCategoriesV2) do
-        if categoryData.enabled ~= false then
-            local fm = InferFilterMode(categoryData)
-            if fm == "search" then
-                if categoryData.searchExpression and categoryData.searchExpression ~= "" then
-                    local expression = categoryData.searchExpression
-                    if OneWoW_Bags.SavedSearches then
-                        expression = OneWoW_Bags.SavedSearches:Expand(expression)
+    local SavedSearches = OneWoW_Bags.SavedSearches
+    for i = 1, #precomputedCustomCands do
+        local entry = precomputedCustomCands[i]
+        local categoryData = entry.categoryData
+
+        -- Cheap gates first: category-disabled (live ref, no rebuild required
+        -- when toggled) and user-disabled (per-pass parameter). These short-
+        -- circuit before any predicate evaluation or Blizzard API call.
+        if categoryData.enabled ~= false and not disabled[entry.name] then
+            if entry.filterMode == "search" then
+                local expr = entry.expression
+                if expr then
+                    if entry.needsExpand and SavedSearches then
+                        expr = SavedSearches:Expand(expr)
                     end
-                    if PE:CheckItem(expression, itemID, bagID, slotID, itemInfo or {}) then
-                        if not disabled[categoryData.name] then
-                            tinsert(cands, { name = categoryData.name, tieKey = categoryId, isCustom = true })
-                        end
+                    if PE:CheckItem(expr, itemID, bagID, slotID, itemInfo or {}) then
+                        tinsert(cands, { name = entry.name, tieKey = entry.categoryId, isCustom = true })
                     end
                 end
-            else
-                local hasType = categoryData.itemType and categoryData.itemType ~= ""
-                local hasSubType = categoryData.itemSubType and categoryData.itemSubType ~= ""
-                if hasType or hasSubType then
-                    local props = PE:BuildProps(itemID, bagID, slotID, itemInfo)
-                    local classID = props.classID
-                    local subClassID = props.subClassID
-                    local typeMatch = not hasType
-                    local subTypeMatch = not hasSubType
-                    if hasType and classID ~= nil then
-                        local className = C_Item.GetItemClassInfo(classID)
-                        typeMatch = className ~= nil and className:lower() == categoryData.itemType:lower()
-                    end
-                    if hasSubType and classID ~= nil and subClassID ~= nil then
-                        local subClassName = C_Item.GetItemSubClassInfo(classID, subClassID)
-                        subTypeMatch = subClassName ~= nil and subClassName:lower() == categoryData.itemSubType:lower()
-                    end
-                    local matched
-                    if hasType and hasSubType then
-                        if categoryData.typeMatchMode == "or" then
-                            matched = typeMatch or subTypeMatch
-                        else
-                            matched = typeMatch and subTypeMatch
-                        end
-                    elseif hasType then
-                        matched = typeMatch
+            elseif entry.hasType or entry.hasSubType then
+                local props = PE:BuildProps(itemID, bagID, slotID, itemInfo)
+                local classID, subClassID = props.classID, props.subClassID
+                local typeMatch    = not entry.hasType
+                local subTypeMatch = not entry.hasSubType
+                if entry.hasType and classID ~= nil then
+                    local cn = GetClassNameLower(classID)
+                    typeMatch = cn ~= nil and cn == entry.lowerItemType
+                end
+                if entry.hasSubType and classID ~= nil and subClassID ~= nil then
+                    local scn = GetSubClassNameLower(classID, subClassID)
+                    subTypeMatch = scn ~= nil and scn == entry.lowerItemSubType
+                end
+                local matched
+                if entry.hasType and entry.hasSubType then
+                    if entry.typeMatchMode == "or" then
+                        matched = typeMatch or subTypeMatch
                     else
-                        matched = subTypeMatch
+                        matched = typeMatch and subTypeMatch
                     end
-                    if matched and not disabled[categoryData.name] then
-                        tinsert(cands, { name = categoryData.name, tieKey = categoryId, isCustom = true })
-                    end
+                elseif entry.hasType then
+                    matched = typeMatch
+                else
+                    matched = subTypeMatch
+                end
+                if matched then
+                    tinsert(cands, { name = entry.name, tieKey = entry.categoryId, isCustom = true })
                 end
             end
         end
@@ -869,6 +954,7 @@ function Categories:SetCustomCategories(saved)
     if saved then
         customCategoriesV2 = saved
     end
+    RebuildCustomCandsArray()
 end
 
 --- Return the custom category table for SavedVariables serialization.
