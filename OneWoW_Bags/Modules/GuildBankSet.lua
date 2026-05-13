@@ -281,7 +281,7 @@ function GBSet:Build()
 
     Profile:Stop("GuildBankSet:Build")
     self._building = false
-    OneWoW_Bags:RequestLayoutRefresh("guild")
+    OneWoW_Bags:RequestLayoutRefresh("guild", "build_done")
 end
 
 function GBSet:CacheTab(tabID)

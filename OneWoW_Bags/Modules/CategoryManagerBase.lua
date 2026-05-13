@@ -75,6 +75,8 @@ function OneWoW_Bags.CategoryManagerBase:Create()
     end
 
     function cm:AssignAndGroupCategories(buttons)
+        local Profile = OneWoW_Bags.Profile
+        Profile:Start("CategoryManager.AssignAndGroupCategories")
         local Categories = OneWoW_Bags.Categories
         ClearActiveBuckets(activeCategoryBuckets)
 
@@ -97,6 +99,7 @@ function OneWoW_Bags.CategoryManagerBase:Create()
         end
 
         self._itemsByCategory = activeCategoryBuckets
+        Profile:Stop("CategoryManager.AssignAndGroupCategories")
         return activeCategoryBuckets
     end
 

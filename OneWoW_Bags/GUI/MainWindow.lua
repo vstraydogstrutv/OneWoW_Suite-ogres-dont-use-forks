@@ -56,7 +56,7 @@ function GUI:InitMainWindow()
             OneWoW_GUI:SaveWindowPosition(MainWindow, db.global.mainFramePosition)
         end,
         onDragStop = function()
-            if isInitialized then GUI:RefreshLayout() end
+            if isInitialized then OneWoW_Bags:RequestLayoutRefresh("bags", "drag_stop") end
         end,
     })
 
@@ -148,6 +148,14 @@ function GUI:RefreshLayout()
     local Profile = OneWoW_Bags.Profile
     Profile:Start("GUI:RefreshLayout[bags]")
 
+    if GUI._layoutInProgress then
+        Profile:Start("GUI:RefreshLayout[bags].skipped.reentrant")
+        Profile:Stop("GUI:RefreshLayout[bags].skipped.reentrant")
+        Profile:Stop("GUI:RefreshLayout[bags]")
+        return
+    end
+    GUI._layoutInProgress = true
+
     controller:Refresh({
         mainWindow = MainWindow,
         isBuilt = function()
@@ -211,7 +219,7 @@ function GUI:RefreshLayout()
                     end
                 end,
                 requestRelayout = function()
-                    GUI:RefreshLayout()
+                    OneWoW_Bags:RequestLayoutRefresh("bags", "relayout")
                 end,
             })
 
@@ -230,11 +238,12 @@ function GUI:RefreshLayout()
         end,
     })
 
+    GUI._layoutInProgress = false
     Profile:Stop("GUI:RefreshLayout[bags]")
 end
 
 function GUI:OnSearchChanged()
-    self:RefreshLayout()
+    OneWoW_Bags:RequestLayoutRefresh("bags", "search")
 end
 
 function GUI:Show()
@@ -255,7 +264,7 @@ function GUI:Show()
     if not BagSet.isBuilt then
         BagSet:Build()
     else
-        OneWoW_Bags:RequestLayoutRefresh("bags")
+        OneWoW_Bags:RequestLayoutRefresh("bags", "show")
     end
 
     Categories:BeginRecentExpiryTicker()
@@ -326,7 +335,7 @@ function GUI:ApplyTheme()
     end
 
     InfoBar:UpdateViewButtons()
-    self:RefreshLayout()
+    OneWoW_Bags:RequestLayoutRefresh("bags", "theme")
 end
 
 function GUI:GetMainWindow()
@@ -345,7 +354,7 @@ altShowFrame:SetScript("OnEvent", function(_, _, key, down)
         if nowDown ~= OneWoW_Bags.inventoryPresentationState.altShowActive then
             OneWoW_Bags:SetAltShowActive(nowDown)
             BagSet:UpdateAllSlots()
-            GUI:RefreshLayout()
+            OneWoW_Bags:RequestLayoutRefresh("bags", "alt_show")
         end
     end
 end)
@@ -356,5 +365,5 @@ end
 
 function GUI:UpdateBagsBarVisibility()
     if not isInitialized or not MainWindow then return end
-    self:RefreshLayout()
+    OneWoW_Bags:RequestLayoutRefresh("bags", "bags_bar_visibility")
 end

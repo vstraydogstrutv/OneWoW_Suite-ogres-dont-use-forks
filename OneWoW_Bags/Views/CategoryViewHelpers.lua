@@ -90,6 +90,8 @@ function H.VerticalGap(cellSize, verticalSpacing)
 end
 
 function H.RenderItemGrid(parentFrame, items, startY, leftPadding, cellSize, iconSize, cols)
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("CategoryView.RenderItemGrid")
     local itemRow = 0
     local itemCol = 0
     for _, button in ipairs(items) do
@@ -106,6 +108,7 @@ function H.RenderItemGrid(parentFrame, items, startY, leftPadding, cellSize, ico
         end
     end
     local totalRows = (itemCol > 0) and (itemRow + 1) or itemRow
+    Profile:Stop("CategoryView.RenderItemGrid")
     return totalRows * cellSize
 end
 
@@ -294,7 +297,7 @@ local function ResolveSectionShowHeader(sec, containerType)
     return bankVal
 end
 
-function H.GetSectionedLayout(itemsByCategory, containerType)
+local function GetSectionedLayoutImpl(itemsByCategory, containerType)
     local Categories = OneWoW_Bags.Categories
     local db = OneWoW_Bags.db
 
@@ -509,6 +512,14 @@ function H.GetSectionedLayout(itemsByCategory, containerType)
     return layout
 end
 
+function H.GetSectionedLayout(itemsByCategory, containerType)
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("CategoryView.GetSectionedLayout")
+    local result = GetSectionedLayoutImpl(itemsByCategory, containerType)
+    Profile:Stop("CategoryView.GetSectionedLayout")
+    return result
+end
+
 function H.RestoreItemButtonCounts(items)
     for _, btn in ipairs(items) do
         btn._owb_stackCount = nil
@@ -561,8 +572,13 @@ function H.StackItems(items, db, PE)
 end
 
 function H.FilterItems(categoryName, itemsByCategory, filterToken, catMods, sortButtons, db, PE)
+    local Profile = OneWoW_Bags.Profile
+    Profile:Start("CategoryView.FilterItems")
     local items = itemsByCategory[categoryName]
-    if not items then return nil end
+    if not items then
+        Profile:Stop("CategoryView.FilterItems")
+        return nil
+    end
     if filterToken then
         local filtered = filterScratchByCategory[categoryName]
         if not filtered then
@@ -578,12 +594,16 @@ function H.FilterItems(categoryName, itemsByCategory, filterToken, catMods, sort
         end
         items = filtered
     end
-    if #items == 0 then return nil end
+    if #items == 0 then
+        Profile:Stop("CategoryView.FilterItems")
+        return nil
+    end
     local mod = catMods[categoryName]
     local catSort = mod and mod.sortMode or nil
     local catSubSort = mod and mod.subSortMode or nil
     sortButtons(items, catSort, catSubSort)
     items = H.StackItems(items, db, PE)
+    Profile:Stop("CategoryView.FilterItems")
     return items
 end
 

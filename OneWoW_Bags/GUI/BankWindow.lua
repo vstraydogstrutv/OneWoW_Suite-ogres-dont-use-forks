@@ -159,7 +159,7 @@ function BankGUI:InitMainWindow()
             end
         end,
         onDragStop = function()
-            if isInitialized then BankGUI:RefreshLayout() end
+            if isInitialized then OneWoW_Bags:RequestLayoutRefresh("bank", "drag_stop") end
         end,
     })
 
@@ -283,7 +283,7 @@ function BankGUI:EnsurePurchasePrompt()
     end)
     promptFrame:SetScript("OnEvent", function()
         if MainWindow and MainWindow:IsShown() then
-            BankGUI:RefreshLayout()
+            OneWoW_Bags:RequestLayoutRefresh("bank", "purchase_money")
         end
     end)
 
@@ -332,7 +332,7 @@ end
 
 function BankGUI:ShowPurchasePrompt(bankType)
     forcedPurchasePromptBankType = bankType or GetActiveBankType()
-    self:RefreshLayout()
+    OneWoW_Bags:RequestLayoutRefresh("bank", "purchase_prompt")
 end
 
 function BankGUI:ClearForcedPurchasePrompt()
@@ -444,6 +444,14 @@ function BankGUI:RefreshLayout()
     local Profile = OneWoW_Bags.Profile
     Profile:Start("BankGUI:RefreshLayout")
 
+    if BankGUI._layoutInProgress then
+        Profile:Start("BankGUI:RefreshLayout.skipped.reentrant")
+        Profile:Stop("BankGUI:RefreshLayout.skipped.reentrant")
+        Profile:Stop("BankGUI:RefreshLayout")
+        return
+    end
+    BankGUI._layoutInProgress = true
+
     self:SyncBuiltTabState()
 
     controller:Refresh({
@@ -455,6 +463,7 @@ function BankGUI:RefreshLayout()
             BankGUI:UpdateWindowWidth()
         end,
         beforeLayout = function()
+            Profile:Start("BankGUI:RefreshLayout.beforeLayout")
             BankInfoBar:UpdateVisibility()
             BankBar:SetShown(OneWoW_Bags.BankController:Get("showBagsBar") ~= false)
             BankBar:RefreshChromeAnchors()
@@ -465,25 +474,37 @@ function BankGUI:RefreshLayout()
                 bottomAnchor = BankBar:GetFrame(),
                 contentArea = contentArea,
             })
+            Profile:Stop("BankGUI:RefreshLayout.beforeLayout")
         end,
         contentFrame = contentFrame,
         containerFrames = BankSet.bagContainerFrames,
         cleanup = function()
+            Profile:Start("BankGUI:RefreshLayout.cleanup")
             BankGUI:CleanupAllViews()
+            Profile:Stop("BankGUI:RefreshLayout.cleanup")
         end,
         getButtons = function()
-            return BankSet:GetAllButtons()
+            Profile:Start("BankGUI:RefreshLayout.getButtons")
+            local buttons = BankSet:GetAllButtons()
+            Profile:Stop("BankGUI:RefreshLayout.getButtons")
+            return buttons
         end,
         filterButtons = function(allButtons)
+            Profile:Start("BankGUI:RefreshLayout.filterButtons")
             if ShouldShowPurchasePrompt() then
+                Profile:Stop("BankGUI:RefreshLayout.filterButtons")
                 return {}
             end
             local visibleButtons = WH:FilterByTab(allButtons, OneWoW_Bags.BankController:Get("selectedTab"), WH:GetScratchTable("bankTab"))
             local filteredButtons = WH:FilterBySearch(visibleButtons, BankInfoBar:GetSearchText(), WH:GetScratchTable("bankSearch"))
-            return WH:FilterByExpansion(filteredButtons, OneWoW_Bags.activeBankExpansionFilter, WH:GetScratchTable("bankExpansion"))
+            local result = WH:FilterByExpansion(filteredButtons, OneWoW_Bags.activeBankExpansionFilter, WH:GetScratchTable("bankExpansion"))
+            Profile:Stop("BankGUI:RefreshLayout.filterButtons")
+            return result
         end,
         layoutButtons = function(filteredButtons)
+            Profile:Start("BankGUI:RefreshLayout.layoutButtons")
             if ShouldShowPurchasePrompt() then
+                Profile:Stop("BankGUI:RefreshLayout.layoutButtons")
                 return PURCHASE_PROMPT_HEIGHT
             end
             local columnsKey = OneWoW_Bags.BankController:ActiveKeys().columns
@@ -514,7 +535,7 @@ function BankGUI:RefreshLayout()
                     end
                 end,
                 requestRelayout = function()
-                    BankGUI:RefreshLayout()
+                    OneWoW_Bags:RequestLayoutRefresh("bank", "relayout")
                 end,
             })
             local tabViewContext = controller:CreateViewContext({
@@ -535,7 +556,7 @@ function BankGUI:RefreshLayout()
                     end
                 end,
                 requestRelayout = function()
-                    BankGUI:RefreshLayout()
+                    OneWoW_Bags:RequestLayoutRefresh("bank", "relayout")
                 end,
             })
 
@@ -547,7 +568,9 @@ function BankGUI:RefreshLayout()
                 layoutHeight = ListView:Layout(contentFrame, filteredButtons, contentWidth, categoryViewContext)
             end
 
-            return max(layoutHeight, BankGUI:GetPurchasePromptLayoutHeight())
+            local result = max(layoutHeight, BankGUI:GetPurchasePromptLayoutHeight())
+            Profile:Stop("BankGUI:RefreshLayout.layoutButtons")
+            return result
         end,
         afterLayout = function(_, layoutHeight)
             BankBar:UpdateFreeSlots(BankSet:GetFreeSlotCount(), BankSet:GetSlotCount())
@@ -555,11 +578,12 @@ function BankGUI:RefreshLayout()
         end,
     })
 
+    BankGUI._layoutInProgress = false
     Profile:Stop("BankGUI:RefreshLayout")
 end
 
 function BankGUI:OnSearchChanged()
-    self:RefreshLayout()
+    OneWoW_Bags:RequestLayoutRefresh("bank", "search")
 end
 
 function BankGUI:OnBankTypeChanged()
@@ -603,7 +627,7 @@ function BankGUI:Show()
     if not BankSet.isBuilt then
         BankSet:Build()
     else
-        OneWoW_Bags:RequestLayoutRefresh("bank")
+        OneWoW_Bags:RequestLayoutRefresh("bank", "show")
     end
     TrackBuiltBankState()
 
@@ -613,11 +637,15 @@ function BankGUI:Show()
 
     -- Safety-net refresh: catches late GET_ITEM_INFO_RECEIVED arrivals that
     -- happened to slip in just before/after Build but didn't trigger another
-    -- refresh. Routed through the scheduler so it dedupes with anything else.
+    -- refresh. Skipped if a refresh fired very recently (within 0.3s) — that
+    -- catches the common case where Build's own trailing refresh and any
+    -- BAG_UPDATE_DELAYED already covered us. Routed through the scheduler
+    -- so it dedupes with anything else still pending.
     C_Timer.After(0.5, function()
-        if MainWindow and MainWindow:IsShown() then
-            OneWoW_Bags:RequestLayoutRefresh("bank")
-        end
+        if not (MainWindow and MainWindow:IsShown()) then return end
+        local last = OneWoW_Bags:GetLastRefreshTime("bank")
+        if last and (GetTime() - last) < 0.3 then return end
+        OneWoW_Bags:RequestLayoutRefresh("bank", "safety_net")
     end)
 end
 
@@ -671,7 +699,7 @@ function BankGUI:ApplyTheme()
     WH:ApplyBaseTheme(MainWindow, titleBar, BankInfoBar, BankBar)
     ApplyPurchasePromptTheme(purchasePromptFrame)
     BankInfoBar:UpdateViewButtons()
-    self:RefreshLayout()
+    OneWoW_Bags:RequestLayoutRefresh("bank", "theme")
 end
 
 function BankGUI:GetMainWindow()

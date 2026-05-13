@@ -452,7 +452,14 @@ function WH:SetupResizeButton(mainWindow, gui, positionDBKey)
         WH:SnapFrameToPixel(mainWindow)
         local pos = DB:Ensure(db, "global", positionDBKey)
         OneWoW_GUI:SaveWindowPosition(mainWindow, pos)
-        gui:RefreshLayout()
+        local target = (gui == OneWoW_Bags.GUI and "bags")
+            or (gui == OneWoW_Bags.BankGUI and "bank")
+            or (gui == OneWoW_Bags.GuildBankGUI and "guild")
+        if target then
+            OneWoW_Bags:RequestLayoutRefresh(target, "resize")
+        elseif gui.RefreshLayout then
+            gui:RefreshLayout()
+        end
     end)
     return resizeBtn
 end

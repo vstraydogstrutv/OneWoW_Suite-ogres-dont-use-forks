@@ -68,7 +68,7 @@ function GuildBankGUI:InitMainWindow()
             end
         end,
         onDragStop = function()
-            if isInitialized then GuildBankGUI:RefreshLayout() end
+            if isInitialized then OneWoW_Bags:RequestLayoutRefresh("guild", "drag_stop") end
         end,
     })
 
@@ -160,6 +160,14 @@ function GuildBankGUI:RefreshLayout()
     local Profile = OneWoW_Bags.Profile
     Profile:Start("GuildBankGUI:RefreshLayout")
 
+    if GuildBankGUI._layoutInProgress then
+        Profile:Start("GuildBankGUI:RefreshLayout.skipped.reentrant")
+        Profile:Stop("GuildBankGUI:RefreshLayout.skipped.reentrant")
+        Profile:Stop("GuildBankGUI:RefreshLayout")
+        return
+    end
+    GuildBankGUI._layoutInProgress = true
+
     controller:Refresh({
         mainWindow = MainWindow,
         isBuilt = function()
@@ -207,7 +215,7 @@ function GuildBankGUI:RefreshLayout()
                     end
                 end,
                 requestRelayout = function()
-                    GuildBankGUI:RefreshLayout()
+                    OneWoW_Bags:RequestLayoutRefresh("guild", "relayout")
                 end,
             })
 
@@ -221,11 +229,12 @@ function GuildBankGUI:RefreshLayout()
         end,
     })
 
+    GuildBankGUI._layoutInProgress = false
     Profile:Stop("GuildBankGUI:RefreshLayout")
 end
 
 function GuildBankGUI:OnSearchChanged()
-    self:RefreshLayout()
+    OneWoW_Bags:RequestLayoutRefresh("guild", "search")
 end
 
 function GuildBankGUI:Show()
@@ -248,7 +257,7 @@ function GuildBankGUI:Show()
     if not GuildBankSet.isBuilt then
         GuildBankSet:Build()
     else
-        OneWoW_Bags:RequestLayoutRefresh("guild")
+        OneWoW_Bags:RequestLayoutRefresh("guild", "show")
     end
 
     GuildBankBar:BuildTabButtons()
@@ -301,7 +310,7 @@ function GuildBankGUI:ApplyTheme()
     GuildBankInfoBar:UpdateViewButtons()
     GuildBankLog:ApplyTheme()
 
-    self:RefreshLayout()
+    OneWoW_Bags:RequestLayoutRefresh("guild", "theme")
 end
 
 function GuildBankGUI:GetMainWindow()

@@ -72,7 +72,15 @@ local GUI_TO_SET = {
 }
 
 local pendingRefresh = {}
+local pendingRefreshReason = {}
 local refreshScheduled = false
+local lastRefreshTime = {}
+
+local TARGET_TO_GUI = {
+    bags = "GUI",
+    bank = "BankGUI",
+    guild = "GuildBankGUI",
+}
 
 local function ForEachTarget(owner, targetKey, targetMap, callback)
     local keys = targetMap[targetKey or "all"] or targetMap.all
@@ -206,14 +214,27 @@ end
 --- in the same frame collapse to a single deferred flush. Hidden windows
 --- and windows whose backing Set is mid-Build are skipped.
 ---@param target "bags"|"bank"|"guild"|"bank_related"|"all"|nil
-function OneWoW_Bags:RequestLayoutRefresh(target)
+---@param reason string|nil diagnostic tag; first-write-wins per target
+function OneWoW_Bags:RequestLayoutRefresh(target, reason)
     ForEachTarget(self, target, GUI_TARGET_KEYS, function(_, key)
         pendingRefresh[key] = true
+        if reason and not pendingRefreshReason[key] then
+            pendingRefreshReason[key] = reason
+        end
     end)
     if not refreshScheduled then
         refreshScheduled = true
         C_Timer.After(0, function() self:FlushPendingLayoutRefreshes() end)
     end
+end
+
+--- Get the (GetTime-based) timestamp of the most recent RefreshLayout call
+--- that was actually executed via the scheduler for the given target.
+---@param targetKey "bags"|"bank"|"guild"
+---@return number|nil seconds
+function OneWoW_Bags:GetLastRefreshTime(targetKey)
+    local guiKey = TARGET_TO_GUI[targetKey]
+    return guiKey and lastRefreshTime[guiKey] or nil
 end
 
 --- Synchronous escape hatch for callers that cannot tolerate the
@@ -236,13 +257,22 @@ function OneWoW_Bags:FlushPendingLayoutRefreshes()
     if Profile then Profile:Start("RequestLayoutRefresh.Flush") end
     for guiKey in pairs(pendingRefresh) do
         pendingRefresh[guiKey] = nil
+        local reason = pendingRefreshReason[guiKey]
+        pendingRefreshReason[guiKey] = nil
         local gui = self[guiKey]
         local setKey = GUI_TO_SET[guiKey]
         local backingSet = setKey and self[setKey]
         local visible = gui and (gui.IsShown == nil or gui:IsShown())
         local building = backingSet and backingSet._building == true
         if gui and gui.RefreshLayout and visible and not building then
+            if Profile and reason then
+                Profile:Start(guiKey .. ":RefreshLayout.reason." .. reason)
+            end
+            lastRefreshTime[guiKey] = GetTime()
             gui:RefreshLayout()
+            if Profile and reason then
+                Profile:Stop(guiKey .. ":RefreshLayout.reason." .. reason)
+            end
         end
     end
     if Profile then Profile:Stop("RequestLayoutRefresh.Flush") end
@@ -267,7 +297,7 @@ function OneWoW_Bags:UpdateSlotsForItemIDs(itemIDs)
         if setObj and setObj.isBuilt and setObj.UpdateSlotsForItems then
             local matched = setObj:UpdateSlotsForItems(itemIDs)
             if matched then
-                self:RequestLayoutRefresh(SET_TO_TARGET[key])
+                self:RequestLayoutRefresh(SET_TO_TARGET[key], "item_info")
             end
         end
     end
@@ -872,12 +902,12 @@ function OneWoW_Bags:ProcessBagUpdate(dirtyBags)
 
     if self.BagSet.isBuilt and bagsDirty then
         self.BagSet:UpdateDirtyBags(dirtyBags)
-        self:RequestLayoutRefresh("bags")
+        self:RequestLayoutRefresh("bags", "bag_update")
     end
 
     if self.bankOpen and self.BankSet.isBuilt and bankDirty then
         self.BankSet:UpdateDirtyBags(dirtyBags)
-        self:RequestLayoutRefresh("bank")
+        self:RequestLayoutRefresh("bank", "bag_update")
     end
 end
 

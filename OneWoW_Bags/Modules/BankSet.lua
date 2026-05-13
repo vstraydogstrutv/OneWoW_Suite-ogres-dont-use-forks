@@ -200,7 +200,7 @@ function BankSet:Build()
 
     Profile:Stop("BankSet:Build")
     self._building = false
-    OneWoW_Bags:RequestLayoutRefresh("bank")
+    OneWoW_Bags:RequestLayoutRefresh("bank", "build_done")
 end
 
 function BankSet:ReleaseAll()

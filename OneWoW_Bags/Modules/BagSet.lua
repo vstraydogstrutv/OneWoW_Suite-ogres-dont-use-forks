@@ -112,7 +112,7 @@ function BagSet:Build()
 
     Profile:Stop("BagSet:Build")
     self._building = false
-    OneWoW_Bags:RequestLayoutRefresh("bags")
+    OneWoW_Bags:RequestLayoutRefresh("bags", "build_done")
 end
 
 function BagSet:ReleaseAll()
