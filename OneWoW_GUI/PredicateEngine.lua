@@ -40,20 +40,30 @@ local UnitLevel = UnitLevel
 -- ============================================================================
 -- SECTION 2: CACHES
 -- ============================================================================
--- propsCache:         keyed by "bagID:slotID", stores the per-slot enriched
---                     property table (slot-overlay applied over base).
--- identityPropsCache: keyed by item-identity (hyperlink or itemID/pet stats),
---                     stores the slot-INDEPENDENT subset of props. Shared
---                     across every slot holding the same item.
--- tooltipCache:       keyed by "bagID:slotID", stores concatenated tooltip
---                     left-text.
--- compiledCache:      keyed by expression string, stores compiled
---                     function(props)->bool.
+-- propsCache:            keyed by "bagID:slotID", stores the per-slot enriched
+--                        property table (slot-overlay applied over base).
+-- identityPropsCache:    keyed by item-identity (hyperlink or itemID/pet stats),
+--                        stores the slot-INDEPENDENT subset of props. Shared
+--                        across every slot holding the same item.
+-- tooltipCache:          keyed by "bagID:slotID", stores concatenated tooltip
+--                        left-text (slot-mode).
+-- tooltipTextLinkCache:  keyed by hyperlink, stores concatenated tooltip
+--                        left-text (hyperlink-mode).
+-- tooltipDataCache:      keyed by "bagID:slotID", stores the raw TooltipData
+--                        snapshot. Shared by ResolveTooltipFields and
+--                        ResolveBind so both pay at most one
+--                        C_TooltipInfo.GetBagItem call per slot.
+-- tooltipDataLinkCache:  keyed by hyperlink, stores the raw TooltipData
+--                        snapshot. Hyperlink-mode sibling of tooltipDataCache.
+-- compiledCache:         keyed by expression string, stores compiled
+--                        function(props)->bool.
 
 local propsCache = {}
 local identityPropsCache = {}
 local tooltipCache = {}
 local tooltipTextLinkCache = {}
+local tooltipDataCache = {}
+local tooltipDataLinkCache = {}
 local compiledCache = {}
 
 -- ============================================================================
@@ -1165,6 +1175,39 @@ local function ConcatTooltipLines(tooltipData)
     return tconcat(parts, "\n")
 end
 
+-- ---------- GetTooltipData ----------
+-- Cached fetch of the raw TooltipData snapshot for a bag slot. Shared by
+-- GetTooltipText (text extraction) and ResolveBind (bind-line scan) so we
+-- pay at most one C_TooltipInfo.GetBagItem call per slot per invalidation
+-- window. Returns nil if the API has nothing for the slot; nil results are
+-- NOT cached so the next call can retry once data streams.
+local function GetTooltipData(bagID, slotID)
+    if not bagID or not slotID then return nil end
+    local key = bagID .. ":" .. slotID
+    local cached = tooltipDataCache[key]
+    if cached then return cached end
+
+    local td = C_TooltipInfo.GetBagItem(bagID, slotID)
+    if td then tooltipDataCache[key] = td end
+    return td
+end
+
+-- ---------- GetTooltipDataByHyperlink ----------
+-- Hyperlinkless sibling of GetTooltipData. Used for callers that have only a
+-- hyperlink (toast-loot, identity-tier fallback) so ResolveBind and
+-- GetTooltipTextByHyperlink share one C_TooltipInfo.GetHyperlink call per
+-- hyperlink. Nil results are NOT cached (same retry rationale as
+-- GetTooltipData).
+local function GetTooltipDataByHyperlink(hyperlink)
+    if not hyperlink or hyperlink == "" then return nil end
+    local cached = tooltipDataLinkCache[hyperlink]
+    if cached then return cached end
+
+    local td = C_TooltipInfo.GetHyperlink(hyperlink)
+    if td then tooltipDataLinkCache[hyperlink] = td end
+    return td
+end
+
 -- ---------- GetTooltipText ----------
 -- Returns the concatenated left-text of all tooltip lines for a bag slot.
 -- Cached per bagID:slotID; wiped on BAG_UPDATE_DELAYED.
@@ -1180,7 +1223,7 @@ local function GetTooltipText(bagID, slotID)
     local cached = tooltipCache[key]
     if cached then return cached end
 
-    local text = ConcatTooltipLines(C_TooltipInfo.GetBagItem(bagID, slotID))
+    local text = ConcatTooltipLines(GetTooltipData(bagID, slotID))
     if text == "" then
         return ""
     end
@@ -1204,7 +1247,7 @@ local function GetTooltipTextByHyperlink(hyperlink)
     local cached = tooltipTextLinkCache[hyperlink]
     if cached then return cached end
 
-    local text = ConcatTooltipLines(C_TooltipInfo.GetHyperlink(hyperlink))
+    local text = ConcatTooltipLines(GetTooltipDataByHyperlink(hyperlink))
     if text == "" then
         return ""
     end
@@ -1505,14 +1548,20 @@ local function ResolveBind(props)
     local bagID, slotID = rawget(props, "_bagID"), rawget(props, "_slotID")
     local hyperlink = rawget(props, "hyperlink")
 
+    -- Fetch through the shared tooltipData caches so ResolveTooltipFields and
+    -- ResolveBind pay at most one C_TooltipInfo call per slot/hyperlink.
+    -- Falls through (not elseif) so a slot whose bag-mode lookup yields
+    -- nothing still gets a chance at the hyperlink-mode policy tooltip,
+    -- matching ResolveTooltipFields' precedence.
     local tooltipData
     local source
 
     if bagID and slotID then
-        tooltipData = C_TooltipInfo.GetBagItem(bagID, slotID)
+        tooltipData = GetTooltipData(bagID, slotID)
         source = "bag"
-    elseif hyperlink then
-        tooltipData = C_TooltipInfo.GetHyperlink(hyperlink)
+    end
+    if not tooltipData and hyperlink then
+        tooltipData = GetTooltipDataByHyperlink(hyperlink)
         source = "link"
     end
 
@@ -3002,6 +3051,8 @@ function PE:InvalidateCache()
     wipe(propsCache)
     wipe(tooltipCache)
     wipe(tooltipTextLinkCache)
+    wipe(tooltipDataCache)
+    wipe(tooltipDataLinkCache)
     wipe(identityPropsCache)
     knownProfs = nil
 end
@@ -3014,6 +3065,8 @@ function PE:InvalidatePropsCache()
     wipe(propsCache)
     wipe(tooltipCache)
     wipe(tooltipTextLinkCache)
+    wipe(tooltipDataCache)
+    wipe(tooltipDataLinkCache)
     wipe(identityPropsCache)
 end
 
@@ -3036,10 +3089,12 @@ function PE:InvalidateItemIDs(idSet)
         if entry.id and idSet[entry.id] then
             propsCache[key] = nil
             tooltipCache[key] = nil
+            tooltipDataCache[key] = nil
             evictedSlotKeys[key] = true
             local hyperlink = entry.hyperlink
             if hyperlink then
                 tooltipTextLinkCache[hyperlink] = nil
+                tooltipDataLinkCache[hyperlink] = nil
             end
         end
     end
@@ -3050,6 +3105,7 @@ function PE:InvalidateItemIDs(idSet)
             local hyperlink = entry.hyperlink
             if hyperlink then
                 tooltipTextLinkCache[hyperlink] = nil
+                tooltipDataLinkCache[hyperlink] = nil
             end
         end
     end
