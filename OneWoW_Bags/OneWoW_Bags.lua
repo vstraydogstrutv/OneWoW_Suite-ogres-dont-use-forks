@@ -519,7 +519,7 @@ function OneWoW_Bags:OnPlayerLogin()
         end)
     end
 
-    self.ItemPool:Preallocate(220)
+    self.ItemPool:Preallocate(OneWoW_Bags.Constants.ITEM_POOL_PREALLOC_SIZE)
     self.BagSet:Build()
     self.BagsBar:UpdateIcons()
 

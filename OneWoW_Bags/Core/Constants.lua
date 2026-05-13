@@ -26,6 +26,12 @@ OneWoW_Bags.Constants = {
         [4] = 42,
     },
 
+    -- ItemPool preallocation target. Sized to cover concurrent bag + guild-bank
+    -- open: 220 (backpack 20 + 5 bags x 40) + 686 (guild bank, 7 tabs x 98).
+    -- Personal bank (~588) and warband bank (~392) both fit within guild bank's
+    -- 686, so switching between them does not require new allocations.
+    ITEM_POOL_PREALLOC_SIZE = 906,
+
     -- Fixed alert palette for currency trackers near total cap (maxQuantity > 0).
     -- Levels 1–4: 75%, 80%, 90%, 95% fill bands; level 5: at cap (100%) + red glow overlay.
     TRACKER_CURRENCY_CAP = {
