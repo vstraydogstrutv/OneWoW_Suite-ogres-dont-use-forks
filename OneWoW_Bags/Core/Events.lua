@@ -69,16 +69,22 @@ end
 -- holding those specific items. UpdateSlotsForItemIDs now emits its own
 -- per-set layout refreshes for any set that actually matched, so we no
 -- longer issue a blanket "all" refresh here.
+--
+-- Cache invalidation: surgical per-itemID eviction is also coalesced into
+-- the next-frame batch (InvalidateItemIDs). The previous bulk
+-- InvalidateCategorization("props") per event was throwing away the
+-- identity-tier caches for unrelated items in the same cold-streaming
+-- window; with the batched surgical eviction, only the items whose data
+-- actually arrived get re-resolved.
 function Events:OnItemInfoReceived(itemID)
     if not itemID then return end
-
-    OneWoW_Bags:InvalidateCategorization("props")
 
     if not pendingItemIDs then
         pendingItemIDs = {}
         C_Timer.After(0, function()
             local ids = pendingItemIDs
             pendingItemIDs = nil
+            OneWoW_Bags:InvalidateItemIDs(ids)
             OneWoW_Bags:UpdateSlotsForItemIDs(ids)
         end)
     end

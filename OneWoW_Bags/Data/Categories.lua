@@ -783,6 +783,40 @@ function Categories:InvalidateCache()
     InvalidateCache()
 end
 
+--- Surgical per-itemID invalidation for category caches. Paired with
+--- PE:InvalidateItemIDs so we don't re-walk propsCache: the caller passes
+--- the slot keys PE already evicted, and we evict our slot-keyed final
+--- results for those keys. We still walk baseCategoryCache + identity-keyed
+--- categoryCache once (both prefix their keys with "<itemID>|").
+---@param idSet table<number, boolean>|nil
+---@param evictedSlotKeys table<string, boolean>|nil
+function Categories:InvalidateItemIDs(idSet, evictedSlotKeys)
+    if not idSet then return end
+
+    if evictedSlotKeys then
+        for slotKey in pairs(evictedSlotKeys) do
+            categoryCache[slotKey] = nil
+        end
+    end
+
+    for key in pairs(baseCategoryCache) do
+        local id = tonumber(key:match("^(%d+)|"))
+        if id and idSet[id] then
+            baseCategoryCache[key] = nil
+        end
+    end
+
+    -- Identity-keyed entries in categoryCache (rare; only happens when
+    -- GetItemCategory is reached without slot coords). Same "<itemID>|"
+    -- prefix shape; slot-keyed entries use "<bagID>:<slotID>" and won't match.
+    for key in pairs(categoryCache) do
+        local id = tonumber(key:match("^(%d+)|"))
+        if id and idSet[id] then
+            categoryCache[key] = nil
+        end
+    end
+end
+
 --- Return built-in category names in definition order.
 ---@return string[] names
 function Categories:GetAllCategoryNames()

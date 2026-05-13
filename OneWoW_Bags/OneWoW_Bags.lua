@@ -210,6 +210,21 @@ function OneWoW_Bags:InvalidateCategorization(scope)
     end
 end
 
+--- Surgical invalidation for a batch of item IDs. Used by
+--- GET_ITEM_INFO_RECEIVED coalescing instead of the bulk
+--- InvalidateCategorization("props") wipe, so streaming item info
+--- preserves the identity-tier caches for items whose data is already
+--- resolved.
+---@param idSet table<number, boolean>|nil
+function OneWoW_Bags:InvalidateItemIDs(idSet)
+    if not idSet or not next(idSet) then return end
+    local Profile = self.Profile
+    if Profile then Profile:Start("InvalidateItemIDs") end
+    local evictedSlotKeys = PE:InvalidateItemIDs(idSet)
+    self.Categories:InvalidateItemIDs(idSet, evictedSlotKeys)
+    if Profile then Profile:Stop("InvalidateItemIDs") end
+end
+
 --- Refresh item layout for one or more windows. Coalesced: multiple calls
 --- in the same frame collapse to a single deferred flush. Hidden windows
 --- and windows whose backing Set is mid-Build are skipped.

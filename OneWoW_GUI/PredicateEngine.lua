@@ -1264,16 +1264,20 @@ end
 local function GetItemIdentityKey(itemID, hyperlink)
     local petData = GetBattlePetData(itemID, hyperlink)
 
+    -- Key always starts with "<itemID>|" so surgical per-itemID invalidation
+    -- can prefix-match against caches keyed by identity (identityPropsCache,
+    -- baseCategoryCache) in a single pass. The "|" separator never appears
+    -- in raw hyperlinks, keeping the boundary unambiguous.
     if not petData then
         if hyperlink and hyperlink ~= "" then
-            return hyperlink
+            return tostring(itemID) .. "|" .. hyperlink
         end
 
-        return tostring(itemID)
+        return tostring(itemID) .. "|"
     end
 
     return tostring(itemID)
-        .. ":" .. tostring(petData.speciesID)
+        .. "|" .. tostring(petData.speciesID)
         .. ":" .. tostring(petData.petLevel)
         .. ":" .. tostring(petData.petQuality)
         .. ":" .. tostring(petData.petMaxHealth)
@@ -2922,6 +2926,37 @@ function PE:InvalidatePropsCache()
     wipe(propsCache)
     wipe(tooltipCache)
     wipe(identityPropsCache)
+end
+
+--- Surgical per-itemID invalidation. Used by GET_ITEM_INFO_RECEIVED batches
+--- so streaming item info doesn't repeatedly wipe every other item's
+--- already-resolved identity props.
+---
+--- Walks propsCache once, evicting entries whose `.id` is in idSet and
+--- collecting their slot keys so paired caches (tooltipCache here,
+--- categoryCache in OneWoW_Bags.Categories) can be cleaned without re-
+--- walking. identityPropsCache is walked independently.
+---@param idSet table<number, boolean>|nil
+---@return table<string, boolean> evictedSlotKeys
+function PE:InvalidateItemIDs(idSet)
+    local evictedSlotKeys = {}
+    if not idSet then return evictedSlotKeys end
+
+    for key, entry in pairs(propsCache) do
+        if entry.id and idSet[entry.id] then
+            propsCache[key] = nil
+            tooltipCache[key] = nil
+            evictedSlotKeys[key] = true
+        end
+    end
+
+    for key, entry in pairs(identityPropsCache) do
+        if entry.id and idSet[entry.id] then
+            identityPropsCache[key] = nil
+        end
+    end
+
+    return evictedSlotKeys
 end
 
 --- Expose raw concatenated tooltip left-text for a bag slot.
