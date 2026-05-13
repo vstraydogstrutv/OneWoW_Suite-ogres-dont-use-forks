@@ -40,11 +40,18 @@ local UnitLevel = UnitLevel
 -- ============================================================================
 -- SECTION 2: CACHES
 -- ============================================================================
--- propsCache:    keyed by "bagID:slotID", stores the enriched property table
--- tooltipCache:  keyed by "bagID:slotID", stores concatenated tooltip left-text
--- compiledCache: keyed by expression string, stores compiled function(props)->bool
+-- propsCache:         keyed by "bagID:slotID", stores the per-slot enriched
+--                     property table (slot-overlay applied over base).
+-- identityPropsCache: keyed by item-identity (hyperlink or itemID/pet stats),
+--                     stores the slot-INDEPENDENT subset of props. Shared
+--                     across every slot holding the same item.
+-- tooltipCache:       keyed by "bagID:slotID", stores concatenated tooltip
+--                     left-text.
+-- compiledCache:      keyed by expression string, stores compiled
+--                     function(props)->bool.
 
 local propsCache = {}
+local identityPropsCache = {}
 local tooltipCache = {}
 local compiledCache = {}
 
@@ -1612,6 +1619,251 @@ local propsMT = {
     end
 }
 
+-- ---------- PopulateBaseProps ----------
+-- Populates the slot-INDEPENDENT subset of an item's props (the "identity tier"
+-- of the two-tier cache). All API calls in here key only on itemID and/or
+-- hyperlink. Slot-state defaults (durability, isNew, etc.) are pre-initialized
+-- so a shallow copy of the base table is a valid starting point for
+-- BuildProps' per-slot overlay step.
+local function PopulateBaseProps(props, itemID, hyperlink)
+    props.id = itemID
+    props.hyperlink = hyperlink
+
+    -- C_Item.GetItemInfo returns 17 values; we capture all except `description`
+    local itemName, itemLink, itemQuality, itemLevel, itemMinLevel,
+          itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture,
+          sellPrice, classID, subclassID, bindType, expansionID,
+          setID, apiCraftingReagent
+
+    if hyperlink then
+        itemName, itemLink, itemQuality, itemLevel, itemMinLevel,
+            itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture,
+            sellPrice, classID, subclassID, bindType, expansionID,
+            setID, apiCraftingReagent = C_Item.GetItemInfo(hyperlink)
+    end
+
+    -- Synchronous fallback for uncached items. GetItemInfoInstant always returns
+    -- immediately for a valid itemID, even when full item data hasn't been
+    -- downloaded yet. Lower fidelity than GetItemInfo (no quality/ilvl/etc.) but
+    -- carries class/subclass/equipLoc/icon/localized type strings.
+    if not classID then
+        _, itemType, itemSubType, itemEquipLoc, itemTexture, classID, subclassID = C_Item.GetItemInfoInstant(itemID)
+    end
+
+    local petData = GetBattlePetData(itemID, hyperlink)
+
+    props.playerLevel = UnitLevel("player")
+    props.nameRaw     = itemName or (C_Item.GetItemNameByID(itemID) or "")
+    props.name        = strlower(props.nameRaw)
+    props.quality     = itemQuality or -1 -- don't use 0 since that == "poor" and causes bad matches
+    props.ilvl        = itemLevel or 0
+    props.reqLevel    = itemMinLevel or 0
+    props.itemType    = itemType
+    props.itemSubType = itemSubType
+    props.equipLoc    = itemEquipLoc or ""
+    props.icon        = itemTexture
+    props.vendorPrice = sellPrice or 0
+    props.classID     = classID
+    props.subClassID  = subclassID
+    props.expansionID = expansionID or -1
+    props.bindType    = bindType    -- template bindType: what the item was designed to do; may not reflect current bindType
+    props.maxStack    = itemStackCount or 1
+    props.setID       = setID
+    props.isTierSet   = setID ~= nil
+    props.isCraftingReagent = apiCraftingReagent == true
+    props.petSpeciesID = petData and petData.speciesID or 0
+    props.petLevel = petData and petData.petLevel or 0
+    props.petQuality = petData and petData.petQuality or 0
+    props.petMaxHealth = petData and petData.petMaxHealth or 0
+    props.petPower = petData and petData.petPower or 0
+    props.petSpeed = petData and petData.petSpeed or 0
+    props.petType = petData and petData.petType or 0
+    props.isWildPet = petData and petData.isWild or false
+    props.canPetBattle = petData and petData.canBattle or false
+    props.isPetTradeable = petData and petData.isTradeable or false
+    props.isPetUnique = petData and petData.isUnique or false
+    props.petCollected = petData and petData.numCollected or 0
+    props.petLimit = petData and petData.limit or 0
+    props.isKnowledge = false
+    props.isEnchanted = false
+    props.isCrafted = false
+
+    -- Slot-state defaults (BuildProps overlay may overwrite per slot).
+    props.isRefundable = false
+    props.isScrappable = false
+    props.isBattlePayItem = false
+    props.isInEquipmentSet = false
+    props.equipmentSetList = {}
+    props.needsRepair = false
+    props.isBroken = false
+    props.durability = nil
+    props.maxDurability = nil
+    props.durabilityPct = nil
+    props.isCatalyst = false
+    props.isCatalystUpgrade = false
+
+    props.craftedQuality = hyperlink and C_TradeSkillUI.GetItemCraftedQualityByItemInfo(hyperlink) or 0
+    props.isKeystone = C_Item.IsItemKeystoneByID(itemID) == true
+
+    props.isEquipment = C_Item.IsEquippableItem(itemID) == true
+    -- ---- Profession equipment ----
+    props.isProfessionEquipment = props.classID == Enum.ItemClass.Profession and props.isEquipment
+
+    -- 'Usable' in this context is equivalent to the item having a 'Use: ' text in tooltip
+    props.isUsable = (C_Item.IsUsableItem(itemID) == true)
+
+    -- ---- Socket detection (API-based, no tooltip needed) ----
+    local socketCount = hyperlink and C_Item.GetItemNumSockets(hyperlink) or 0
+    props.hasSocket = socketCount > 0
+    props.sockets   = socketCount
+
+    -- ---- Equipped status ----
+    props.isEquipped = C_Item.IsEquippedItem(itemID) == true
+
+    -- ---- Battle pet cage override ----
+    if itemID == BATTLE_PET_CAGE_ID then
+        props.classID = Enum.ItemClass.Battlepet
+    end
+
+    -- Vendor-price half of isUnsellable. BuildProps OR-s in containerInfo.hasNoValue.
+    props.isUnsellable = (props.vendorPrice == 0)
+
+    -- ---- Collectable items ----
+    props.isToy = C_ToyBox.GetToyInfo(itemID) ~= nil
+
+    props.isPet = (itemID == BATTLE_PET_CAGE_ID)
+               or (props.classID == Enum.ItemClass.Battlepet)
+               or (props.classID == Enum.ItemClass.Miscellaneous and props.subClassID == Enum.ItemMiscellaneousSubclass.CompanionPet)
+
+    props.isMount = (props.classID == Enum.ItemClass.Miscellaneous and props.subClassID == Enum.ItemMiscellaneousSubclass.Mount)
+    props.isCosmetic = (props.classID == Enum.ItemClass.Armor and props.subClassID == Enum.ItemArmorSubclass.Cosmetic)
+    props.isCollected = ResolveCollected(itemID, props.classID, props.subClassID, hyperlink)
+
+    -- ---- Quest item (identity portion; BuildProps OR-s in C_Container quest-info fallback) ----
+    props.isQuestItem = (classID == Enum.ItemClass.Questitem)
+
+    -- ---- Junk (quality + OneWoW hook) ----
+    props.isJunk = (props.quality == IQ.Poor)
+    if not props.isJunk and OneWoW and OneWoW.ItemStatus then
+        props.isJunk = OneWoW.ItemStatus:IsItemJunk(itemID) or false
+    end
+
+    -- ---- Special items ----
+    props.isHearthstone = HS_IDS[itemID] or false
+    if not props.isHearthstone and props.isToy then
+        local hsName = C_Item.GetItemNameByID(itemID)
+        if hsName and strfind(strlower(hsName), "hearthstone") then
+            props.isHearthstone = true
+        end
+    end
+
+    -- ---- Upgrade track info ----
+    props.upgradeLevel    = 0
+    props.upgradeMax      = 0
+    props.maxLevel        = props.ilvl
+    props.isUpgradeable   = false
+    props.isFullyUpgraded = false
+
+    local upgradeInfo = C_Item.GetItemUpgradeInfo(itemID)
+    if upgradeInfo then
+        props.upgradeLevel    = upgradeInfo.currentLevel or 0
+        props.upgradeMax      = upgradeInfo.maxLevel or 0
+        props.maxLevel        = upgradeInfo.maxItemLevel or props.ilvl
+        props.isUpgradeable   = (props.upgradeMax > 0)
+        props.isFullyUpgraded = (props.upgradeLevel >= props.upgradeMax and props.upgradeMax > 0)
+    end
+
+    -- ---- Transmog / appearance (identity portion: hyperlink path only) ----
+    props.hasAppearance         = false
+    props.isAppearanceCollected = C_TransmogCollection.PlayerHasTransmog(itemID)
+
+    if hyperlink then
+        local _, sourceID = C_TransmogCollection.GetItemInfo(hyperlink)
+        if sourceID then
+            props.hasAppearance = true
+
+            if not props.isAppearanceCollected then
+                local collected = C_TransmogCollection.PlayerHasTransmogItemModifiedAppearance(sourceID)
+                props.isAppearanceCollected = collected == true
+            end
+        end
+    end
+
+    -- ---- Knowledge items ----
+    if hyperlink then
+        local _, spellName = C_Item.GetItemSpell(hyperlink)
+        if spellName then
+            local spellinfo = C_Spell.GetSpellInfo(spellName)
+            local spellIconID = spellinfo.iconID
+            props.isKnowledge = KNOWLEDGE_ICONS[spellIconID] == true
+        end
+    end
+
+    -- ---- Item link parsed properties ----
+    local itemLinkProperties = ParseItemLink(itemLink)
+    if itemLinkProperties then
+        props.isEnchanted = itemLinkProperties.enchantID ~= nil
+        props.isCrafted = itemLinkProperties.crafterGUID ~= nil
+        props.itemContextCategory = ITEM_CONTEXT_CATEGORY[itemLinkProperties.itemContext]
+    end
+
+    -- ---- Catalyst properties ----
+    if hyperlink and TransmogUpgradeMaster_API and TransmogUpgradeMaster_API.IsAppearanceMissing then
+        local ok, isCatalyst, isCatalystUpgrade = pcall(TransmogUpgradeMaster_API.IsAppearanceMissing, hyperlink)
+        if ok then
+            props.isCatalyst = isCatalyst == true
+            props.isCatalystUpgrade = isCatalystUpgrade == true
+        end
+    end
+
+    if props.classID == Enum.ItemClass.Housing and props.subClassID == Enum.ItemHousingSubclass.Decor then
+        ResolveHousing(props)
+    end
+
+    -- BIND DETECTION NOTE: API-based bind detection removed as it's not detailed enough. Warbound == Soulbound according to the API.
+    -- UNIQUE DETECTION NOTE: C_Item.GetItemUniquenessByID only matches unique-equipped items; its purpose is to identify restrictions on equipping items, not on owning them.
+
+    -- Override item properties for when they don't classify correctly.
+    local itemOverride = ITEM_ID_OVERRIDES[itemID]
+    if itemOverride then
+        for propName, propValue in pairs(itemOverride) do
+            props[propName] = propValue
+        end
+    end
+end
+
+-- ---------- GetOrCreateIdentityProps ----------
+-- Identity-tier cache lookup. Returns the shared base props table for an item
+-- identity, populating it on first miss. Bumps profile counters (identityHit
+-- vs identityMiss) so /owbprof can show cache effectiveness.
+local function GetOrCreateIdentityProps(itemID, hyperlink)
+    local key = GetItemIdentityKey(itemID, hyperlink)
+    local cached = identityPropsCache[key]
+    local Profile = OneWoW_Bags and OneWoW_Bags.Profile
+    if cached then
+        if Profile then
+            Profile:Start("PE:BuildProps.identityHit")
+            Profile:Stop("PE:BuildProps.identityHit")
+        end
+        return cached
+    end
+
+    if Profile then
+        Profile:Start("PE:BuildProps.identityMiss")
+        Profile:Start("PE:BuildProps.PopulateBaseProps")
+    end
+
+    local base = {}
+    PopulateBaseProps(base, itemID, hyperlink)
+    identityPropsCache[key] = base
+
+    if Profile then
+        Profile:Stop("PE:BuildProps.PopulateBaseProps")
+        Profile:Stop("PE:BuildProps.identityMiss")
+    end
+    return base
+end
+
 -- ---------- BuildProps ----------
 -- Core Layer 1 function. Enriches an item identity into a flat property table.
 --
@@ -1706,111 +1958,31 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
     local cacheKey = GetItemCacheKey(itemID, bagID, slotID, hyperlink)
     if propsCache[cacheKey] then return propsCache[cacheKey] end
 
-    local props = {
-        id        = itemID,
-        _bagID    = bagID,
-        _slotID   = slotID,
-        hyperlink = hyperlink,
-    }
+    -- Tier 1: identity-keyed base (slot-independent props). Shared across every
+    -- slot holding the same item identity. Heavy API calls run only on miss.
+    local base = GetOrCreateIdentityProps(itemID, hyperlink)
 
-    -- C_Item.GetItemInfo returns 17 values; we capture all except `description`
-    local itemName, itemLink, itemQuality, itemLevel, itemMinLevel,
-          itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture,
-          sellPrice, classID, subclassID, bindType, expansionID,
-          setID, apiCraftingReagent
+    -- Tier 2: per-slot shallow copy + slot-overlay fields. The metatable
+    -- (__index) lazy-resolves tooltip/bind/stat fields on first access and
+    -- writes them onto the per-slot table, not the shared base.
+    local Profile = OneWoW_Bags and OneWoW_Bags.Profile
+    if Profile then Profile:Start("PE:BuildProps.PopulateSlotProps") end
 
-    if hyperlink then
-        itemName, itemLink, itemQuality, itemLevel, itemMinLevel,
-            itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture,
-            sellPrice, classID, subclassID, bindType, expansionID,
-            setID, apiCraftingReagent = C_Item.GetItemInfo(hyperlink)
-    end
+    local props = {}
+    for k, v in pairs(base) do props[k] = v end
+    props._bagID    = bagID
+    props._slotID   = slotID
+    props.hyperlink = hyperlink
 
-    -- Synchronous fallback for uncached items. GetItemInfoInstant always returns
-    -- immediately for a valid itemID, even when full item data hasn't been
-    -- downloaded yet. Lower fidelity than GetItemInfo (no quality/ilvl/etc.) but
-    -- carries class/subclass/equipLoc/icon/localized type strings.
-    if not classID then
-        _, itemType, itemSubType, itemEquipLoc, itemTexture, classID, subclassID = C_Item.GetItemInfoInstant(itemID)
-    end
-
-    local petData = GetBattlePetData(itemID, hyperlink)
-
-    props.playerLevel = UnitLevel("player")
-    props.nameRaw     = itemName or (C_Item.GetItemNameByID(itemID) or "")
-    props.name        = strlower(props.nameRaw)
-    props.quality     = itemQuality or -1 -- don't use 0 since that == "poor" and causes bad matches
-    props.ilvl        = itemLevel or 0
-    props.reqLevel    = itemMinLevel or 0
-    props.itemType    = itemType
-    props.itemSubType = itemSubType
-    props.equipLoc    = itemEquipLoc or ""
-    props.icon        = itemTexture
-    props.vendorPrice = sellPrice or 0
-    props.classID     = classID
-    props.subClassID  = subclassID
-    props.expansionID = expansionID or -1
-    props.bindType    = bindType    -- template bindType: what the item was designed to do; may not reflect current bindType
-    props.maxStack    = itemStackCount or 1
-    props.setID       = setID
-    props.isTierSet   = setID ~= nil
-    props.isCraftingReagent = apiCraftingReagent == true
-    props.petSpeciesID = petData and petData.speciesID or 0
-    props.petLevel = petData and petData.petLevel or 0
-    props.petQuality = petData and petData.petQuality or 0
-    props.petMaxHealth = petData and petData.petMaxHealth or 0
-    props.petPower = petData and petData.petPower or 0
-    props.petSpeed = petData and petData.petSpeed or 0
-    props.petType = petData and petData.petType or 0
-    props.isWildPet = petData and petData.isWild or false
-    props.canPetBattle = petData and petData.canBattle or false
-    props.isPetTradeable = petData and petData.isTradeable or false
-    props.isPetUnique = petData and petData.isUnique or false
-    props.petCollected = petData and petData.numCollected or 0
-    props.petLimit = petData and petData.limit or 0
-    props.isKnowledge = false
-    props.isEnchanted = false
-    props.isCrafted = false
-    props.isRefundable = false
-    props.isScrappable = false
-    props.isBattlePayItem = false
-    props.isInEquipmentSet = false
+    -- Fresh per-slot equipmentSetList so we don't mutate the base's empty table.
     props.equipmentSetList = {}
-    props.needsRepair = false
-    props.isBroken = false
-    props.durability = nil
-    props.maxDurability = nil
-    props.durabilityPct = nil
-    props.isCatalyst = false
-    props.isCatalystUpgrade = false
 
-    props.craftedQuality = hyperlink and C_TradeSkillUI.GetItemCraftedQualityByItemInfo(hyperlink) or 0
-    props.isKeystone = C_Item.IsItemKeystoneByID(itemID) == true
-
-    props.isEquipment = C_Item.IsEquippableItem(itemID) == true
-    -- ---- Profession equipment ----
-    props.isProfessionEquipment = false
-    props.isProfessionEquipment = props.classID == Enum.ItemClass.Profession and props.isEquipment
-
-    -- 'Usable' in this context is equivalent to the item having a 'Use: ' text in tooltip
-    props.isUsable = (C_Item.IsUsableItem(itemID) == true)
-
-    -- ---- Socket detection (API-based, no tooltip needed) ----
-    local socketCount = hyperlink and C_Item.GetItemNumSockets(hyperlink) or 0
-    props.hasSocket = socketCount > 0
-    props.sockets   = socketCount
-
-    -- ---- Equipped status ----
-    props.isEquipped = C_Item.IsEquippedItem(itemID) == true
-
-    -- ---- Items that need more complex processing ----
     if bagID and slotID then
         props.isNew = C_NewItems.IsNewItem(bagID, slotID) == true
         props.isBattlePayItem = C_Container.IsBattlePayItem(bagID, slotID) == true
 
         -- ---- Item durability ----
         local durability, maxDurability = C_Container.GetContainerItemDurability(bagID, slotID)
-
         if durability then
             props.durability = durability
             props.maxDurability = maxDurability
@@ -1845,27 +2017,10 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
     -- ---- Computed value ----
     props.totalValue = props.vendorPrice * props.count
 
-    -- ---- Battle pet cage override ----
-    if itemID == BATTLE_PET_CAGE_ID then
-        props.classID = Enum.ItemClass.Battlepet
-    end
-
-    -- ---- Unsellable (fully API-based) ----
+    -- ---- Unsellable: identity sets vendorPrice==0; slot OR-s in hasNoValue ----
     props.isUnsellable = (props.vendorPrice == 0) or (containerInfo and containerInfo.hasNoValue == true)
 
-    -- ---- Collectable items  ----
-    props.isToy = C_ToyBox.GetToyInfo(itemID) ~= nil
-
-    props.isPet = (itemID == BATTLE_PET_CAGE_ID)
-               or (props.classID == Enum.ItemClass.Battlepet)
-               or (props.classID == Enum.ItemClass.Miscellaneous and props.subClassID == Enum.ItemMiscellaneousSubclass.CompanionPet)
-
-    props.isMount = (props.classID == Enum.ItemClass.Miscellaneous and props.subClassID == Enum.ItemMiscellaneousSubclass.Mount)
-    props.isCosmetic = (props.classID == Enum.ItemClass.Armor and props.subClassID == Enum.ItemArmorSubclass.Cosmetic)
-    props.isCollected = ResolveCollected(itemID, props.classID, props.subClassID, hyperlink)
-
-    -- ---- Quest item ----
-    props.isQuestItem = (classID == Enum.ItemClass.Questitem)
+    -- ---- Quest item slot fallback (base set classID-derived value) ----
     if not props.isQuestItem and bagID and slotID then
         local qInfo = C_Container.GetContainerItemQuestInfo(bagID, slotID)
         if qInfo and (qInfo.isQuestItem or qInfo.isActive) then
@@ -1873,101 +2028,16 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
         end
     end
 
-    -- ---- Junk (quality + OneWoW hook) ----
-    props.isJunk = (props.quality == IQ.Poor)
-    if not props.isJunk and OneWoW and OneWoW.ItemStatus then
-        props.isJunk = OneWoW.ItemStatus:IsItemJunk(itemID) or false
-    end
-
-    -- ---- Special items ----
-    props.isHearthstone = HS_IDS[itemID] or false
-    if not props.isHearthstone and props.isToy then
-        local hsName = C_Item.GetItemNameByID(itemID)
-        if hsName and strfind(strlower(hsName), "hearthstone") then
-            props.isHearthstone = true
-        end
-    end
-
-    -- ---- Upgrade track info ----
-    props.upgradeLevel    = 0
-    props.upgradeMax      = 0
-    props.maxLevel        = props.ilvl
-    props.isUpgradeable   = false
-    props.isFullyUpgraded = false
-
-    local upgradeInfo = C_Item.GetItemUpgradeInfo(itemID)
-    if upgradeInfo then
-        props.upgradeLevel    = upgradeInfo.currentLevel or 0
-        props.upgradeMax      = upgradeInfo.maxLevel or 0
-        props.maxLevel        = upgradeInfo.maxItemLevel or props.ilvl
-        props.isUpgradeable   = (props.upgradeMax > 0)
-        props.isFullyUpgraded = (props.upgradeLevel >= props.upgradeMax and props.upgradeMax > 0)
-    end
-
-    -- ---- Transmog / appearance ----
-    props.hasAppearance         = false
-    props.isAppearanceCollected = C_TransmogCollection.PlayerHasTransmog(itemID)
-
-    if hyperlink then
-        local _, sourceID = C_TransmogCollection.GetItemInfo(hyperlink)
-        if sourceID then
-            props.hasAppearance = true
-
-            if not props.isAppearanceCollected then
-                local collected = C_TransmogCollection.PlayerHasTransmogItemModifiedAppearance(sourceID)
-                props.isAppearanceCollected = collected == true
-            end
-        end
-    elseif itemLocation then
+    -- ---- Transmog itemLocation fallback (only when hyperlink path didn't set it) ----
+    if not props.hasAppearance and itemLocation then
         local transmogInfo = C_Item.GetBaseItemTransmogInfo(itemLocation)
         local canTransmog = C_Item.CanItemTransmogAppearance(itemLocation)
-
         if canTransmog or (transmogInfo and transmogInfo.appearanceID) then
             props.hasAppearance = true
         end
     end
 
-    -- ---- Knowledge items ----
-    if hyperlink then
-        local _, spellName = C_Item.GetItemSpell(hyperlink)
-        if spellName then
-            local spellinfo = C_Spell.GetSpellInfo(spellName)
-            local spellIconID = spellinfo.iconID
-            props.isKnowledge = KNOWLEDGE_ICONS[spellIconID] == true
-        end
-    end
-
-    -- ---- Item link parsed properties ----
-    local itemLinkProperties = ParseItemLink(itemLink)
-    if itemLinkProperties then
-        props.isEnchanted = itemLinkProperties.enchantID ~= nil
-        props.isCrafted = itemLinkProperties.crafterGUID ~= nil
-        props.itemContextCategory = ITEM_CONTEXT_CATEGORY[itemLinkProperties.itemContext]
-    end
-
-    -- ---- Catalyst properties ----
-    if hyperlink and TransmogUpgradeMaster_API and TransmogUpgradeMaster_API.IsAppearanceMissing then
-        local ok, isCatalyst, isCatalystUpgrade = pcall(TransmogUpgradeMaster_API.IsAppearanceMissing, hyperlink)
-        if ok then
-            props.isCatalyst = isCatalyst == true
-            props.isCatalystUpgrade = isCatalystUpgrade == true
-        end
-    end
-
-    if props.classID == Enum.ItemClass.Housing and props.subClassID == Enum.ItemHousingSubclass.Decor then
-        ResolveHousing(props)
-    end
-
-    -- BIND DETECTION NOTE: API-based bind detection removed as it's not detailed enough. Warbound == Soulbound according to the API.
-    -- UNIQUE DETECTION NOTE: C_Item.GetItemUniquenessByID only matches unique-equipped items; its purpose is to identify restrictions on equipping items, not on owning them.
-
-    -- Override item properties for when they don't classify correctly.
-    local itemOverride = ITEM_ID_OVERRIDES[itemID]
-    if itemOverride then
-        for propName, propValue in pairs(itemOverride) do
-            props[propName] = propValue
-        end
-    end
+    if Profile then Profile:Stop("PE:BuildProps.PopulateSlotProps") end
 
     -- ---- Apply lazy tooltip metatable ----
     setmetatable(props, propsMT)
@@ -2840,14 +2910,18 @@ function PE:InvalidateCache()
     wipe(compiledCache)
     wipe(propsCache)
     wipe(tooltipCache)
+    wipe(identityPropsCache)
     knownProfs = nil
 end
 
 --- Invalidate props and tooltip caches (lighter, for frequent events).
 --- Compiled expressions are still valid since the grammar didn't change.
+--- Also wipes identity-tier props since some fields (collection state, player
+--- level, equipped status) can shift between bag updates.
 function PE:InvalidatePropsCache()
     wipe(propsCache)
     wipe(tooltipCache)
+    wipe(identityPropsCache)
 end
 
 --- Expose raw concatenated tooltip left-text for a bag slot.

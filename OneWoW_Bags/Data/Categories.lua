@@ -68,7 +68,15 @@ local recentExpiryTicker = nil
 
 local customCategoriesV2 = {}
 
+-- Two-tier category cache:
+--   categoryCache:     slot-keyed final result (per-slot overlays applied).
+--                      Hot path for repeat lookups of the same slot.
+--   baseCategoryCache: identity+containerType-keyed pre-overlay result. Lets
+--                      every slot holding the same item identity skip the
+--                      manual-pin / junk / custom-predicate / SEARCH_CATEGORIES
+--                      pipeline after the first lookup in that containerType.
 local categoryCache = {}
+local baseCategoryCache = {}
 
 local function GetDB()
     return OneWoW_Bags:GetDB()
@@ -91,6 +99,7 @@ end
 
 local function InvalidateCache()
     wipe(categoryCache)
+    wipe(baseCategoryCache)
 end
 
 local ALWAYS_APPLY = { ["Other"] = true, ["Empty"] = true }
@@ -290,22 +299,22 @@ local function CollectCustomPredicateCandidates(itemID, bagID, slotID, itemInfo,
     end
 end
 
---- Resolve the display category for an item slot.
---- Applies manual pins, OneWoW feature categories, custom predicate categories,
---- built-in search categories, optional equipment-slot splitting, and cache
---- reuse for stable item links.
----@param bagID number
----@param slotID number
----@param itemInfo table|nil
----@return string categoryName
-function Categories:GetItemCategory(bagID, slotID, itemInfo)
-    if not itemInfo then return "Other" end
-
+-- ResolveBaseCategory
+-- Identity-tier resolver for an item's display category. Runs the slot-
+-- INDEPENDENT classification pipeline (manual pin -> 1W Junk -> custom
+-- predicates -> SEARCH_CATEGORIES -> inventory-slot reclassification) and
+-- caches the final pre-overlay result keyed by item identity + containerType.
+--
+-- containerType is part of the key so per-container `appliesIn` filtering can
+-- still pick a different "best" candidate per bank type without cross-
+-- contaminating the cache. For the dominant case (one bank open at a time),
+-- this stays O(unique items) instead of O(slots).
+--
+-- Slot-dependent categories (1W Upgrades, Recent Items) live in
+-- GetItemCategory's overlay block and never enter this cache.
+local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo)
     local db = GetDB()
-    local itemID = itemInfo.itemID
-    local hyperlink = itemInfo.hyperlink
     local disabled = db.global.disabledCategories
-    local containerType = BagTypes:GetContainerType(bagID)
     local catMods = db.global.categoryModifications
 
     if itemID then
@@ -317,56 +326,32 @@ function Categories:GetItemCategory(bagID, slotID, itemInfo)
 
     local junkCatEnabled = db.global.enableJunkCategory and not disabled["1W Junk"]
     if junkCatEnabled and itemID and CategoryAppliesTo("1W Junk", containerType, catMods) then
-        if PE:BuildProps(itemID, bagID, slotID, itemInfo).isJunk then
+        if PE:BuildProps(itemID, nil, nil, itemInfo).isJunk then
             return "1W Junk"
         end
-    end
-
-    if itemID and hyperlink then
-        if db.global.enableUpgradeCategory and not disabled["1W Upgrades"] and CategoryAppliesTo("1W Upgrades", containerType, catMods) then
-            local UD = OneWoW and OneWoW.UpgradeDetection
-            if UD and UD.CheckItemUpgrade then
-                local itemLocation = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
-                if itemLocation and C_Item.DoesItemExist(itemLocation) then
-                    if UD:CheckItemUpgrade(hyperlink, itemLocation) then
-                        return "1W Upgrades"
-                    end
-                else
-                    if UD:CheckItemUpgrade(hyperlink) then
-                        return "1W Upgrades"
-                    end
-                end
-            end
-        end
-    end
-
-    if not disabled["Recent Items"] and CategoryAppliesTo("Recent Items", containerType, catMods) and itemID and self:SlotMatchesRecent(itemID, bagID, slotID) then
-        return "Recent Items"
     end
 
     if not hyperlink then
         return "Other"
     end
 
-    local cacheKey = PE:GetItemCacheKey(itemID, bagID, slotID, itemInfo.hyperlink)
-    if cacheKey then
-        local cached = categoryCache[cacheKey]
-        if cached then
-            return cached
-        end
+    local idKey = PE:GetItemIdentityKey(itemID, hyperlink) .. "|" .. (containerType or "")
+    local cached = baseCategoryCache[idKey]
+    if cached then
+        return cached
     end
 
-    local props = PE:BuildProps(itemID, bagID, slotID, itemInfo)
+    local props = PE:BuildProps(itemID, nil, nil, itemInfo)
 
     local allCands = {}
 
     if itemID then
-        CollectCustomPredicateCandidates(itemID, bagID, slotID, itemInfo, disabled, allCands)
+        CollectCustomPredicateCandidates(itemID, nil, nil, itemInfo, disabled, allCands)
     end
 
     for _, def in ipairs(SEARCH_CATEGORIES) do
         if not disabled[def.name] then
-            if PE:CheckItem(def.search, itemID, bagID, slotID, itemInfo) then
+            if PE:CheckItem(def.search, itemID, nil, nil, itemInfo) then
                 tinsert(allCands, {
                     name = def.name,
                     tieKey = def.name,
@@ -412,10 +397,78 @@ function Categories:GetItemCategory(bagID, slotID, itemInfo)
         category = "Other"
     end
 
-    if cacheKey and hyperlink and props.classID ~= nil then
+    baseCategoryCache[idKey] = category
+    return category
+end
+
+--- Resolve the display category for an item slot.
+--- Applies manual pins, OneWoW feature categories, custom predicate categories,
+--- built-in search categories, optional equipment-slot splitting, and cache
+--- reuse for stable item links.
+---@param bagID number
+---@param slotID number
+---@param itemInfo table|nil
+---@return string categoryName
+function Categories:GetItemCategory(bagID, slotID, itemInfo)
+    if not itemInfo then return "Other" end
+
+    local Profile = OneWoW_Bags.Profile
+    if Profile then Profile:Start("Categories:GetItemCategory") end
+
+    local db = GetDB()
+    local itemID = itemInfo.itemID
+    local hyperlink = itemInfo.hyperlink
+    local disabled = db.global.disabledCategories
+    local containerType = BagTypes:GetContainerType(bagID)
+    local catMods = db.global.categoryModifications
+
+    -- Slot-keyed final-result cache (covers slot-overlay outcomes too).
+    local cacheKey = PE:GetItemCacheKey(itemID, bagID, slotID, hyperlink)
+    if cacheKey then
+        local cached = categoryCache[cacheKey]
+        if cached then
+            if Profile then Profile:Stop("Categories:GetItemCategory") end
+            return cached
+        end
+    end
+
+    -- Slot-overlay #1: "1W Upgrades" (depends on ItemLocation / equipped state).
+    if itemID and hyperlink and db.global.enableUpgradeCategory and not disabled["1W Upgrades"]
+       and CategoryAppliesTo("1W Upgrades", containerType, catMods) then
+        local UD = OneWoW and OneWoW.UpgradeDetection
+        if UD and UD.CheckItemUpgrade then
+            local itemLocation = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
+            local upgrade
+            if itemLocation and C_Item.DoesItemExist(itemLocation) then
+                upgrade = UD:CheckItemUpgrade(hyperlink, itemLocation)
+            else
+                upgrade = UD:CheckItemUpgrade(hyperlink)
+            end
+            if upgrade then
+                if cacheKey then categoryCache[cacheKey] = "1W Upgrades" end
+                if Profile then Profile:Stop("Categories:GetItemCategory") end
+                return "1W Upgrades"
+            end
+        end
+    end
+
+    -- Slot-overlay #2: "Recent Items" (depends on slot-recent tracking).
+    if itemID and not disabled["Recent Items"]
+       and CategoryAppliesTo("Recent Items", containerType, catMods)
+       and self:SlotMatchesRecent(itemID, bagID, slotID) then
+        if cacheKey then categoryCache[cacheKey] = "Recent Items" end
+        if Profile then Profile:Stop("Categories:GetItemCategory") end
+        return "Recent Items"
+    end
+
+    -- Fall through to identity-tier base resolver.
+    local category = ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo)
+
+    if cacheKey and hyperlink then
         categoryCache[cacheKey] = category
     end
 
+    if Profile then Profile:Stop("Categories:GetItemCategory") end
     return category
 end
 
