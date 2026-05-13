@@ -267,6 +267,8 @@ function GUI:Show()
         OneWoW_Bags:RequestLayoutRefresh("bags", "show")
     end
 
+    OneWoW_Bags:ScheduleTooltipCatchupRefresh()
+
     Categories:BeginRecentExpiryTicker()
 end
 

@@ -53,6 +53,7 @@ local UnitLevel = UnitLevel
 local propsCache = {}
 local identityPropsCache = {}
 local tooltipCache = {}
+local tooltipTextLinkCache = {}
 local compiledCache = {}
 
 -- ============================================================================
@@ -1149,26 +1150,66 @@ local function ParseItemLink(link)
     return t
 end
 
--- ---------- GetTooltipText ----------
--- Returns the concatenated left-text of all tooltip lines for a bag slot.
--- Cached per bagID:slotID; wiped on BAG_UPDATE_DELAYED.
-local function GetTooltipText(bagID, slotID)
-    if not bagID or not slotID then return "" end
-    local key = bagID .. ":" .. slotID
-    if tooltipCache[key] then return tooltipCache[key] end
-
-    local tooltipData = C_TooltipInfo.GetBagItem(bagID, slotID)
-    if not tooltipData then
-        tooltipCache[key] = ""
+-- ---------- ConcatTooltipLines ----------
+-- Joins a TooltipData.lines array into a single newline-separated string of
+-- left-text. Returns "" when the tooltipData is nil/empty so callers can treat
+-- "no result" uniformly.
+local function ConcatTooltipLines(tooltipData)
+    if not tooltipData or not tooltipData.lines or #tooltipData.lines == 0 then
         return ""
     end
-
     local parts = {}
     for _, line in ipairs(tooltipData.lines) do
         parts[#parts + 1] = line.leftText or ""
     end
-    local text = tconcat(parts, "\n")
+    return tconcat(parts, "\n")
+end
+
+-- ---------- GetTooltipText ----------
+-- Returns the concatenated left-text of all tooltip lines for a bag slot.
+-- Cached per bagID:slotID; wiped on BAG_UPDATE_DELAYED.
+--
+-- Empty results are NOT cached. Lua treats "" as truthy, so caching the empty
+-- string would make `if tooltipCache[key]` short-circuit forever once a single
+-- pre-data-streaming evaluation poisoned the slot. Returning "" without
+-- caching lets the next call retry C_TooltipInfo when data is more likely to
+-- be available.
+local function GetTooltipText(bagID, slotID)
+    if not bagID or not slotID then return "" end
+    local key = bagID .. ":" .. slotID
+    local cached = tooltipCache[key]
+    if cached then return cached end
+
+    local text = ConcatTooltipLines(C_TooltipInfo.GetBagItem(bagID, slotID))
+    if text == "" then
+        return ""
+    end
+
     tooltipCache[key] = text
+    return text
+end
+
+-- ---------- GetTooltipTextByHyperlink ----------
+-- Identity-tier sibling of GetTooltipText. Used as the lazy resolver's
+-- fallback when a caller invokes BuildProps without bagID/slotID (e.g.
+-- toast-loot, which only has a hyperlink). Returns the hyperlink's generic
+-- tooltip body, which omits contextual lines (`<Right Click to Open>`,
+-- "You may trade for X minutes", per-character "Already Known") that the
+-- bag tooltip would include -- callers that need those must supply slot
+-- context.
+--
+-- Empty results are NOT cached for the same reason as GetTooltipText.
+local function GetTooltipTextByHyperlink(hyperlink)
+    if not hyperlink or hyperlink == "" then return "" end
+    local cached = tooltipTextLinkCache[hyperlink]
+    if cached then return cached end
+
+    local text = ConcatTooltipLines(C_TooltipInfo.GetHyperlink(hyperlink))
+    if text == "" then
+        return ""
+    end
+
+    tooltipTextLinkCache[hyperlink] = text
     return text
 end
 
@@ -1335,10 +1376,31 @@ end
 -- ---------- ResolveTooltipFields ----------
 -- Lazily populates the tooltip-derived fields on first access.
 -- Called by the propsMT.__index metatable handler.
--- Only the fields that genuinely require tooltip scanning live here
+-- Only the fields that genuinely require tooltip scanning live here.
+--
+-- Lookup precedence: slot-keyed tooltip first (most accurate, includes
+-- current bind state and slot-specific lines like `<Right Click to Open>`,
+-- the trade timer, and "Already Known"). Falls back to hyperlink-keyed
+-- tooltip when slot context is unavailable -- e.g. callers like toast-loot
+-- that only have a hyperlink -- so tooltip~, #onuse, #onequip, etc. still
+-- evaluate against the policy tooltip body.
+--
+-- Returns true when tooltip data was actually available; false when neither
+-- lookup yielded text. Callers (propsMT.__index, ResolveBaseCategory) use
+-- this to avoid persisting predicate verdicts that depended on missing data.
 local function ResolveTooltipFields(props)
     local bagID, slotID = rawget(props, "_bagID"), rawget(props, "_slotID")
-    if not bagID or not slotID then
+    local hyperlink = rawget(props, "hyperlink")
+
+    local tt = ""
+    if bagID and slotID then
+        tt = GetTooltipText(bagID, slotID)
+    end
+    if tt == "" and hyperlink then
+        tt = GetTooltipTextByHyperlink(hyperlink)
+    end
+
+    if tt == "" then
         rawset(props, "hasCharges", false)
         rawset(props, "hasUseAbility", false)
         rawset(props, "hasEquipAbility", false)
@@ -1347,10 +1409,8 @@ local function ResolveTooltipFields(props)
         rawset(props, "isUnique", false)
         rawset(props, "isUniqueEquipped", false)
         rawset(props, "tooltipText", "")
-        return
+        return false
     end
-
-    local tt = GetTooltipText(bagID, slotID)
 
     local isUniqueEquipped = strfind(tt, "^"..uniqueEquipPattern) ~= nil or strfind(tt, "\n"..ITEM_UNIQUE_EQUIPPABLE, 1, true) ~= nil
 
@@ -1373,6 +1433,7 @@ local function ResolveTooltipFields(props)
     rawset(props, "isAlreadyKnown", alreadyKnown)
     rawset(props, "isUniqueEquipped",   isUniqueEquipped)
     rawset(props, "isUnique",           isUniqueEquipped or strfind(tt, "^"..ITEM_UNIQUE) ~= nil or strfind(tt, "\n"..ITEM_UNIQUE, 1, true) ~= nil)
+    return true
 end
 
 -- ---------- ResolveBind ----------
@@ -1593,13 +1654,30 @@ local STAT_FIELDS_SET = {
 -- Metatable applied to every props table for lazy field resolution.
 -- Stays permanently; uses _tooltipResolved and _bindResolved flags to
 -- avoid redundant scans (rather than stripping the metatable).
+--
+-- Tooltip resolution is retry-on-failure: if ResolveTooltipFields cannot
+-- locate any tooltip data (cold streaming, hyperlink not yet cached client-
+-- side), we leave _tooltipResolved unset and tag the props with
+-- _tooltipDataMissing. Subsequent field reads will re-run the resolver, and
+-- callers can opt out of caching verdicts that depended on missing data.
+--
+-- _tooltipDataMissing is STICKY-ON-FAILURE: we only set it, never clear it
+-- here. This protects multi-predicate evaluations where an early predicate
+-- gets a failed resolve and a later predicate happens to get a successful
+-- one within the same evaluation -- the early predicate's verdict was still
+-- computed against empty fields. Callers (ResolveBaseCategory) explicitly
+-- clear the flag at the start of an evaluation window.
 local propsMT = {
     __index = function(self, key)
         -- Tooltip-derived fields: scan once, populate all on first access
         if TOOLTIP_FIELDS_SET[key] then
             if not rawget(self, "_tooltipResolved") then
-                ResolveTooltipFields(self)
-                rawset(self, "_tooltipResolved", true)
+                local ok = ResolveTooltipFields(self)
+                if ok then
+                    rawset(self, "_tooltipResolved", true)
+                else
+                    rawset(self, "_tooltipDataMissing", true)
+                end
             end
             return rawget(self, key)
         end
@@ -2032,11 +2110,20 @@ function PE:BuildProps(itemID, bagID, slotID, itemInfo)
         end
     end
 
-    -- ---- Transmog itemLocation fallback (only when hyperlink path didn't set it) ----
-    if not props.hasAppearance and itemLocation then
+    -- ---- Transmog itemLocation fallback (hyperlinkless path only) ----
+    -- Mirrors the pre-two-tier `elseif itemLocation` branch: the hyperlink path in
+    -- PopulateBaseProps is authoritative when a hyperlink exists. This fallback only
+    -- runs for the edge case of itemLocation-only callers (no hyperlink resolved).
+    --
+    -- transmogInfo.appearanceID is Constants.Transmog.NoTransmogID (== 0) for items
+    -- without an appearance, and 0 is truthy in Lua — a numeric check is required.
+    if not props.hasAppearance and not hyperlink and itemLocation then
         local transmogInfo = C_Item.GetBaseItemTransmogInfo(itemLocation)
         local canTransmog = C_Item.CanItemTransmogAppearance(itemLocation)
-        if canTransmog or (transmogInfo and transmogInfo.appearanceID) then
+        local hasAppearanceID = transmogInfo
+            and transmogInfo.appearanceID
+            and transmogInfo.appearanceID ~= 0
+        if canTransmog or hasAppearanceID then
             props.hasAppearance = true
         end
     end
@@ -2914,6 +3001,7 @@ function PE:InvalidateCache()
     wipe(compiledCache)
     wipe(propsCache)
     wipe(tooltipCache)
+    wipe(tooltipTextLinkCache)
     wipe(identityPropsCache)
     knownProfs = nil
 end
@@ -2925,6 +3013,7 @@ end
 function PE:InvalidatePropsCache()
     wipe(propsCache)
     wipe(tooltipCache)
+    wipe(tooltipTextLinkCache)
     wipe(identityPropsCache)
 end
 
@@ -2935,7 +3024,8 @@ end
 --- Walks propsCache once, evicting entries whose `.id` is in idSet and
 --- collecting their slot keys so paired caches (tooltipCache here,
 --- categoryCache in OneWoW_Bags.Categories) can be cleaned without re-
---- walking. identityPropsCache is walked independently.
+--- walking. identityPropsCache and tooltipTextLinkCache (hyperlink-keyed)
+--- are walked alongside.
 ---@param idSet table<number, boolean>|nil
 ---@return table<string, boolean> evictedSlotKeys
 function PE:InvalidateItemIDs(idSet)
@@ -2947,12 +3037,20 @@ function PE:InvalidateItemIDs(idSet)
             propsCache[key] = nil
             tooltipCache[key] = nil
             evictedSlotKeys[key] = true
+            local hyperlink = entry.hyperlink
+            if hyperlink then
+                tooltipTextLinkCache[hyperlink] = nil
+            end
         end
     end
 
     for key, entry in pairs(identityPropsCache) do
         if entry.id and idSet[entry.id] then
             identityPropsCache[key] = nil
+            local hyperlink = entry.hyperlink
+            if hyperlink then
+                tooltipTextLinkCache[hyperlink] = nil
+            end
         end
     end
 

@@ -300,58 +300,104 @@ local function CollectCustomPredicateCandidates(itemID, bagID, slotID, itemInfo,
 end
 
 -- ResolveBaseCategory
--- Identity-tier resolver for an item's display category. Runs the slot-
--- INDEPENDENT classification pipeline (manual pin -> 1W Junk -> custom
--- predicates -> SEARCH_CATEGORIES -> inventory-slot reclassification) and
--- caches the final pre-overlay result keyed by item identity + containerType.
+-- Identity-tier resolver for an item's display category. Runs the
+-- classification pipeline (manual pin -> 1W Junk -> custom predicates ->
+-- SEARCH_CATEGORIES -> inventory-slot reclassification) and caches the
+-- final pre-overlay result keyed by item identity + containerType.
 --
 -- containerType is part of the key so per-container `appliesIn` filtering can
 -- still pick a different "best" candidate per bank type without cross-
 -- contaminating the cache. For the dominant case (one bank open at a time),
 -- this stays O(unique items) instead of O(slots).
 --
+-- Slot context (bagID, slotID) is passed to PE:BuildProps / PE:CheckItem so
+-- the lazy tooltip resolver can read the bag tooltip (via
+-- C_TooltipInfo.GetBagItem) instead of the hyperlink tooltip (via
+-- C_TooltipInfo.GetHyperlink). The bag tooltip carries contextual lines like
+-- "<Right Click to Open>", "Already Known", and tradeable-loot timers that
+-- the hyperlink tooltip omits, so tooltip-text predicates (#openable,
+-- #alreadyknown, #tradeableloot, tooltip~"...") behave identically to the
+-- search bar. The verdict is still cached by identity + containerType: for
+-- any stack of the same item identity in the same container, every slot's
+-- bag tooltip body is identical, so the predicate sweep is identity-invariant
+-- and the cached verdict is correct for the remaining slots.
+--
 -- Slot-dependent categories (1W Upgrades, Recent Items) live in
 -- GetItemCategory's overlay block and never enter this cache.
-local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo)
+-- Returns (category, tentative). `tentative` is true when the verdict was
+-- computed against partial data (item info still streaming, or tooltip data
+-- not yet available). Callers should NOT persist tentative results in any
+-- cache, so the next refresh re-evaluates with full data.
+local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, bagID, slotID)
     local db = GetDB()
+    local Profile = OneWoW_Bags.Profile
     local disabled = db.global.disabledCategories
     local catMods = db.global.categoryModifications
 
     if itemID then
         local manualName = ResolveManualCategoryName(itemID, db, disabled, containerType)
         if manualName then
-            return manualName
+            return manualName, false
         end
     end
 
     local junkCatEnabled = db.global.enableJunkCategory and not disabled["1W Junk"]
     if junkCatEnabled and itemID and CategoryAppliesTo("1W Junk", containerType, catMods) then
-        if PE:BuildProps(itemID, nil, nil, itemInfo).isJunk then
-            return "1W Junk"
+        if PE:BuildProps(itemID, bagID, slotID, itemInfo).isJunk then
+            return "1W Junk", false
         end
     end
 
     if not hyperlink then
-        return "Other"
+        return "Other", false
+    end
+
+    -- Phase 4: Option A gate. When full item info hasn't streamed yet,
+    -- skip the expensive predicate pipeline entirely. Predicates that
+    -- depend on tooltip lines / vendor price / bind state / stats would
+    -- evaluate against partial data and likely fall to "Other"; defer
+    -- until GET_ITEM_INFO_RECEIVED arrives and the next refresh runs.
+    if itemID and not C_Item.IsItemDataCachedByID(itemID) then
+        C_Item.RequestLoadItemDataByID(itemID)
+        if Profile then
+            Profile:Start("Categories:GetItemCategory.itemInfoDeferred")
+            Profile:Stop("Categories:GetItemCategory.itemInfoDeferred")
+        end
+        return "Other", true
     end
 
     local idKey = PE:GetItemIdentityKey(itemID, hyperlink) .. "|" .. (containerType or "")
     local cached = baseCategoryCache[idKey]
     if cached then
-        return cached
+        if Profile then
+            Profile:Start("Categories:GetItemCategory.baseCategoryCacheHit")
+            Profile:Stop("Categories:GetItemCategory.baseCategoryCacheHit")
+        end
+        return cached, false
     end
 
-    local props = PE:BuildProps(itemID, nil, nil, itemInfo)
+    if Profile then
+        Profile:Start("Categories:GetItemCategory.fullPipeline")
+        Profile:Stop("Categories:GetItemCategory.fullPipeline")
+    end
+
+    local props = PE:BuildProps(itemID, bagID, slotID, itemInfo)
+
+    -- Clear any leftover sticky-failure flag from a prior evaluation so we
+    -- only observe failures originating in THIS evaluation window. The
+    -- lazy resolver in propsMT.__index will re-set the flag if any
+    -- tooltip-field access in the predicates below comes back empty.
+    rawset(props, "_tooltipDataMissing", nil)
 
     local allCands = {}
 
     if itemID then
-        CollectCustomPredicateCandidates(itemID, nil, nil, itemInfo, disabled, allCands)
+        CollectCustomPredicateCandidates(itemID, bagID, slotID, itemInfo, disabled, allCands)
     end
 
     for _, def in ipairs(SEARCH_CATEGORIES) do
         if not disabled[def.name] then
-            if PE:CheckItem(def.search, itemID, nil, nil, itemInfo) then
+            if PE:CheckItem(def.search, itemID, bagID, slotID, itemInfo) then
                 tinsert(allCands, {
                     name = def.name,
                     tieKey = def.name,
@@ -397,8 +443,21 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo)
         category = "Other"
     end
 
+    -- If any predicate evaluation triggered a tooltip lookup that came back
+    -- empty (cold streaming, hyperlink-tooltip not yet cached), the verdict
+    -- is suspect. Return tentative so the caller (and the slot-level cache)
+    -- skips persisting; the next refresh re-evaluates.
+    local tentative = rawget(props, "_tooltipDataMissing") == true
+    if tentative then
+        if Profile then
+            Profile:Start("Categories:GetItemCategory.tooltipDeferred")
+            Profile:Stop("Categories:GetItemCategory.tooltipDeferred")
+        end
+        return category, true
+    end
+
     baseCategoryCache[idKey] = category
-    return category
+    return category, false
 end
 
 --- Resolve the display category for an item slot.
@@ -427,7 +486,11 @@ function Categories:GetItemCategory(bagID, slotID, itemInfo)
     if cacheKey then
         local cached = categoryCache[cacheKey]
         if cached then
-            if Profile then Profile:Stop("Categories:GetItemCategory") end
+            if Profile then
+                Profile:Start("Categories:GetItemCategory.categoryCacheHit")
+                Profile:Stop("Categories:GetItemCategory.categoryCacheHit")
+                Profile:Stop("Categories:GetItemCategory")
+            end
             return cached
         end
     end
@@ -446,7 +509,11 @@ function Categories:GetItemCategory(bagID, slotID, itemInfo)
             end
             if upgrade then
                 if cacheKey then categoryCache[cacheKey] = "1W Upgrades" end
-                if Profile then Profile:Stop("Categories:GetItemCategory") end
+                if Profile then
+                    Profile:Start("Categories:GetItemCategory.slotOverlayHit")
+                    Profile:Stop("Categories:GetItemCategory.slotOverlayHit")
+                    Profile:Stop("Categories:GetItemCategory")
+                end
                 return "1W Upgrades"
             end
         end
@@ -457,14 +524,22 @@ function Categories:GetItemCategory(bagID, slotID, itemInfo)
        and CategoryAppliesTo("Recent Items", containerType, catMods)
        and self:SlotMatchesRecent(itemID, bagID, slotID) then
         if cacheKey then categoryCache[cacheKey] = "Recent Items" end
-        if Profile then Profile:Stop("Categories:GetItemCategory") end
+        if Profile then
+            Profile:Start("Categories:GetItemCategory.slotOverlayHit")
+            Profile:Stop("Categories:GetItemCategory.slotOverlayHit")
+            Profile:Stop("Categories:GetItemCategory")
+        end
         return "Recent Items"
     end
 
     -- Fall through to identity-tier base resolver.
-    local category = ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo)
+    local category, tentative = ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, bagID, slotID)
 
-    if cacheKey and hyperlink then
+    -- Tentative verdicts mean the predicate pipeline ran without full item
+    -- info or tooltip data. Persisting them would freeze items in the wrong
+    -- category until something invalidates the slot. Leave the slot uncached
+    -- so the next refresh re-evaluates once data has streamed in.
+    if cacheKey and hyperlink and not tentative then
         categoryCache[cacheKey] = category
     end
 

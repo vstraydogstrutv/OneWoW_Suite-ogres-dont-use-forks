@@ -346,6 +346,31 @@ function OneWoW_Bags:RequestVisualRefresh(target)
     end
 end
 
+--- Schedule a single deferred refresh ~750ms after a UI surface is first shown.
+--- Covers items whose tooltip/item info arrives silently (no GET_ITEM_INFO_RECEIVED
+--- event) between the initial categorization pass and the user actually viewing
+--- the bag. The tentative-verdict guard in Categories:GetItemCategory leaves
+--- those slot entries unset, so this second refresh re-evaluates them against
+--- now-warmer data without bulk-wiping the cache.
+---
+--- Idempotent: rapid open/close/open cycles coalesce into a single timer.
+function OneWoW_Bags:ScheduleTooltipCatchupRefresh()
+    if self._tooltipCatchupPending then return end
+    self._tooltipCatchupPending = true
+    C_Timer.After(0.75, function()
+        self._tooltipCatchupPending = false
+        local refreshBags = self.GUI and self.GUI:IsShown()
+        local refreshBankRelated = self.bankOpen or self.guildBankOpen
+        if refreshBags and refreshBankRelated then
+            self:RequestVisualRefresh("all")
+        elseif refreshBankRelated then
+            self:RequestVisualRefresh("bank_related")
+        elseif refreshBags then
+            self:RequestVisualRefresh("bags")
+        end
+    end)
+end
+
 --- Fully reset window frames and reopen windows that were visible.
 ---@param target "bags"|"bank"|"guild"|"bank_related"|"all"|nil
 function OneWoW_Bags:RequestWindowReset(target)
@@ -542,6 +567,8 @@ function OneWoW_Bags:OnBankOpened()
     if self.db.global.autoOpenWithBank then
         self.GUI:Show()
     end
+
+    self:ScheduleTooltipCatchupRefresh()
 end
 
 function OneWoW_Bags:OnBankClosed()
@@ -735,6 +762,8 @@ function OneWoW_Bags:OnGuildBankOpened()
     if self.db.global.autoOpenWithBank then
         self.GUI:Show()
     end
+
+    self:ScheduleTooltipCatchupRefresh()
 end
 
 function OneWoW_Bags:OnGuildBankClosed()
