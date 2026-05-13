@@ -399,7 +399,9 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, b
 
     BumpProfileCounter(Profile, "Categories:GetItemCategory.fullPipeline")
 
+    if Profile then Profile:Start("Categories.fullPipeline.buildProps") end
     local props = PE:BuildProps(itemID, bagID, slotID, itemInfo)
+    if Profile then Profile:Stop("Categories.fullPipeline.buildProps") end
 
     -- Clear any leftover sticky-failure flag from a prior evaluation so we
     -- only observe failures originating in THIS evaluation window. The
@@ -410,9 +412,12 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, b
     local allCands = {}
 
     if itemID then
+        if Profile then Profile:Start("Categories.fullPipeline.customCands") end
         CollectCustomPredicateCandidates(itemID, bagID, slotID, itemInfo, disabled, allCands)
+        if Profile then Profile:Stop("Categories.fullPipeline.customCands") end
     end
 
+    if Profile then Profile:Start("Categories.fullPipeline.searchCats") end
     for _, def in ipairs(SEARCH_CATEGORIES) do
         if not disabled[def.name] then
             if PE:CheckItem(def.search, itemID, bagID, slotID, itemInfo) then
@@ -426,6 +431,7 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, b
             end
         end
     end
+    if Profile then Profile:Stop("Categories.fullPipeline.searchCats") end
 
     if containerType then
         local applicable = {}
@@ -439,7 +445,9 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, b
 
     local category = "Other"
     if #allCands > 0 then
+        if Profile then Profile:Start("Categories.fullPipeline.pickBest") end
         local best = PickBestCandidate(allCands, db, db.global)
+        if Profile then Profile:Stop("Categories.fullPipeline.pickBest") end
         if best then
             category = best.name
         end

@@ -98,6 +98,7 @@ end
 -- Materialize item buttons for a single bag tab. Idempotent at the slot
 -- level: existing buttons in the tab are kept, missing slots are filled.
 function BankSet:BuildTab(bagID, masqueKind, numSlots)
+    local Profile = OneWoW_Bags.Profile
     local bagFrame = GetOrCreateBankFrame(bagID)
     self.bagContainerFrames[bagID] = bagFrame
     if not self.slots[bagID] then
@@ -106,13 +107,27 @@ function BankSet:BuildTab(bagID, masqueKind, numSlots)
 
     for slotID = 1, numSlots do
         if not self.slots[bagID][slotID] then
+            if Profile then Profile:Start("BankSet:CreateButton.Acquire") end
             local button = ItemPool:Acquire()
             button:SetParent(bagFrame)
+            if Profile then Profile:Stop("BankSet:CreateButton.Acquire") end
+
+            if Profile then Profile:Start("BankSet:CreateButton.ApplyMixin") end
             OneWoW_Bags:ApplyItemButtonMixin(button)
+            if Profile then Profile:Stop("BankSet:CreateButton.ApplyMixin") end
+
+            if Profile then Profile:Start("BankSet:CreateButton.SetSlot") end
             button:OWB_SetSlot(bagID, slotID)
+            if Profile then Profile:Stop("BankSet:CreateButton.SetSlot") end
+
+            if Profile then Profile:Start("BankSet:CreateButton.ApplyScripts") end
             self:ApplyBankScripts(button)
+            if Profile then Profile:Stop("BankSet:CreateButton.ApplyScripts") end
+
             if OneWoW_Bags.Masque then
+                if Profile then Profile:Start("BankSet:CreateButton.Masque") end
                 OneWoW_Bags.Masque:SkinItemButton(button, masqueKind)
+                if Profile then Profile:Stop("BankSet:CreateButton.Masque") end
             end
             self.slots[bagID][slotID] = button
         end

@@ -78,15 +78,35 @@ end
 -- actually arrived get re-resolved.
 function Events:OnItemInfoReceived(itemID)
     if not itemID then return end
+    local Profile = OneWoW_Bags.Profile
 
     if not pendingItemIDs then
         pendingItemIDs = {}
         C_Timer.After(0, function()
             local ids = pendingItemIDs
             pendingItemIDs = nil
+            if Profile then
+                local n = 0
+                for _ in pairs(ids) do n = n + 1 end
+                -- Marker name encodes the batch size so the dump shows the
+                -- distribution of flush sizes naturally (one row per size).
+                local sizeKey = "Events:OnItemInfoReceived.flush.size=" .. tostring(n)
+                Profile:Start(sizeKey)
+                Profile:Stop(sizeKey)
+            end
             OneWoW_Bags:InvalidateItemIDs(ids)
             OneWoW_Bags:UpdateSlotsForItemIDs(ids)
         end)
+    end
+
+    if Profile then
+        if pendingItemIDs[itemID] then
+            Profile:Start("Events:OnItemInfoReceived.duplicateInBatch")
+            Profile:Stop("Events:OnItemInfoReceived.duplicateInBatch")
+        else
+            Profile:Start("Events:OnItemInfoReceived.newInBatch")
+            Profile:Stop("Events:OnItemInfoReceived.newInBatch")
+        end
     end
     pendingItemIDs[itemID] = true
 end
