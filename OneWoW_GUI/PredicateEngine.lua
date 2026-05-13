@@ -1185,10 +1185,19 @@ local function GetTooltipData(bagID, slotID)
     if not bagID or not slotID then return nil end
     local key = bagID .. ":" .. slotID
     local cached = tooltipDataCache[key]
-    if cached then return cached end
+    local Profile = OneWoW_Bags and OneWoW_Bags.Profile
+    if cached then
+        if Profile then
+            Profile:Start("tooltipDataCache.hit")
+            Profile:Stop("tooltipDataCache.hit")
+        end
+        return cached
+    end
 
+    if Profile then Profile:Start("tooltipDataCache.miss") end
     local td = C_TooltipInfo.GetBagItem(bagID, slotID)
     if td then tooltipDataCache[key] = td end
+    if Profile then Profile:Stop("tooltipDataCache.miss") end
     return td
 end
 
@@ -1201,10 +1210,19 @@ end
 local function GetTooltipDataByHyperlink(hyperlink)
     if not hyperlink or hyperlink == "" then return nil end
     local cached = tooltipDataLinkCache[hyperlink]
-    if cached then return cached end
+    local Profile = OneWoW_Bags and OneWoW_Bags.Profile
+    if cached then
+        if Profile then
+            Profile:Start("tooltipDataLinkCache.hit")
+            Profile:Stop("tooltipDataLinkCache.hit")
+        end
+        return cached
+    end
 
+    if Profile then Profile:Start("tooltipDataLinkCache.miss") end
     local td = C_TooltipInfo.GetHyperlink(hyperlink)
     if td then tooltipDataLinkCache[hyperlink] = td end
+    if Profile then Profile:Stop("tooltipDataLinkCache.miss") end
     return td
 end
 

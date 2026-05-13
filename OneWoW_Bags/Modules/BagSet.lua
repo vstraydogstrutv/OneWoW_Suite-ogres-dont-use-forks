@@ -107,7 +107,7 @@ function BagSet:Build()
     Profile:Stop("BagSet:Build.RebuildButtonList")
 
     Profile:Start("BagSet:Build.UpdateAllSlots")
-    self:UpdateAllSlots()
+    self:UpdateAllSlots("build")
     Profile:Stop("BagSet:Build.UpdateAllSlots")
 
     Profile:Stop("BagSet:Build")
@@ -133,8 +133,13 @@ end
 
 function BagSet:UpdateDirtyBags(dirtyBags)
     if not self.isBuilt then return end
+    local Profile = OneWoW_Bags.Profile
     for bagID in pairs(dirtyBags) do
         if self.slots[bagID] then
+            if Profile then
+                Profile:Start("BagSet:UpdateDirtyBags.dirtyBagCount")
+                Profile:Stop("BagSet:UpdateDirtyBags.dirtyBagCount")
+            end
             local numSlots = C_Container.GetContainerNumSlots(bagID)
             local currentSlots = self.slots[bagID]
 
@@ -146,11 +151,15 @@ function BagSet:UpdateDirtyBags(dirtyBags)
             else
                 for _, button in pairs(currentSlots) do
                     button:OWB_MarkDirty()
+                    if Profile then
+                        Profile:Start("BagSet:UpdateDirtyBags.slotMarkedDirty")
+                        Profile:Stop("BagSet:UpdateDirtyBags.slotMarkedDirty")
+                    end
                 end
             end
         end
     end
-    self:ProcessDirtySlots()
+    self:ProcessDirtySlots("bag_update")
 end
 
 function BagSet:RebuildBag(bagID, numSlots)
@@ -181,12 +190,19 @@ function BagSet:RebuildBag(bagID, numSlots)
     self:RebuildButtonList()
 end
 
-function BagSet:ProcessDirtySlots()
+-- cause: see BankSet:ProcessDirtySlots. Same convention.
+function BagSet:ProcessDirtySlots(cause)
+    local Profile = OneWoW_Bags.Profile
+    local causeKey = cause and ("OWB_FullUpdate.cause." .. cause) or nil
     self.freeSlots = 0
     for _, bagSlots in pairs(self.slots) do
         for _, button in pairs(bagSlots) do
             if button:OWB_IsDirty() then
                 button:OWB_FullUpdate()
+                if Profile and causeKey then
+                    Profile:Start(causeKey)
+                    Profile:Stop(causeKey)
+                end
             end
             if not button.owb_hasItem then
                 self.freeSlots = self.freeSlots + 1
@@ -195,13 +211,13 @@ function BagSet:ProcessDirtySlots()
     end
 end
 
-function BagSet:UpdateAllSlots()
+function BagSet:UpdateAllSlots(cause)
     for _, bagSlots in pairs(self.slots) do
         for _, button in pairs(bagSlots) do
             button:OWB_MarkDirty()
         end
     end
-    self:ProcessDirtySlots()
+    self:ProcessDirtySlots(cause)
 end
 
 --- Returns true when at least one slot was matched and re-rendered, so
@@ -220,7 +236,7 @@ function BagSet:UpdateSlotsForItems(itemIDs)
         end
     end
     if anyDirty then
-        self:ProcessDirtySlots()
+        self:ProcessDirtySlots("item_info")
     end
     return anyDirty
 end

@@ -190,11 +190,11 @@ function BankSet:Build()
     -- per-button work here.
     if newTabsBuilt then
         Profile:Start("BankSet:Build.UpdateAllSlots")
-        self:UpdateAllSlots()
+        self:UpdateAllSlots("build")
         Profile:Stop("BankSet:Build.UpdateAllSlots")
     else
         Profile:Start("BankSet:Build.ProcessDirtySlots")
-        self:ProcessDirtySlots()
+        self:ProcessDirtySlots("build_toggle")
         Profile:Stop("BankSet:Build.ProcessDirtySlots")
     end
 
@@ -229,8 +229,13 @@ end
 
 function BankSet:UpdateDirtyBags(dirtyBags)
     if not self.isBuilt then return end
+    local Profile = OneWoW_Bags.Profile
     for bagID in pairs(dirtyBags) do
         if self.slots[bagID] then
+            if Profile then
+                Profile:Start("BankSet:UpdateDirtyBags.dirtyBagCount")
+                Profile:Stop("BankSet:UpdateDirtyBags.dirtyBagCount")
+            end
             local numSlots = C_Container.GetContainerNumSlots(bagID)
             local currentCount = 0
             for _ in pairs(self.slots[bagID]) do currentCount = currentCount + 1 end
@@ -239,11 +244,15 @@ function BankSet:UpdateDirtyBags(dirtyBags)
             else
                 for _, button in pairs(self.slots[bagID]) do
                     button:OWB_MarkDirty()
+                    if Profile then
+                        Profile:Start("BankSet:UpdateDirtyBags.slotMarkedDirty")
+                        Profile:Stop("BankSet:UpdateDirtyBags.slotMarkedDirty")
+                    end
                 end
             end
         end
     end
-    self:ProcessDirtySlots()
+    self:ProcessDirtySlots("bag_update")
 end
 
 function BankSet:RebuildBag(bagID, numSlots)
@@ -284,11 +293,22 @@ end
 -- Processes any dirty buttons across BOTH modes so the cached inactive
 -- mode stays correct for instant toggles. Free-slot counter is scoped to
 -- the active mode (buttonList already filters to it).
-function BankSet:ProcessDirtySlots()
+--
+-- cause: diagnostic tag attributed to each OWB_FullUpdate executed by this
+-- pass (e.g. "build", "bag_update", "item_info"). Lets /owbprof show which
+-- call site is driving the bulk of per-button updates without changing
+-- behavior.
+function BankSet:ProcessDirtySlots(cause)
+    local Profile = OneWoW_Bags.Profile
+    local causeKey = cause and ("OWB_FullUpdate.cause." .. cause) or nil
     for _, bagSlots in pairs(self.slots) do
         for _, button in pairs(bagSlots) do
             if button:OWB_IsDirty() then
                 button:OWB_FullUpdate()
+                if Profile and causeKey then
+                    Profile:Start(causeKey)
+                    Profile:Stop(causeKey)
+                end
             end
         end
     end
@@ -301,13 +321,13 @@ function BankSet:ProcessDirtySlots()
     end
 end
 
-function BankSet:UpdateAllSlots()
+function BankSet:UpdateAllSlots(cause)
     for _, bagSlots in pairs(self.slots) do
         for _, button in pairs(bagSlots) do
             button:OWB_MarkDirty()
         end
     end
-    self:ProcessDirtySlots()
+    self:ProcessDirtySlots(cause)
 end
 
 --- Returns true when at least one slot was matched and re-rendered, so
@@ -326,13 +346,13 @@ function BankSet:UpdateSlotsForItems(itemIDs)
         end
     end
     if anyDirty then
-        self:ProcessDirtySlots()
+        self:ProcessDirtySlots("item_info")
     end
     return anyDirty
 end
 
 function BankSet:RefreshAllVisuals()
-    self:UpdateAllSlots()
+    self:UpdateAllSlots("refresh_visuals")
 end
 
 function BankSet:UpdateQualityColors()

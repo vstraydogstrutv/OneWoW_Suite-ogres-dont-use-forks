@@ -18,6 +18,24 @@ local C_NewItems = C_NewItems
 OneWoW_Bags.Categories = {}
 local Categories = OneWoW_Bags.Categories
 
+-- BumpProfileCounter
+-- Increments a marker-style profile counter and, if a current refresh
+-- reason has been published by FlushPendingLayoutRefreshes, increments a
+-- ".reason.<reason>" sibling counter as well. Lets the dump show both the
+-- aggregate hit/miss numbers and the pass-1/pass-2 split without doubling
+-- the call sites.
+local function BumpProfileCounter(Profile, name)
+    if not Profile then return end
+    Profile:Start(name)
+    Profile:Stop(name)
+    local reason = OneWoW_Bags._currentRefreshReason
+    if reason then
+        local suffixed = name .. ".reason." .. reason
+        Profile:Start(suffixed)
+        Profile:Stop(suffixed)
+    end
+end
+
 local CATEGORY_DEFINITIONS = {
     { name = "1W Junk",          priority = 1},
     { name = "1W Upgrades",      priority = 1},
@@ -358,7 +376,9 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, b
     -- evaluate against partial data and likely fall to "Other"; defer
     -- until GET_ITEM_INFO_RECEIVED arrives and the next refresh runs.
     if itemID and not C_Item.IsItemDataCachedByID(itemID) then
+        if Profile then Profile:Start("Categories:GetItemCategory.requestLoadItemData") end
         C_Item.RequestLoadItemDataByID(itemID)
+        if Profile then Profile:Stop("Categories:GetItemCategory.requestLoadItemData") end
         if Profile then
             Profile:Start("Categories:GetItemCategory.itemInfoDeferred")
             Profile:Stop("Categories:GetItemCategory.itemInfoDeferred")
@@ -369,17 +389,11 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, b
     local idKey = PE:GetItemIdentityKey(itemID, hyperlink) .. "|" .. (containerType or "")
     local cached = baseCategoryCache[idKey]
     if cached then
-        if Profile then
-            Profile:Start("Categories:GetItemCategory.baseCategoryCacheHit")
-            Profile:Stop("Categories:GetItemCategory.baseCategoryCacheHit")
-        end
+        BumpProfileCounter(Profile, "Categories:GetItemCategory.baseCategoryCacheHit")
         return cached, false
     end
 
-    if Profile then
-        Profile:Start("Categories:GetItemCategory.fullPipeline")
-        Profile:Stop("Categories:GetItemCategory.fullPipeline")
-    end
+    BumpProfileCounter(Profile, "Categories:GetItemCategory.fullPipeline")
 
     local props = PE:BuildProps(itemID, bagID, slotID, itemInfo)
 
@@ -486,11 +500,8 @@ function Categories:GetItemCategory(bagID, slotID, itemInfo)
     if cacheKey then
         local cached = categoryCache[cacheKey]
         if cached then
-            if Profile then
-                Profile:Start("Categories:GetItemCategory.categoryCacheHit")
-                Profile:Stop("Categories:GetItemCategory.categoryCacheHit")
-                Profile:Stop("Categories:GetItemCategory")
-            end
+            BumpProfileCounter(Profile, "Categories:GetItemCategory.categoryCacheHit")
+            if Profile then Profile:Stop("Categories:GetItemCategory") end
             return cached
         end
     end

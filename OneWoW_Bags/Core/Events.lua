@@ -104,10 +104,13 @@ function Events:OnBagUpdate(bagID)
 end
 
 function Events:OnBagUpdateDelayed()
+    local Profile = OneWoW_Bags.Profile
+    if Profile then Profile:Start("Events:OnBagUpdateDelayed") end
     local dirty = self.dirtyBags
     self.dirtyBags = {}
     OneWoW_Bags:InvalidateCategorization("props")
     OneWoW_Bags:ProcessBagUpdate(dirty)
+    if Profile then Profile:Stop("Events:OnBagUpdateDelayed") end
 end
 
 function Events:OnItemLockChanged(bagID, slotID)

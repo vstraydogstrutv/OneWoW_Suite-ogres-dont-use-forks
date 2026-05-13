@@ -284,7 +284,13 @@ function OneWoW_Bags:FlushPendingLayoutRefreshes()
                 Profile:Start(guiKey .. ":RefreshLayout.reason." .. reason)
             end
             lastRefreshTime[guiKey] = GetTime()
+            -- Expose the active reason so downstream callers (Categories,
+            -- predicate sweep) can tag their counters by pass. Cleared in
+            -- the finally-style block below so an empty/unknown reason
+            -- falls back to the unsuffixed counters.
+            self._currentRefreshReason = reason
             gui:RefreshLayout()
+            self._currentRefreshReason = nil
             if Profile and reason then
                 Profile:Stop(guiKey .. ":RefreshLayout.reason." .. reason)
             end
