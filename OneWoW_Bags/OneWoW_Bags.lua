@@ -360,11 +360,32 @@ end
 --- now-warmer data without bulk-wiping the cache.
 ---
 --- Idempotent: rapid open/close/open cycles coalesce into a single timer.
+---
+--- The catchup is a no-op unless `_hasPendingTentatives` was set during the
+--- preceding build/refresh pass. This avoids 500–800 OWB_FullUpdate calls plus
+--- a cascading layout refresh on `/reload`-style opens where item info is
+--- already cached and no tentative verdicts were ever produced.
 function OneWoW_Bags:ScheduleTooltipCatchupRefresh()
     if self._tooltipCatchupPending then return end
     self._tooltipCatchupPending = true
     C_Timer.After(0.75, function()
         self._tooltipCatchupPending = false
+
+        local Profile = OneWoW_Bags.Profile
+        if not self._hasPendingTentatives then
+            if Profile then
+                Profile:Start("OneWoW_Bags:ScheduleTooltipCatchupRefresh.skipped")
+                Profile:Stop("OneWoW_Bags:ScheduleTooltipCatchupRefresh.skipped")
+            end
+            return
+        end
+
+        self._hasPendingTentatives = false
+        if Profile then
+            Profile:Start("OneWoW_Bags:ScheduleTooltipCatchupRefresh.executed")
+            Profile:Stop("OneWoW_Bags:ScheduleTooltipCatchupRefresh.executed")
+        end
+
         local refreshBags = self.GUI and self.GUI:IsShown()
         local refreshBankRelated = self.bankOpen or self.guildBankOpen
         if refreshBags and refreshBankRelated then

@@ -383,6 +383,10 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, b
             Profile:Start("Categories:GetItemCategory.itemInfoDeferred")
             Profile:Stop("Categories:GetItemCategory.itemInfoDeferred")
         end
+        -- Tell the tooltip-catchup pass that at least one slot was provisional
+        -- so the deferred refresh is still worth doing. Cleared by the catchup
+        -- when it runs.
+        OneWoW_Bags._hasPendingTentatives = true
         return "Other", true
     end
 
@@ -467,6 +471,7 @@ local function ResolveBaseCategory(itemID, hyperlink, containerType, itemInfo, b
             Profile:Start("Categories:GetItemCategory.tooltipDeferred")
             Profile:Stop("Categories:GetItemCategory.tooltipDeferred")
         end
+        OneWoW_Bags._hasPendingTentatives = true
         return category, true
     end
 

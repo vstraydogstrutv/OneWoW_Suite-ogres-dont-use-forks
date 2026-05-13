@@ -296,5 +296,5 @@ function BagSet:GetFreeSlotCount()
 end
 
 function BagSet:RefreshAllVisuals()
-    self:UpdateAllSlots()
+    self:UpdateAllSlots("refresh_visuals")
 end
