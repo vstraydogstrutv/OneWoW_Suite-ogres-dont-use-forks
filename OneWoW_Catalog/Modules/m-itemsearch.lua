@@ -42,7 +42,7 @@ local function GetRecipeKnownByFromAltTracker(itemID)
     if recipeSpellID then
         for charKey, charData in pairs(profsDB.characters) do
             if charData.recipes then
-                for profName, recipeSet in pairs(charData.recipes) do
+                for _, recipeSet in pairs(charData.recipes) do
                     if recipeSet[recipeSpellID] and not seen[charKey] then
                         seen[charKey] = true
                         tinsert(knownBy, charKey)
@@ -58,7 +58,7 @@ local function GetRecipeKnownByFromAltTracker(itemID)
             local craftedName = itemName:match("^%S+:%s*(.+)$") or itemName
             for charKey, charData in pairs(profsDB.characters) do
                 if charData.recipes and not seen[charKey] then
-                    for profName, recipeSet in pairs(charData.recipes) do
+                    for _, recipeSet in pairs(charData.recipes) do
                         for storedID in pairs(recipeSet) do
                             local info = C_TradeSkillUI.GetRecipeInfo(storedID)
                             if info and info.name == craftedName then

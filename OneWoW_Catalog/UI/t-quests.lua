@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_Catalog/UI/t-quests.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -69,21 +66,6 @@ end
 
 local function CreateSeparatorLine(parent, yOffset)
     return OneWoW_GUI:CreateDivider(parent, { yOffset = yOffset })
-end
-
-local function CreateLabel(parent, text, fontSize, yOffset, xLeft, textColor)
-    local fs = OneWoW_GUI:CreateFS(parent, fontSize or 10)
-    fs:SetPoint("TOPLEFT", parent, "TOPLEFT", xLeft or 10, yOffset)
-    fs:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, yOffset)
-    fs:SetJustifyH("LEFT")
-    fs:SetWordWrap(true)
-    fs:SetText(text)
-    if textColor then
-        fs:SetTextColor(unpack(textColor))
-    else
-        fs:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
-    end
-    return fs
 end
 
 local function ShowQuestDetail(panels, questData)
@@ -387,14 +369,17 @@ local function CreateQuestListEntry(parent, quest, yOffset, panels, onClick)
 
     btn:SetScript("OnEnter", function(self)
         self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
         nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
     end)
     btn:SetScript("OnLeave", function(self)
         if selectedQuest and selectedQuest.id == quest.id then
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
             nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
         else
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
             nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
         end
     end)
@@ -478,9 +463,11 @@ function RefreshQuestList(panels)
         local btn = CreateQuestListEntry(panels.listScrollChild, quest, yOffset, panels, function(q, clickedBtn)
             for _, b in ipairs(questListButtons) do
                 b:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                b:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 if b.nameText then b.nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY")) end
             end
             clickedBtn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            clickedBtn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
             ShowQuestDetail(panels, q)
         end)
         table.insert(questListButtons, btn)
@@ -688,7 +675,7 @@ function ns.UI.CreateQuestsTab(parent)
         progDropdown:SetPoint("TOPLEFT", rightHeader, "TOPLEFT", DD_PAD + (ddW + DD_GAP) * 4, -8)
     end
 
-    rightHeader:SetScript("OnSizeChanged", function(self, w)
+    rightHeader:SetScript("OnSizeChanged", function(_, w)
         LayoutFilterDropdowns(w)
     end)
 

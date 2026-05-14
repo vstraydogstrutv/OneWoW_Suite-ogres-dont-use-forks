@@ -41,7 +41,7 @@ local ShowItemDetail
 
 local function UpdateItemSearchScanButton()
     if not scanAHButtonRef then return end
-    local hide = _G.OneWoW and _G.OneWoW.ItemPrices and _G.OneWoW.ItemPrices:IsAuctionatorAHSourceActive()
+    local hide = OneWoW.ItemPrices and OneWoW.ItemPrices:IsAuctionatorAHSourceActive()
     scanAHButtonRef:SetShown(not hide)
 end
 
@@ -101,6 +101,7 @@ local function CreateSourceButton(parent, def)
 
     btn:SetScript("OnEnter", function(self)
         self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:SetText(L[def.labelKey], 1, 1, 1)
         GameTooltip:AddLine(L[def.descKey], 0.7, 0.7, 0.7, true)
@@ -109,8 +110,10 @@ local function CreateSourceButton(parent, def)
     btn:SetScript("OnLeave", function(self)
         if self.sourceKey == currentSource then
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
         else
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end
         GameTooltip:Hide()
     end)
@@ -141,6 +144,7 @@ local function CreateItemRow(parent, result, yOffset, rowIdx, onClick)
     else
         row:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
     end
+    row:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
 
     local iconFrame = CreateFrame("Frame", nil, row, "BackdropTemplate")
     iconFrame:SetSize(22, 22)
@@ -160,7 +164,7 @@ local function CreateItemRow(parent, result, yOffset, rowIdx, onClick)
         icon:SetTexture(134400)
         local tsAddon = ns.Catalog and ns.Catalog:GetDataAddon("tradeskills")
         if tsAddon and tsAddon.DataLoader then
-            tsAddon.DataLoader:LoadItemData(result.itemID, function(itemID, itemData)
+            tsAddon.DataLoader:LoadItemData(result.itemID, function(_, itemData)
                 if row:IsVisible() and itemData and itemData.icon then
                     icon:SetTexture(itemData.icon)
                 end
@@ -231,6 +235,7 @@ local function CreateItemRow(parent, result, yOffset, rowIdx, onClick)
 
     row:SetScript("OnEnter", function(self)
         self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetItemByID(result.itemID)
         GameTooltip:Show()
@@ -238,10 +243,13 @@ local function CreateItemRow(parent, result, yOffset, rowIdx, onClick)
     row:SetScript("OnLeave", function(self)
         if selectedItem and selectedItem.itemID == result.itemID then
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
         elseif self.rowIdx % 2 == 0 then
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         else
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end
         GameTooltip:Hide()
     end)
@@ -268,6 +276,7 @@ ShowItemDetail = function(result)
     headerFrame:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, yOffset)
     headerFrame:SetBackdrop(BACKDROP_SIMPLE)
     headerFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+    headerFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
     table.insert(detailElements, headerFrame)
 
     local hIconFrame = CreateFrame("Button", nil, headerFrame, "BackdropTemplate")
@@ -288,7 +297,7 @@ ShowItemDetail = function(result)
         GameTooltip:SetItemByID(result.itemID)
         GameTooltip:Show()
     end)
-    hIconFrame:SetScript("OnLeave", function(self)
+    hIconFrame:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
 
@@ -317,6 +326,7 @@ ShowItemDetail = function(result)
         sec:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, yOffset)
         sec:SetBackdrop(BACKDROP_SIMPLE)
         sec:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
+        sec:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         table.insert(detailElements, sec)
 
         local title = OneWoW_GUI:CreateFS(sec, 12)
@@ -436,12 +446,12 @@ ShowItemDetail = function(result)
     end
 
     local ahPrice, ahMeta
-    local ow = _G.OneWoW
+    local ow = OneWoW
     if ow and ow.ItemPrices then
         ahPrice, ahMeta = ow.ItemPrices:GetUnitAHPrice(result.itemID, itemLink)
     end
     if not ahPrice or ahPrice <= 0 then
-        local priceDB = _G.OneWoW_AHPrices
+        local priceDB = OneWoW_AHPrices
         local ahData = priceDB and priceDB[result.itemID]
         if ahData and ahData.price and ahData.price > 0 then
             ahPrice = ahData.price
@@ -534,10 +544,13 @@ RefreshItemList = function()
             for _, el in ipairs(listElements) do
                 if el.result and el.result.itemID == r.itemID then
                     el:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+                    el:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
                 elseif el.rowIdx and el.rowIdx % 2 == 0 then
                     el:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
+                    el:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 else
                     el:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                    el:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 end
             end
             ShowItemDetail(r)
@@ -668,7 +681,7 @@ function ns.UI.CreateItemSearchTab(parent)
 
     scanAHButton:SetScript("OnClick", function(self)
         if self.isScanning then
-            local Auctions = _G.OneWoW_AltTracker_Auctions
+            local Auctions = OneWoW_AltTracker_Auctions
             if Auctions and Auctions.FullAHScanner then
                 Auctions.FullAHScanner:StopScan()
             end
@@ -680,15 +693,15 @@ function ns.UI.CreateItemSearchTab(parent)
             return
         end
 
-        local Auctions = _G.OneWoW_AltTracker_Auctions
+        local Auctions = OneWoW_AltTracker_Auctions
         if not Auctions or not Auctions.FullAHScanner then
-            print("|cFFFFD100OneWoW:|r AltTracker Auctions addon required for AH scanning.")
+            print("|cFFFFD100OneWoW:|r " .. L["ITEMSEARCH_ALTTRACKER_AUCTIONS_REQUIRED"])
             return
         end
 
         local canScan, minutesLeft = Auctions.FullAHScanner:CanScan()
         if not canScan then
-            print("|cFFFFD100OneWoW:|r AH full scan available in " .. minutesLeft .. " minutes.")
+            print("|cFFFFD100OneWoW:|r " .. string.format(L["ITEMSEARCH_AH_SCAN_COOLDOWN"], minutesLeft))
             return
         end
 

@@ -15,12 +15,6 @@ function ns.UI.CreateSettingsTab(parent)
 
     local yOffset = -10
 
-    if not _G.OneWoW then
-        yOffset = OneWoW_GUI:CreateSettingsPanel(scrollContent, {
-            yOffset = yOffset, addonName = "OneWoW_Catalog"
-        })
-    end
-
     local dbSection = OneWoW_GUI:CreateSectionHeader(scrollContent, { title = L["DATA_MANAGER_TITLE"], yOffset = yOffset })
     yOffset = dbSection.bottomY - 8
 
@@ -35,38 +29,56 @@ function ns.UI.CreateSettingsTab(parent)
     yOffset = yOffset - 30
 
     local databases = {
-        { key = "OneWoW_Catalog",              name = "Catalog Core",       desc = "Main addon settings and UI state" },
-        { key = "OneWoW_CatalogData_Journal",  name = "Journal Data",       desc = "Instance and encounter journal data" },
-        { key = "OneWoW_CatalogData_Vendors",  name = "Vendors Data",       desc = "Vendor and item data" },
-        { key = "OneWoW_CatalogData_Tradeskills", name = "Tradeskills Data",desc = "Profession and recipe data" },
-
+        { key = "OneWoW_Catalog",               nameKey = "SETTINGS_DB_NAME_CATALOG",    descKey = "SETTINGS_DB_DESC_CATALOG" },
+        { key = "OneWoW_CatalogData_Journal",   nameKey = "SETTINGS_DB_NAME_JOURNAL",    descKey = "SETTINGS_DB_DESC_JOURNAL" },
+        { key = "OneWoW_CatalogData_Vendors",   nameKey = "SETTINGS_DB_NAME_VENDORS",    descKey = "SETTINGS_DB_DESC_VENDORS" },
+        { key = "OneWoW_CatalogData_Tradeskills", nameKey = "SETTINGS_DB_NAME_TRADESKILLS", descKey = "SETTINGS_DB_DESC_TRADESKILLS" },
     }
 
     local function GetTableSize(dbKey)
-        if not _G[dbKey .. "_DB"] then return 0 end
-        local db = _G[dbKey .. "_DB"]
+        local svGlobal = _G[dbKey .. "_DB"]
+        if not svGlobal then return 0 end
+        local db = svGlobal
         local size = 0
         for _ in pairs(db) do size = size + 1 end
         return math.max(0, size - 5)
     end
 
-    local function CreateDatabaseEntry(parent, dbData, yPos)
-        local container = OneWoW_GUI:CreateFrame(parent, {
+    local function ApplyDangerResetVisual(myself, hovering)
+        if hovering then
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_DANGER_HOVER"))
+            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BTN_DANGER_BORDER_HOVER"))
+            if myself.text then
+                myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+            end
+        else
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_DANGER_NORMAL"))
+            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BTN_DANGER_BORDER"))
+            if myself.text then
+                myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+            end
+        end
+    end
+
+    local function CreateDatabaseEntry(myparent, dbData, yPos)
+        local container = OneWoW_GUI:CreateFrame(myparent, {
             width = 770, height = 60,
             backdrop = BACKDROP_INNER_NO_INSETS,
             bgColor = "BG_TERTIARY",
             borderColor = "BORDER_DEFAULT",
         })
-        container:SetPoint("TOPLEFT", parent, "TOPLEFT", 15, yPos)
+        container:SetPoint("TOPLEFT", myparent, "TOPLEFT", 15, yPos)
+
+        local displayName = L[dbData.nameKey]
 
         local nameText = OneWoW_GUI:CreateFS(container, 12)
         nameText:SetPoint("TOPLEFT", 12, -10)
-        nameText:SetText(dbData.name)
+        nameText:SetText(displayName)
         nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
 
         local descText = OneWoW_GUI:CreateFS(container, 10)
         descText:SetPoint("TOPLEFT", 12, -28)
-        descText:SetText(dbData.desc)
+        descText:SetText(L[dbData.descKey])
         descText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
         descText:SetWidth(400)
 
@@ -74,30 +86,30 @@ function ns.UI.CreateSettingsTab(parent)
         sizeText:SetPoint("TOPLEFT", 450, -18)
 
         local function UpdateSize()
-            local db = _G[dbData.key .. "_DB"]
-            if db then
+            local svGlobal = _G[dbData.key .. "_DB"]
+            if svGlobal then
                 local size = GetTableSize(dbData.key)
-                sizeText:SetText("Entries: " .. size)
+                sizeText:SetText(string.format(L["SETTINGS_DB_ENTRIES"], size))
                 sizeText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
             else
-                sizeText:SetText("Not Loaded")
+                sizeText:SetText(L["SETTINGS_DB_NOT_LOADED"])
                 sizeText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_WARNING"))
             end
         end
         UpdateSize()
 
-        local resetBtn = OneWoW_GUI:CreateFitTextButton(container, { text = "Reset", height = 28, minWidth = 75 })
+        local resetBtn = OneWoW_GUI:CreateFitTextButton(container, { text = L["SETTINGS_DB_RESET"], height = 28, minWidth = 75 })
         resetBtn:SetPoint("TOPRIGHT", -12, -16)
-        resetBtn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_DANGER_NORMAL"))
-        resetBtn:SetScript("OnEnter", function(self) self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_DANGER_HOVER")) end)
-        resetBtn:SetScript("OnLeave", function(self) self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_DANGER_NORMAL")) end)
+        ApplyDangerResetVisual(resetBtn, false)
+        resetBtn:SetScript("OnEnter", function(myself) ApplyDangerResetVisual(myself, true) end)
+        resetBtn:SetScript("OnLeave", function(myself) ApplyDangerResetVisual(myself, false) end)
 
         resetBtn:SetScript("OnClick", function()
             OneWoW_GUI:CreateConfirmDialog({
-                title = "Reset " .. dbData.name,
-                text = "Are you sure you want to reset " .. dbData.name .. "?\n\nThis will permanently delete all data in this database.",
-                confirmText = "Reset",
-                cancelText = "Cancel",
+                title = string.format(L["SETTINGS_DB_RESET_TITLE"], displayName),
+                text = string.format(L["SETTINGS_DB_RESET_TEXT"], displayName),
+                confirmText = L["SETTINGS_DB_RESET"],
+                cancelText = L["SETTINGS_DIALOG_CANCEL"],
                 showBrand = true,
                 onConfirm = function()
                     _G[dbData.key .. "_DB"] = nil

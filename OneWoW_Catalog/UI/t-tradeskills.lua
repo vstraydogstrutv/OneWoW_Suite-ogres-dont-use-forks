@@ -25,13 +25,12 @@ local searchBox = nil
 local emptyList = nil
 local emptyDetail = nil
 local searchTimer = nil
-local controlPanel = nil
 local recipeDetailCallbacks = {}
 local filterKnownByMe = false
 local filterKnownByAlts = false
 local filterExpansion = nil
 
-_G.OneWoW_Catalog_TradeskillAPI = {
+OneWoW_Catalog_TradeskillAPI = {
     RegisterRecipeCallback = function(callback)
         tinsert(recipeDetailCallbacks, callback)
     end,
@@ -172,6 +171,7 @@ local function CreateProfTextButton(parent, displayText, profData, isAllButton)
 
     btn:SetScript("OnEnter", function(self)
         self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
     end)
     btn:SetScript("OnLeave", function(self)
         local isActive = false
@@ -182,8 +182,10 @@ local function CreateProfTextButton(parent, displayText, profData, isAllButton)
         end
         if isActive then
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
         else
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end
     end)
     btn:SetScript("OnClick", function(self)
@@ -221,6 +223,7 @@ local function CreateRecipeRow(parent, recipe, yOffset, rowIdx, onClick)
     else
         row:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
     end
+    row:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
 
     local iconFrame = CreateFrame("Frame", nil, row, "BackdropTemplate")
     iconFrame:SetSize(24, 24)
@@ -251,7 +254,7 @@ local function CreateRecipeRow(parent, recipe, yOffset, rowIdx, onClick)
             nameText:SetText("...")
             nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
             icon:SetTexture(recipe.icon)
-            addon.DataLoader:LoadItemData(recipe.item, function(itemID, itemData)
+            addon.DataLoader:LoadItemData(recipe.item, function(_, itemData)
                 if row:IsVisible() and itemData then
                     nameText:SetText(itemData.name)
                     nameText:SetTextColor(OneWoW_GUI:GetItemQualityColor(itemData.quality))
@@ -273,6 +276,7 @@ local function CreateRecipeRow(parent, recipe, yOffset, rowIdx, onClick)
 
     row:SetScript("OnEnter", function(self)
         self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
         if recipe.item and recipe.item > 0 then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetItemByID(recipe.item)
@@ -286,12 +290,14 @@ local function CreateRecipeRow(parent, recipe, yOffset, rowIdx, onClick)
     row:SetScript("OnLeave", function(self)
         if selectedRecipe and selectedRecipe.id == recipe.id then
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
         else
             if self.rowIdx % 2 == 0 then
                 self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
             else
                 self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
             end
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end
         GameTooltip:Hide()
     end)
@@ -322,6 +328,7 @@ ShowRecipeDetail = function(recipe)
     headerFrame:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, yOffset)
     headerFrame:SetBackdrop(BACKDROP_SIMPLE)
     headerFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+    headerFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
     tinsert(detailElements, headerFrame)
 
     local hIconFrame = CreateFrame("Button", nil, headerFrame, "BackdropTemplate")
@@ -345,7 +352,7 @@ ShowRecipeDetail = function(recipe)
         end
         GameTooltip:Show()
     end)
-    hIconFrame:SetScript("OnLeave", function(self)
+    hIconFrame:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
 
@@ -365,7 +372,7 @@ ShowRecipeDetail = function(recipe)
             hIcon:SetTexture(recipe.icon)
             recipeName:SetText("...")
             recipeName:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
-            addon.DataLoader:LoadItemData(recipe.item, function(itemID, itemData)
+            addon.DataLoader:LoadItemData(recipe.item, function(_, itemData)
                 if headerFrame:IsVisible() and itemData then
                     recipeName:SetText(itemData.name)
                     recipeName:SetTextColor(OneWoW_GUI:GetItemQualityColor(itemData.quality))
@@ -436,6 +443,7 @@ ShowRecipeDetail = function(recipe)
         reagentHeader:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, yOffset)
         reagentHeader:SetBackdrop(BACKDROP_SIMPLE)
         reagentHeader:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
+        reagentHeader:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         tinsert(detailElements, reagentHeader)
 
         local reagentTitle = OneWoW_GUI:CreateFS(reagentHeader, 12)
@@ -460,6 +468,7 @@ ShowRecipeDetail = function(recipe)
             rgRow:SetPoint("TOPRIGHT", child, "TOPRIGHT", -8, yOffset)
             rgRow:SetBackdrop(BACKDROP_SIMPLE)
             rgRow:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
+            rgRow:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
             tinsert(detailElements, rgRow)
 
             local rgIcon = CreateFrame("Frame", nil, rgRow, "BackdropTemplate")
@@ -503,7 +512,7 @@ ShowRecipeDetail = function(recipe)
                 rgName:SetText("...")
                 rgName:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
                 rgIconTex:SetTexture(134400)
-                addon.DataLoader:LoadItemData(reagentItemID, function(itemID, itemData)
+                addon.DataLoader:LoadItemData(reagentItemID, function(_, itemData)
                     if rgRow:IsVisible() and itemData then
                         rgName:SetText(itemData.name)
                         rgIconTex:SetTexture(itemData.icon)
@@ -514,12 +523,14 @@ ShowRecipeDetail = function(recipe)
 
             rgRow:SetScript("OnEnter", function(self)
                 self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetItemByID(reagentItemID)
                 GameTooltip:Show()
             end)
             rgRow:SetScript("OnLeave", function(self)
                 self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
+                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 GameTooltip:Hide()
             end)
 
@@ -563,7 +574,7 @@ ShowRecipeDetail = function(recipe)
                         else
                             optName:SetText("- ...")
                             optName:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
-                            addon.DataLoader:LoadItemData(optItemID, function(itemID, itemData)
+                            addon.DataLoader:LoadItemData(optItemID, function(_, itemData)
                                 if optRow:IsVisible() and itemData then
                                     optName:SetText("- " .. itemData.name)
                                     optName:SetTextColor(OneWoW_GUI:GetItemQualityColor(itemData.quality))
@@ -595,6 +606,7 @@ ShowRecipeDetail = function(recipe)
     knownByHeader:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, yOffset)
     knownByHeader:SetBackdrop(BACKDROP_SIMPLE)
     knownByHeader:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
+    knownByHeader:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
     tinsert(detailElements, knownByHeader)
 
     local knownByTitle = OneWoW_GUI:CreateFS(knownByHeader, 12)
@@ -654,12 +666,14 @@ local function RecipeClickHandler(recipeData)
     for _, el in ipairs(listElements) do
         if el.recipe and el.recipe.id == recipeData.id then
             el:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            el:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
         else
             if el.rowIdx and el.rowIdx % 2 == 0 then
                 el:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
             else
                 el:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
             end
+            el:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end
     end
     ShowRecipeDetail(recipeData)
@@ -735,6 +749,7 @@ local function RefreshRecipeListGrouped(recipes, addon)
         hdrBtn:SetHeight(EXP_HEADER_HEIGHT)
         hdrBtn:SetBackdrop(BACKDROP_SIMPLE)
         hdrBtn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
+        hdrBtn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         tinsert(listElements, hdrBtn)
 
         local arrowText = OneWoW_GUI:CreateFS(hdrBtn, 12)
@@ -759,9 +774,11 @@ local function RefreshRecipeListGrouped(recipes, addon)
         end)
         hdrBtn:SetScript("OnEnter", function(self)
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
         end)
         hdrBtn:SetScript("OnLeave", function(self)
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end)
 
         yOffset = yOffset - EXP_HEADER_HEIGHT - 2
@@ -911,7 +928,7 @@ function ns.UI.CreateTradeskillsTab(parent)
         end
     end
 
-    profHeader:SetScript("OnSizeChanged", function(self, w)
+    profHeader:SetScript("OnSizeChanged", function()
         LayoutProfButtons()
     end)
     C_Timer.After(0, function()

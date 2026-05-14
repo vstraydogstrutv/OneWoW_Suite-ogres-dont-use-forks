@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_Catalog/UI/MainFrame.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -15,7 +12,7 @@ local MainWindow = nil
 
 function ns.UI:Show(tabName)
     if not MainWindow then
-        local savedTab = _G.OneWoW_Catalog.db.global.lastTab
+        local savedTab = ns.addon.db.global.lastTab
         self:CreateMainFrame(tabName or savedTab or "journal")
     else
         MainWindow:Show()
@@ -43,7 +40,7 @@ function ns.UI:Reset()
 end
 
 function ns.UI:CreateMainFrame(defaultTab)
-    local addon = _G.OneWoW_Catalog
+    local addon = ns.addon
     if not addon or not addon.db or not addon.db.global then return nil end
 
     local savedSize = addon.db.global.mainFrameSize
@@ -71,10 +68,10 @@ function ns.UI:CreateMainFrame(defaultTab)
     frame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_DEFAULT"))
     frame:SetResizeBounds(ns.Constants.GUI.MIN_WIDTH, ns.Constants.GUI.MIN_HEIGHT, ns.Constants.GUI.MAX_WIDTH, ns.Constants.GUI.MAX_HEIGHT)
     frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relativePoint, xOfs, yOfs = self:GetPoint()
+    frame:SetScript("OnDragStart", function(myself) myself:StartMoving() end)
+    frame:SetScript("OnDragStop", function(myself)
+        myself:StopMovingOrSizing()
+        local point, _, relativePoint, xOfs, yOfs = myself:GetPoint()
         addon.db.global.mainFramePosition = { point = point, relativePoint = relativePoint, xOfs = xOfs, yOfs = yOfs }
     end)
 
@@ -173,16 +170,18 @@ function ns.UI:CreateMainFrame(defaultTab)
         btn.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
 
         btn:SetScript("OnClick", function() SelectTab(name) end)
-        btn:SetScript("OnEnter", function(self)
+        btn:SetScript("OnEnter", function(myself)
             if currentTabName ~= name then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-                self.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+                myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
+                myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
             end
         end)
-        btn:SetScript("OnLeave", function(self)
+        btn:SetScript("OnLeave", function(myself)
             if currentTabName ~= name then
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-                self.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+                myself.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
             end
         end)
 

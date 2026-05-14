@@ -34,7 +34,7 @@ local LEGACY_GLOBAL_KEYS = {
 }
 
 local function BridgeLegacyDatabase()
-    local sv = _G["OneWoW_Catalog_DB"]
+    local sv = OneWoW_Catalog_DB
     if not sv then return end
 
     if not sv.global then
@@ -57,7 +57,7 @@ local function BridgeLegacyDatabase()
 end
 
 function ns:InitializeDatabase()
-    if not _G["OneWoW_Catalog_DB"] then _G["OneWoW_Catalog_DB"] = {} end
+    if not OneWoW_Catalog_DB then OneWoW_Catalog_DB = {} end
     BridgeLegacyDatabase()
 
     local db = DB:Init({

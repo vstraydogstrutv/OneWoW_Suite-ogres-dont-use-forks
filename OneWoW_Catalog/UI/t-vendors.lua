@@ -220,6 +220,7 @@ local function CreateVendorListEntry(parent, vendor, yOffset, panels, onClick)
     btn:SetHeight(52)
     btn:SetBackdrop(BACKDROP_SIMPLE)
     btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+    btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
 
     local nameText = OneWoW_GUI:CreateFS(btn, 12)
     nameText:SetPoint("TOPLEFT", btn, "TOPLEFT", 8, -6)
@@ -233,10 +234,9 @@ local function CreateVendorListEntry(parent, vendor, yOffset, panels, onClick)
         nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
     end
 
-    local mapID, location = nil, nil
+    local location = nil
     if vendor.locations then
-        for mID, loc in pairs(vendor.locations) do
-            mapID = mID
+        for _, loc in pairs(vendor.locations) do
             location = loc
             break
         end
@@ -279,12 +279,15 @@ local function CreateVendorListEntry(parent, vendor, yOffset, panels, onClick)
 
     btn:SetScript("OnEnter", function(self)
         self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
     end)
     btn:SetScript("OnLeave", function(self)
         if selectedVendor and selectedVendor.npcID == vendor.npcID then
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
         else
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end
     end)
     btn:SetScript("OnClick", function()
@@ -431,12 +434,14 @@ local function ShowVendorDetail(panels, vendor)
             itemRow:SetHeight(32)
             itemRow:SetBackdrop(BACKDROP_SIMPLE)
             itemRow:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            itemRow:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
             tinsert(detailElements, itemRow)
 
             local iconFrame = CreateFrame("Frame", nil, itemRow, "BackdropTemplate")
             iconFrame:SetSize(26, 26)
             iconFrame:SetPoint("LEFT", itemRow, "LEFT", 6, 0)
             iconFrame:SetBackdrop(BACKDROP_EDGE)
+            iconFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
             iconFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
             tinsert(detailElements, iconFrame)
 
@@ -480,7 +485,7 @@ local function ShowVendorDetail(panels, vendor)
                 iconTex:SetTexture(134400)
 
                 if addon and addon.DataLoader then
-                    addon.DataLoader:LoadItemData(itemID, function(loadedID, data)
+                    addon.DataLoader:LoadItemData(itemID, function(_, data)
                         if data and itemName:IsVisible() then
                             itemName:SetText(data.name or "")
                             itemName:SetTextColor(OneWoW_GUI:GetItemQualityColor(data.quality))
@@ -494,12 +499,14 @@ local function ShowVendorDetail(panels, vendor)
             itemRow:EnableMouse(true)
             itemRow:SetScript("OnEnter", function(self)
                 self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetItemByID(itemID)
                 GameTooltip:Show()
             end)
             itemRow:SetScript("OnLeave", function(self)
                 self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 GameTooltip:Hide()
             end)
 
@@ -612,8 +619,10 @@ function RefreshVendorList(panels)
             for _, b in ipairs(vendorListButtons) do
                 if b.vendor and b.vendor.npcID == v.npcID then
                     b:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+                    b:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
                 else
                     b:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                    b:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 end
             end
             ShowVendorDetail(panels, v)

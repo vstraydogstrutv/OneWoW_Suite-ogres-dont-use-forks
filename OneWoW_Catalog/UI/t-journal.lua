@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_Catalog/UI/t-journal.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -204,6 +201,7 @@ local function CreateInstanceCard(parent, instData, yOffset, onClick)
     card:SetClipsChildren(true)
     card:SetBackdrop(BACKDROP_SIMPLE)
     card:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+    card:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
     card:SetPropagateMouseClicks(false)
 
     local bgImage = GetInstanceBackground(instData.instanceID)
@@ -235,12 +233,11 @@ local function CreateInstanceCard(parent, instData, yOffset, onClick)
                 ns.Favorites:SetFavorite("journal", capInstanceID, on)
             end
             local p = panels_ref or ns.UI.journalPanels
-            if p and _G.RefreshJournalList then
-                -- Immediate refresh so remaining favorites compact to the top; unfavorite must reorder the list.
-                _G.RefreshJournalList(p)
+            if p then
+                ns.UI.RefreshJournalList(p)
                 C_Timer.After(0, function()
-                    if (panels_ref or ns.UI.journalPanels) == p and _G.RefreshJournalList then
-                        _G.RefreshJournalList(p)
+                    if (panels_ref or ns.UI.journalPanels) == p then
+                        ns.UI.RefreshJournalList(p)
                     end
                 end)
             end
@@ -302,13 +299,16 @@ local function CreateInstanceCard(parent, instData, yOffset, onClick)
 
     card:SetScript("OnEnter", function(self)
         self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
         if self.bgTex then self.bgTex:SetAlpha(0.5) end
     end)
     card:SetScript("OnLeave", function(self)
         if selectedInstance and selectedInstance.instanceID == instData.instanceID then
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
         else
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end
         if self.bgTex then self.bgTex:SetAlpha(0.3) end
     end)
@@ -475,6 +475,7 @@ local function RefreshDetailView(isSecondRefresh)
     colHdrFrame:SetHeight(20)
     colHdrFrame:SetBackdrop(BACKDROP_SIMPLE)
     colHdrFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
+    colHdrFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
     table.insert(detailElements, colHdrFrame)
 
     local COL_DIFF_RIGHT    = -220
@@ -526,6 +527,7 @@ local function RefreshDetailView(isSecondRefresh)
         encBtn:SetHeight(28)
         encBtn:SetBackdrop(BACKDROP_SIMPLE)
         encBtn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+        encBtn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         table.insert(detailElements, encBtn)
 
         local arrowText = OneWoW_GUI:CreateFS(encBtn, 12)
@@ -554,9 +556,11 @@ local function RefreshDetailView(isSecondRefresh)
         end)
         encBtn:SetScript("OnEnter", function(self)
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
         end)
         encBtn:SetScript("OnLeave", function(self)
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end)
 
         yOffset = yOffset - 30
@@ -569,12 +573,14 @@ local function RefreshDetailView(isSecondRefresh)
                 itemRow:SetHeight(ITEM_ROW_HEIGHT)
                 itemRow:SetBackdrop(BACKDROP_SIMPLE)
                 itemRow:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
+                itemRow:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 table.insert(detailElements, itemRow)
 
                 local iconFrame = CreateFrame("Frame", nil, itemRow, "BackdropTemplate")
                 iconFrame:SetSize(26, 26)
                 iconFrame:SetPoint("LEFT", itemRow, "LEFT", 6, 0)
                 iconFrame:SetBackdrop(BACKDROP_EDGE)
+                iconFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
                 iconFrame:SetBackdropBorderColor(OneWoW_GUI:GetItemQualityColor(item.quality))
                 table.insert(detailElements, iconFrame)
 
@@ -639,12 +645,14 @@ local function RefreshDetailView(isSecondRefresh)
                 itemRow:EnableMouse(true)
                 itemRow:SetScript("OnEnter", function(self)
                     self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+                    self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:SetItemByID(item.itemID)
                     GameTooltip:Show()
                 end)
                 itemRow:SetScript("OnLeave", function(self)
                     self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
+                    self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                     GameTooltip:Hide()
                 end)
 
@@ -792,8 +800,10 @@ function RefreshJournalList(panels)
             for _, btn in ipairs(instanceListButtons) do
                 if btn.instData and btn.instData.instanceID == inst.instanceID then
                     btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+                    btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
                 else
                     btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                    btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 end
             end
             ShowInstanceDetail(panels, inst)
@@ -814,7 +824,7 @@ function RefreshJournalList(panels)
     end
 end
 
-_G.RefreshJournalList = RefreshJournalList
+ns.UI.RefreshJournalList = RefreshJournalList
 
 local function InitializeDropdowns(panels)
     local addon = GetDataAddon()
@@ -1003,12 +1013,15 @@ function ns.UI.CreateJournalTab(parent)
 
         btn:SetScript("OnEnter", function(self)
             self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
         end)
         btn:SetScript("OnLeave", function(self)
             if instanceTypeFilter == self.value then
                 self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
             else
                 self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
             end
         end)
         btn:SetScript("OnClick", function(self)
@@ -1057,7 +1070,7 @@ function ns.UI.CreateJournalTab(parent)
     local chkBox = OneWoW_GUI:CreateCheckbox(rightHeader, {
         label = L["JOURNAL_HIDE_NON_COLLECTABLE"],
         checked = false,
-        onClick = function(self)
+        onClick = function()
             hideNonCollectable = not hideNonCollectable
             if selectedInstance then
                 RefreshDetailView(false)
@@ -1174,7 +1187,7 @@ function ns.UI.CreateJournalTab(parent)
 end
 
 function ns.UI.OpenToInstance(mapID)
-    local journalNS = _G.OneWoW_CatalogData_Journal
+    local journalNS = OneWoW_CatalogData_Journal
     if not journalNS or not journalNS.JournalData then return end
     local JournalData = journalNS.JournalData
     JournalData:BuildJournalCache()
@@ -1189,29 +1202,34 @@ function ns.UI.OpenToInstance(mapID)
     end
     if not instData then return end
 
-    if _G.OneWoW and _G.OneWoW.GUI then
-        _G.OneWoW.GUI:Show("catalog")
-        _G.OneWoW.GUI:SelectSubTab("catalog", "journal")
+    if ns.oneWoWHubActive then
+        OneWoW.GUI:Show("catalog")
+        OneWoW.GUI:SelectSubTab("catalog", "journal")
+    else
+        ns.UI:Show("journal")
     end
 
     C_Timer.After(0.15, function()
-        if not panels_ref then return end
+        local panels = panels_ref or ns.UI.journalPanels
+        if not panels then return end
         expansionFilter    = instData.expansionID
         searchText         = ""
         instanceTypeFilter = "all"
-        if panels_ref.searchBox then
-            panels_ref.searchBox:SetText("")
+        if panels.searchBox then
+            panels.searchBox:SetText("")
         end
-        if panels_ref.expText then
-            panels_ref.expText:SetText(instData.expansionName)
+        if panels.expText then
+            panels.expText:SetText(instData.expansionName)
         end
-        RefreshJournalList(panels_ref)
-        ShowInstanceDetail(panels_ref, instData)
+        RefreshJournalList(panels)
+        ShowInstanceDetail(panels, instData)
         for _, btn in ipairs(instanceListButtons) do
             if btn.instData and btn.instData.instanceID == instData.instanceID then
                 btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+                btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
             else
                 btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
             end
         end
     end)
