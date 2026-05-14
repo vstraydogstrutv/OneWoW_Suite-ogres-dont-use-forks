@@ -23,100 +23,63 @@ This document describes how items are assigned to categories, how category rows 
 
 ## `GetItemCategory` pipeline
 
-Resolution order (each step returns immediately when matched; later steps are skipped):
+Classification is split into:
 
-| Step | Condition | Result |
-|------|-----------|--------|
-| 0 | Missing `itemInfo` | `"Other"` |
-| 1 | **Manual pin** — item ID found in `customCategoriesV2[*].items` or `categoryModifications[*].addedItems`, filtered by `appliesIn[containerType]` | Resolved name (see below) |
-| 2 | **1W Junk** — `enableJunkCategory` **and** category not in `disabledCategories` **and** `appliesIn` check **and** `PredicateEngine` `props.isJunk` | `"1W Junk"` |
-| 3 | **1W Upgrades** — `itemID` **and** `hyperlink` **and** `enableUpgradeCategory` **and** category not in `disabledCategories` **and** `appliesIn` check **and** `OneWoW.UpgradeDetection:CheckItemUpgrade(hyperlink, itemLocation)` | `"1W Upgrades"` |
-| 4 | **Recent Items** — `"Recent Items"` not in `disabledCategories` **and** `appliesIn` check **and** `SlotMatchesRecent` (GUID map + `recentItemDuration`) | `"Recent Items"` |
-| 5 | No **hyperlink** on the item | `"Other"` (classification skipped) |
-| 6 | **Category cache** hit — `categoryCache[cacheKey]` exists | Cached string |
-| 7 | **Merged candidate pool** — collect all matching custom predicate categories AND builtin search categories, filter by `appliesIn[containerType]`; `PickBestCandidate` picks one winner | Best name, or `"Other"` if none match |
-| 8 | **Inventory slots** — result is `"Weapons"` or `"Armor"` **and** `enableInventorySlots` **and** slot name passes `appliesIn` check | Localized equip-slot category name (e.g. `_G["INVTYPE_HEAD"]`) |
-| 9 | Result name is in **`disabledCategories`** | `"Other"` |
-| 10 | — | Store in `categoryCache` when `cacheKey`, `hyperlink`, and `props.classID` all exist |
+1. **`GetItemCategory`** — slot-keyed fast path, then **slot overlays** (upgrade / recent), then delegates to the base resolver.
+2. **`ResolveBaseCategory`** (private) — manual pins through merged builtin/custom predicates, with **identity + `containerType` caching** (`baseCategoryCache`).
 
-**Key detail — steps 1–4 bypass steps 7–9.** Manual pins, 1W Junk, 1W Upgrades, and Recent Items all return early. They are never remapped by inventory-slot logic or the disabled fallback. Step 9 only catches candidate-pool-derived names that happen to be disabled.
+**`containerType`:** `BagTypes:GetContainerType(bagID)` yields `"backpack"`, `"character_bank"`, or `"warband_bank"`. `CategoryAppliesTo` uses this everywhere. `"Other"` and `"Empty"` always bypass `appliesIn` filtering.
 
-**`containerType` resolution:** At the top of `GetItemCategory`, `BagTypes:GetContainerType(bagID)` resolves the container type (`"backpack"`, `"character_bank"`, or `"warband_bank"`). This is used throughout the pipeline by `CategoryAppliesTo` to filter categories that don't apply to the current container. "Other" and "Empty" are always exempt from `appliesIn` filtering.
+### Phase A — `GetItemCategory` (slot layer)
 
-### Step 0: Missing `itemInfo`
+| Step | Condition | Result / notes |
+|------|-----------|----------------|
+| A0 | Missing `itemInfo` | `"Other"` |
+| A1 | **`categoryCache` hit** (`PE:GetItemCacheKey`) | Cached final category (includes prior overlay hits for this slot) |
+| A2 | **1W Upgrades (overlay)** — `itemID` + `hyperlink`, `enableUpgradeCategory`, not disabled, `CategoryAppliesTo`, **`OneWoW` + `UpgradeDetection` present** | `"1W Upgrades"`; prefers `ItemLocation:CreateFromBagAndSlot` when the item exists |
+| A3 | **Recent Items (overlay)** — not disabled, `CategoryAppliesTo`, `SlotMatchesRecent` | `"Recent Items"` |
 
-If `itemInfo` is nil, the function returns `"Other"` immediately. No further processing occurs.
+Overlays run **after** the slot cache misses and **before** `ResolveBaseCategory`. **Upgrade beats Recent** on the same slot when both could apply.
 
-### Step 1: Manual assignment (`ResolveManualCategoryName`)
+After A2/A3, hits are written to **`categoryCache`** so repeat lookups are cheap.
 
-**No PredicateEngine on this path.** Candidates come from two sources:
+### Phase B — `ResolveBaseCategory` (identity tier)
 
-- `customCategoriesV2[*].items` — manual pins on custom categories. Each candidate gets `tieKey = "c:" .. categoryId`.
-- `categoryModifications[builtinName].addedItems` — manual pins into a built-in category. Each candidate gets `tieKey = "b:" .. catName`.
+Runs when A2/A3 do not return. Items resolved here can reuse **`baseCategoryCache`** keyed by `PE:GetItemIdentityKey(itemID, hyperlink) .. "|" .. containerType` so every slot with the same identity in the same container type shares one merged-pool verdict.
 
-After collecting candidates, they are filtered by `CategoryAppliesTo(name, containerType, catMods)` — candidates whose category has `appliesIn[containerType] == false` are removed. If no candidates remain, the step returns nil.
+| Step | Condition | Result / notes |
+|------|-----------|----------------|
+| B1 | **Manual pin** (`ResolveManualCategoryName`) | Same rules as before: `customCategoriesV2[*].items`, `categoryModifications[*].addedItems`, `pinnedCategoryShowsWhenDisabled`, `CategoryAppliesTo`, `PickBestCandidate` on ties |
+| B2 | **1W Junk** | `enableJunkCategory`, not disabled, `CategoryAppliesTo`, `PE:BuildProps(...).isJunk` (Poor quality or `OneWoW.ItemStatus:IsItemJunk` when OneWoW is present) |
+| B3 | No **hyperlink** | `"Other"` (predicate pool skipped) |
+| B4 | **`not C_Item.IsItemDataCachedByID(itemID)`** | `"Other"`, **`tentative`** — requests load, sets `OneWoW_Bags._hasPendingTentatives`; **no** slot or base cache write |
+| B5 | **`baseCategoryCache` hit** | Cached merged-pool category |
+| B6 | **`PE:BuildProps` + merged pool** | `CollectCustomPredicateCandidates` walks **`precomputedCustomCands`** (rebuilt when `customCategoriesV2` changes); builtins from **`SEARCH_CATEGORIES`**. `PickBestCandidate` tie-break (see below). Pool filtered by `CategoryAppliesTo` after collection |
+| B7 | **Inventory slots** | If pool result is `"Weapons"` / `"Armor"` and `enableInventorySlots`, remap via `GetSlotCategoryName` when allowed |
+| B8 | **Disabled fallback** | Candidate-pool-derived name in `disabledCategories` → `"Other"` |
+| B9 | **`_tooltipDataMissing` on props** | Verdict returned but **`tentative`** — caches skipped until tooltip/streaming catches up |
+| B10 | **Cache write** | On non-tentative success: store in **`baseCategoryCache`**. Caller **`GetItemCategory`** stores in **`categoryCache`** when `cacheKey` exists, hyperlink exists, and **not tentative** |
 
-**`pinnedCategoryShowsWhenDisabled` behavior:**
+**What never enters `baseCategoryCache`:** slot overlays (**Upgrades**, **Recent**) — they only exist in `GetItemCategory`.
 
-- If **false**: candidates whose category name is in `disabledCategories` are removed before tie-breaking. If no candidates remain, the step returns nil and the item falls through to later stages (Junk, Upgrades, Recent Items, etc.).
-- If **true**: disabled categories are kept. A pinned item always wins assignment to its disabled category. The category will still appear in the bag layout (with items) via `GetSectionedLayout`'s visibility logic.
+**Custom category evaluation:** `InferFilterMode` and **`SavedSearches:Expand`** behave as before; expand runs only when the expression contains a literal `SAVED(` substring (`needsExpand` optimization).
 
-**Legacy saves:** An item ID can appear in multiple pin tables simultaneously. `CollectManualCategoryCandidates` collects all matches, then `PickBestCandidate` picks one winner.
+### Manual pins (`ResolveManualCategoryName`) — detail
 
-### Step 2: 1W Junk
+**No PredicateEngine on this path.** Candidates from `customCategoriesV2[*].items` (`tieKey = "c:" .. id`) and `categoryModifications[*].addedItems` (`tieKey = "b:" .. name`). Filtered by `CategoryAppliesTo`, then `pinnedCategoryShowsWhenDisabled` stripping (when false), then `PickBestCandidate`.
 
-Gated by `db.global.enableJunkCategory` (separate toggle, default `true`) AND `"1W Junk"` not in `disabledCategories` AND `CategoryAppliesTo("1W Junk", containerType, catMods)`. If all pass, calls `PE:BuildProps(itemID, bagID, slotID, itemInfo).isJunk`. The `isJunk` prop is true when item quality is Poor, or when `OneWoW.ItemStatus:IsItemJunk(itemID)` returns true (cross-addon junk hook).
+### `#recent` vs Recent overlay
 
-### Step 3: 1W Upgrades
+The **`#recent`** keyword still delegates to `Categories:SlotMatchesRecent` for PredicateEngine search/category expressions. The **Recent Items category overlay** (phase A3) is separate enforcement so recent gear surfaces above merged-pool classification until expiry **unless** phase A2 classified it as an upgrade first.
 
-Requires **both** `itemID` and `hyperlink` (items without a hyperlink skip this step entirely). Gated by `db.global.enableUpgradeCategory` (separate toggle, default `true`) AND `"1W Upgrades"` not in `disabledCategories` AND `CategoryAppliesTo("1W Upgrades", containerType, catMods)`. If all pass, calls `OneWoW.UpgradeDetection:CheckItemUpgrade(hyperlink, itemLocation)` directly — bags bypasses `PredicateEngine` here because "is this an upgrade" is policy (mode, equipped state, level enforcement) owned by `UpgradeDetection`, not an item intrinsic.
+### Builtin search: Mats vs Reagents
 
-### Step 4: Recent Items
+Builtin rows split crafting mats from classic reagents:
 
-Gated by `disabledCategories` (no separate enable toggle) AND `CategoryAppliesTo("Recent Items", containerType, catMods)`. Calls `SlotMatchesRecent(itemID, bagID, slotID, itemInfo)`, which checks the item's GUID against the `recentItems` timestamp map. An item is "recent" if `time() - recentItems[guid] < recentItemDuration` (default 120 seconds, configurable 15–600). Expired entries are cleaned on access.
+- **`Mats`** — `#craftingreagent`
+- **`Reagents`** — `#reagent & !#craftingreagent`
 
-The `#recent` keyword in PredicateEngine delegates to `Categories:SlotMatchesRecent`, so search expressions like `#recent` work in custom categories or the search bar.
-
-Recent Items comes before the merged candidate pool so that recently acquired non-junk, non-upgrade items surface temporarily regardless of what custom or builtin category they would normally fall into.
-
-### Step 5: No hyperlink
-
-If the item has no hyperlink (e.g. data not yet loaded), classification is impossible. Returns `"Other"`.
-
-### Step 6: Category cache
-
-Keyed by `PE:GetItemCacheKey(itemID, bagID, slotID, hyperlink)`. If a cached result exists, returns it immediately. The cache stores results from the merged candidate pool (steps 7–9) only — manual pins, Junk, Upgrades, and Recent Items bypass the cache entirely.
-
-### Step 7: Merged candidate pool (custom predicates + builtin search)
-
-Custom predicate categories and builtin search categories are collected into a **single candidate pool**. `PickBestCandidate` selects one winner using the unified tie-breaking chain (see below).
-
-**Custom predicate candidates** — iterates all `customCategoriesV2` entries where `categoryData.enabled ~= false`. The `filterMode` is resolved via `InferFilterMode`: if `filterMode` is explicitly `"search"` or `"type"`, that mode is used; if `nil` (legacy data), it is inferred as `"search"` when `searchExpression` is non-empty, otherwise `"type"`. Only one matching path fires per category entry:
-
-- **Search path** — expands `SAVED(Name)` shortcuts via `SavedSearches:Expand(searchExpression)`, then calls `PE:CheckItem(expandedExpression, ...)`.
-- **Type/subtype path** — matches via `C_Item.GetItemClassInfo` / `GetItemSubClassInfo` (case-insensitive). When both type and subtype are set, `typeMatchMode == "or"` means OR; otherwise AND.
-
-Custom candidates carry `isCustom = true`.
-
-**Builtin search candidates** — iterates `SEARCH_CATEGORIES` (all `CATEGORY_DEFINITIONS` entries that have both `search` and `searchOrder`). For each non-disabled definition, calls `PE:CheckItem(def.search, ...)`. Builtin candidates carry `isCustom = false`, `defaultOrder = def.priority`, and `searchOrder = def.searchOrder`.
-
-Candidates whose name is in `disabledCategories` are excluded before entering the pool.
-
-**Explicit `items` pin lists are NOT checked here** — those are handled in step 1.
-
-If no candidates match, result is `"Other"`.
-
-### Step 8: Inventory slot remap
-
-If `db.global.enableInventorySlots` is true and the result from step 7 is `"Weapons"` or `"Armor"`, the item's `equipLoc` is resolved to a localized slot name via `GetSlotCategoryName`. Robe/chest and ranged variants are normalized (`INVTYPE_ROBE` → `INVTYPE_CHEST`, `INVTYPE_RANGEDRIGHT` → `INVTYPE_RANGED`).
-
-### Step 9: Disabled fallback
-
-If the final category name (after optional slot remap) is in `disabledCategories`, it becomes `"Other"`. This only affects candidate-pool-derived names — steps 1–4 all return early and bypass this check.
-
-### Step 10: Cache write
-
-Stores the result in `categoryCache` when all three conditions are met: `cacheKey` exists, `hyperlink` exists, and `props.classID ~= nil`.
+Both participate in the same merged pool as other `SEARCH_CATEGORIES` rows (sorted by `searchOrder`; duplicate `searchOrder` values keep stable ordering among ties).
 
 ---
 
@@ -135,8 +98,8 @@ Stores the result in `categoryCache` when all three conditions are met: `cacheKe
 
 **Where this applies:**
 
-- **Manual pins (step 1):** Candidates have no `isCustom` or `defaultOrder` fields — tiers 2–3 are skipped (both nil). Tie-breaking: user priority → section order → tieKey (`"c:"` prefix for custom pins, `"b:"` prefix for builtin pins).
-- **Merged pool (step 7):** Full 6-tier chain. A custom category with the same user-facing priority as a builtin wins (tier 2). A builtin with a higher user-facing priority wins over any custom category (tier 1).
+- **Manual pins (phase B1):** Candidates have no `isCustom` or `defaultOrder` fields — tiers 2–3 are skipped (both nil). Tie-breaking: user priority → section order → tieKey (`"c:"` prefix for custom pins, `"b:"` prefix for builtin pins).
+- **Merged pool (phase B6):** Full 6-tier chain. A custom category with the same user-facing priority as a builtin wins (tier 2). A builtin with a higher user-facing priority wins over any custom category (tier 1).
 
 ---
 
@@ -172,7 +135,8 @@ Stores the result in `categoryCache` when all three conditions are met: `cacheKe
 | Equipment Sets | 8 | `#set` | 3 |
 | Weapons | 9 | `#weapon` | 14 |
 | Armor | 10 | `#armor & #gear` | 15 |
-| Reagents | 11 | `#reagent` | 11 |
+| Mats | 10.5 | `#craftingreagent` | 10 |
+| Reagents | 11 | `#reagent & !#craftingreagent` | 11 |
 | Trade Goods | 12 | `#tradegoods` | 20 |
 | Tradeskill | 13 | `#tradeskill` | 22 |
 | Recipes | 14 | `#recipe` | 21 |
@@ -188,13 +152,13 @@ Stores the result in `categoryCache` when all three conditions are met: `cacheKe
 | Other | 98 | — | — |
 | Empty | 99 | — | — |
 
-**"1W Junk"**, **"1W Upgrades"**, and **"Recent Items"** have no `search`/`searchOrder` — they are handled by dedicated steps (2, 3, 4) in the pipeline, not the merged candidate pool.
+**"1W Junk"**, **"1W Upgrades"**, and **"Recent Items"** have no `search`/`searchOrder` in definitions — **Upgrades** and **Recent** are enforced as **slot overlays** in `GetItemCategory`; **Junk** is resolved inside **`ResolveBaseCategory`** before the merged pool.
 
 **"Empty"** appears in definitions and default `displayOrder` for import/ordering. **`GetItemCategory` never returns `"Empty"`** for an item. Empty slots are handled by list/bag views and `showEmptySlots`, not this classifier.
 
 **"Other"** has no search expression — it is the implicit fallback when nothing else matches.
 
-**`SEARCH_CATEGORIES`** is the subset of `CATEGORY_DEFINITIONS` that have both `search` and `searchOrder`, sorted by `searchOrder` ascending. This is the table iterated in step 7's builtin collection.
+**`SEARCH_CATEGORIES`** is the subset of `CATEGORY_DEFINITIONS` that have both `search` and `searchOrder`, sorted by `searchOrder` ascending. This is the table iterated in **phase B6**'s builtin collection.
 
 ---
 
@@ -246,7 +210,7 @@ Shared by both `CategoryView` (bags) and `BankCategoryView` (bank) via `H.Layout
 
 The engine lives in `OneWoW_GUI` (`OneWoW_GUI.PredicateEngine`) and is acquired in Bags via `local PE = OneWoW_GUI.PredicateEngine`. Full reference: [`OneWoW_GUI/Docs/PREDICATE_ENGINE.md`](../../OneWoW_GUI/Docs/PREDICATE_ENGINE.md).
 
-Search strings use its expression language (`#keyword`, operators, etc.). `BuildProps` enriches items; `CheckItem(expr, ...)` evaluates membership. Both custom `searchExpression` categories and builtin search categories use this engine. Custom category expressions expand `SAVED(Name)` shortcuts before calling the engine; built-in category searches are static and do not use saved searches.
+Search strings use its expression language (`#keyword`, operators, etc.). `BuildProps` enriches items using **bag-slot context** (`bagID`, `slotID`) so tooltip-backed predicates match the search bar (via `C_TooltipInfo.GetBagItem` where applicable). `CheckItem(expr, ...)` evaluates membership. Both custom `searchExpression` categories and builtin search categories use this engine. Custom category expressions expand `SAVED(Name)` shortcuts before calling the engine; built-in category searches are static and do not use saved searches.
 
 **Bags-specific registration:** The `#recent` keyword is registered by `Data/Categories.lua` to delegate to `Categories:SlotMatchesRecent` (GUID map + duration are Bags-owned). `#catalyst` / `#catalystupgrade` are now registered by the engine itself and silently no-op when TransmogUpgradeMaster is absent.
 
@@ -260,8 +224,8 @@ Search strings use its expression language (`#keyword`, operators, etc.). `Build
 | `savedSearches` | Named predicate shortcuts expanded from `SAVED(Name)` before custom search categories are evaluated |
 | `categoryModifications[name]` | `sortMode`, `subSortMode`, `groupBy`, `priority`, `color`, `appliesIn`, `addedItems` |
 | `disabledCategories` | Disable builtin/custom by name; classification remaps to **Other** when applicable |
-| `enableJunkCategory` | Separate toggle for step 2 (default `true`); disabling skips the 1W Junk check entirely |
-| `enableUpgradeCategory` | Separate toggle for step 3 (default `true`); disabling skips the 1W Upgrades check entirely |
+| `enableJunkCategory` | Separate toggle for **phase B2** (default `true`); disabling skips the 1W Junk check entirely |
+| `enableUpgradeCategory` | Separate toggle for **phase A2** (default `true`); disabling skips the 1W Upgrades overlay entirely |
 | `pinnedCategoryShowsWhenDisabled` | If true, manual pins win even when their target category is disabled. If false, disabled pins are filtered out so later stages can assign. Also controls visibility of disabled categories with items in `H.GetSectionedLayout`. |
 | `categoryOrder`, `sectionOrder`, `displayOrder`, `categorySections` | Structural ordering and grouping; `categorySections[id].showHeader` / `.showHeaderBank` control per-container header visibility |
 | `enableInventorySlots` | Split **Weapons** / **Armor** into slot-named categories after candidate pool pick (default `false`) |
@@ -293,14 +257,17 @@ Both views are thin wrappers that delegate to the shared pipeline in `CategoryVi
 
 ## Integrations
 
-- **TSM** (`Integrations/TSMIntegration.lua`): Creates `customCategoriesV2` entries with `"TSM: "` prefixed names, `items` maps, and `isTSM = true`. These behave like manual-pin custom categories for assignment (step 1, not step 7).
+- **TSM** (`Integrations/TSMIntegration.lua`): Creates `customCategoriesV2` entries with `"TSM: "` prefixed names, `items` maps, and `isTSM = true`. These behave like manual-pin custom categories for assignment (**phase B1**, not the merged pool).
 - **Baganator** (`Controllers/CategoryController.lua`): `BAGANATOR_CAT_MAP` maps external keys to builtin names (including `"Empty"` for ordering/import). Does not change `GetItemCategory` logic for `"Empty"`.
 
 ---
 
 ## Cache and invalidation
 
-- **Category cache** (`Categories.lua`): keyed by `PredicateEngine:GetItemCacheKey(...)`; stores resolved classification for items with hyperlink and props. Only caches results from the merged candidate pool (steps 7–10). Steps 1–4 bypass the cache.
+- **`categoryCache`** — slot-keyed (`PE:GetItemCacheKey`); stores final categories including overlay results for that slot. Cleared by `Categories:InvalidateCache` / full categorization invalidation.
+- **`baseCategoryCache`** — identity + `containerType`; stores merged-pool results shared across slots with the same item identity. Never holds upgrade/recent overlay verdicts.
+- **Tentative results** — item data still streaming (`IsItemDataCachedByID`) or tooltip fields missing (`_tooltipDataMissing`): verdicts may return `"Other"` or a best-effort category but **omit cache writes** until a later refresh.
+- **`InvalidateItemIDs`** — surgical eviction coordinated with `PredicateEngine:InvalidateItemIDs` on batched `GET_ITEM_INFO_RECEIVED` so unrelated identity keys stay hot during bulk streaming (see `Events:OnItemInfoReceived`).
 - **`Categories:InvalidateCache`** and **`OneWoW_Bags:InvalidateCategorization`**: refresh custom categories, recent settings, clear caches; PredicateEngine invalidation per scope. See `Docs/ARCHITECTURE.md`.
 
 ---
@@ -309,7 +276,7 @@ Both views are thin wrappers that delegate to the shared pipeline in `CategoryVi
 
 | File | Responsibility |
 |------|------------------|
-| `Data/Categories.lua` | Assignment, `SortCategories`, manual/custom/builtin helpers, cache, `appliesIn` filtering at classification time |
+| `Data/Categories.lua` | `GetItemCategory`, internal `ResolveBaseCategory`, `SortCategories`, two-tier caches + tentative/streaming handling, `precomputedCustomCands`, manual/custom/builtin helpers, `InvalidateItemIDs` hooks |
 | `Modules/CategoryManager.lua` | Bag assignment (`AssignCategories`), bucketing (`GetItemsByCategory`) |
 | `Views/CategoryViewHelpers.lua` | Shared layout pipeline: `GetSortedCategoryNames`, `GetSectionedLayout`, grouping, stacking, filtering, `LayoutCategoryContent`, grids, compact layout, `PinSpecialCategories` |
 | `Views/CategoryView.lua` | Bags category view (thin wrapper over shared pipeline) |

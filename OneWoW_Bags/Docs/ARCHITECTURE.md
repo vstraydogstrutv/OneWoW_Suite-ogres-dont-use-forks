@@ -8,9 +8,9 @@ OneWoW_Bags is a unified bag/bank/guild bank replacement addon for World of Warc
 
 **TOC:** `## Interface: 120005, 120007` (Retail + compatible build).
 
-**Hard dependencies:** `OneWoW`, `OneWoW_GUI`
+**Hard dependency:** `OneWoW_GUI` (`RequiredDeps` in the TOC).
 
-**Soft dependencies:** `OneWoW_AltTracker`, `OneWoW_ShoppingList`, `TradeSkillMaster`, `Baganator` (profile import via `CategoryController`), `Pawn`
+**Optional hub / integrations:** `OneWoW` (minimap hub, `UpgradeDetection`, `OverlayEngine`, `ItemStatus` junk hook, etc.—features degrade gracefully when absent). Also `OneWoW_AltTracker`, `OneWoW_ShoppingList`, `TradeSkillMaster`, `Baganator` (profile import via `CategoryController`), `Masque` (`OptionalDeps` in the TOC).
 
 ---
 
@@ -19,8 +19,6 @@ OneWoW_Bags is a unified bag/bank/guild bank replacement addon for World of Warc
 The TOC loads files in this exact sequence. **Order matters**—each layer builds on the one before it.
 
 ```
-Libs\LibStub\LibStub.lua
-
 Locales\enUS.lua
 Locales\esES.lua
 Locales\koKR.lua
@@ -28,6 +26,7 @@ Locales\frFR.lua
 Locales\ruRU.lua
 Locales\deDE.lua
 
+Core\Profile.lua                   ← optional hot-path profiler (/owbprof); used by Categories, Bag/Bank sets, ItemButton
 Core\Constants.lua                 ← OneWoW_GUI:RegisterGUIConstants, icon sizes, GUI metrics
 Core\SectionDefaults.lua           ← stable section IDs, builtin lists, OneWoW Bags catch-all section sync
 Core\Database.lua                  ← DB:Init, defaults, migrations
@@ -62,6 +61,7 @@ Integrations\OneWoWBagsIntegration.lua  ← item-button callback hooks, overlay 
 Integrations\OneWoWTooltips.lua         ← keyword help tooltip integration
 Integrations\TSMIntegration.lua         ← TSM group import
 Integrations\BaganatorImport.lua        ← Baganator profile reader/parser
+Integrations\Masque.lua                 ← optional Masque skinning for item icons
 
 Controllers\WindowLayoutController.lua  ← generic layout orchestrator
 Controllers\BagsController.lua
@@ -156,6 +156,7 @@ OneWoW_Bags uses a **layered hybrid MVC** pattern. It is not strict MVC—some o
 │  Database (DB:Init, defaults, migrations)                    │
 │  Events (event routing table, dirtyBags accumulator)         │
 │  Constants (GUI metrics, icon sizes)                         │
+│  Profile (optional /owbprof timings)                         │
 │  SectionDefaults (section IDs, builtin ordering, OWB section)  │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -169,10 +170,10 @@ The root object provides:
 - **State flags:** `bankOpen`, `guildBankOpen`, `oneWoWHubActive`, `inventoryPresentationState` (contains `altShowActive`), `activeExpansionFilter` (bags search bar expansion filter), `activeBankExpansionFilter`
 - **Lifecycle:** `OnAddonLoaded`, `OnPlayerLogin`, `InitializeControllers`, `InitializeDatabase`
 - **Refresh orchestration:** `RequestLayoutRefresh(target)`, `RequestVisualRefresh(target)`, `RequestWindowReset(target)`
-- **Cache invalidation:** `InvalidateCategorization(scope)` — refreshes `Categories` from `customCategoriesV2` / `recentItemDuration` / `recentItems`, clears category cache; if `scope == "props"` then `OneWoW_GUI.PredicateEngine:InvalidatePropsCache()`, else full `OneWoW_GUI.PredicateEngine:InvalidateCache()`
+- **Cache invalidation:** `InvalidateCategorization(scope)` — refreshes `Categories` from `customCategoriesV2` / `recentItemDuration` / `recentItems`, clears category caches (`categoryCache` + `baseCategoryCache`); if `scope == "props"` then `OneWoW_GUI.PredicateEngine:InvalidatePropsCache()`, else full `OneWoW_GUI.PredicateEngine:InvalidateCache()`. **`InvalidateItemIDs(idSet)`** — surgical eviction after coalesced `GET_ITEM_INFO_RECEIVED` so identity-tier caches survive for unrelated items while streaming completes.
 - **Blizzard hooks:** `HookBlizzardBags`, `SuppressBankFrame`, `RestoreBankFrame`, `SuppressGuildBankFrame`, `RestoreGuildBankFrame`
 - **Guild bank orchestration:** `RefreshGuildBankContents`, `QueueGuildBankRefresh`, `TrackGuildBankTransferTab`, `TrackGuildBankTransferSource`, `ProcessPendingGuildBankTransferTabs`, `PurgeClearSource`, plus internal coalescing state for cross-tab moves
-- **Helpers:** `GetDB`, `GetItemSortMode`, `SortButtons`, `ShouldShowItemQuality`, `ShouldDimJunkItem`, `ShouldStripJunkOverlays`, `EnsureCategoryModification`, `EnsureBuiltinCategoryAddedItems`, `IsAltShowActive`, `SetAltShowActive`, `IsBankUIEnabled`, `ReinitForLanguage`, `ApplyItemButtonMixin`, `HookPetCageTooltip`, `GetMoneyDialog`, `ShowMoneyDialog`
+- **Helpers:** `GetDB`, `GetItemSortMode`, `SortButtons`, `ShouldShowItemQuality`, `ShouldDimJunkItem`, `ShouldStripJunkOverlays`, `EnsureCategoryModification`, `EnsureBuiltinCategoryAddedItems`, `IsAltShowActive`, `SetAltShowActive`, `IsBankUIEnabled`, `ReinitForLanguage`, `ApplyItemButtonMixin`, `HookPetCageTooltip`, `GetMoneyDialog`, `ShowMoneyDialog`, `UpdateSlotsForItemIDs`
 - **Shared tables:** `SectionDefaults`, `CategoryViewHelpers`, `BarHelpers` (see Key Components)
 
 ---
@@ -280,18 +281,30 @@ CategoryManager:AssignCategories()
        └─→ Categories:GetItemCategory(bagID, slotID, itemInfo)
 ```
 
-**`Categories:GetItemCategory` stages** (in order; early return stops the rest):
+**`Categories:GetItemCategory`** splits work into a **slot-keyed outer layer** and an **identity-tier base resolver** (`ResolveBaseCategory`). Slot-dependent outcomes are evaluated before the base resolver; identity-tier work (manual pins through builtin/custom predicates) is cached per **item identity + `containerType`** so duplicate stacks in the same container type reuse one verdict.
 
-1. **Manual pins** — `customCategoriesV2[*].items` and `categoryModifications[*].addedItems` (no predicate engine on this path). Overrides everything below, including Junk/Upgrades. If `db.global.pinnedCategoryShowsWhenDisabled` is **false**, pins in **disabled** categories are ignored here so later stages can assign (e.g. `Other`). If **true**, a disabled pinned category still wins assignment. Legacy saves with the same item ID in multiple pin tables: `PickBestCandidate` among those rows (priority → section order → stable tie key).
-2. **1W Junk** — `OneWoW_GUI.PredicateEngine` `props.isJunk`; gated by `enableJunkCategory` + `disabledCategories`.
-3. **1W Upgrades** — direct call to `OneWoW.UpgradeDetection:CheckItemUpgrade(hyperlink, itemLocation)`; gated by settings + `disabledCategories`.
-4. **Recent Items** — `SlotMatchesRecent` (GUID map + `recentItemDuration`). Surfaces recent non-junk/non-upgrade items before custom/builtin classification.
-5. **No hyperlink** → `"Other"`.
-6. **Category cache** read (engine cache key when hyperlink exists).
-7. **Merged candidate pool** — collects **all** matching custom predicate categories (`CollectCustomPredicateCandidates`) and builtin `SEARCH_CATEGORIES` matches into one pool, then picks one winner via `PickBestCandidate`: user-facing priority (higher wins) → custom beats builtin at equal priority → `defaultOrder` (lower wins) → section order → `searchOrder` → tieKey.
-8. **Inventory slots** — if result is `Weapons` or `Armor` and `enableInventorySlots`, remap to localized equip-slot category name.
-9. **Disabled fallback** — if final candidate-pool-derived name is disabled → `"Other"` (steps 1–4 bypass this).
-10. **Cache write** when applicable (same key rules as before).
+**Outer layer** (`GetItemCategory`; order matters):
+
+1. **Missing `itemInfo`** → `"Other"`.
+2. **Slot-keyed cache** (`categoryCache`, key `PE:GetItemCacheKey(...)`) — stores final results including slot-overlay hits when applicable.
+3. **1W Upgrades (slot overlay)** — `OneWoW.UpgradeDetection:CheckItemUpgrade` with `ItemLocation` when available; gated by `enableUpgradeCategory`, `disabledCategories`, `CategoryAppliesTo`, and `OneWoW` presence. Runs **before** Recent Items so an upgrade wins over a recent classification on the same slot.
+4. **Recent Items (slot overlay)** — `SlotMatchesRecent`; gated by `disabledCategories` + `CategoryAppliesTo`.
+5. **`ResolveBaseCategory(...)`** — see below. Writes through to slot cache only when the verdict is **not tentative** (full item data + tooltip resolution succeeded).
+
+**`ResolveBaseCategory`** (identity tier; manual pins through builtin/custom pool):
+
+1. **Manual pins** — `customCategoriesV2[*].items` and `categoryModifications[*].addedItems` (no PredicateEngine). Same `pinnedCategoryShowsWhenDisabled` and `PickBestCandidate` rules as before; filtered by `CategoryAppliesTo` for `containerType`.
+2. **1W Junk** — `PE:BuildProps(...).isJunk`; gated by `enableJunkCategory` + `disabledCategories` + `CategoryAppliesTo`.
+3. **No hyperlink** → `"Other"` (cannot run predicate pool meaningfully).
+4. **Streaming deferral** — if `not C_Item.IsItemDataCachedByID(itemID)`, requests load and returns **`"Other", tentative=true`** so nothing is cached until `GET_ITEM_INFO_RECEIVED` + refresh (sets `OneWoW_Bags._hasPendingTentatives`).
+5. **`baseCategoryCache` hit** — key `PE:GetItemIdentityKey(...) .. "|" .. containerType` — reuse merged-pool result for the same identity in the same container type.
+6. **`PE:BuildProps` + merged candidate pool** — `CollectCustomPredicateCandidates` + all `SEARCH_CATEGORIES` entries; `PickBestCandidate` (priority → custom beats builtin → `defaultOrder` → section order → `searchOrder` → tieKey). Builtin candidates filtered by `disabledCategories` before evaluation; pool then filtered by `CategoryAppliesTo`.
+7. **Inventory slots** — if result is `Weapons` or `Armor` and `enableInventorySlots`, remap to localized equip-slot name when allowed by `CategoryAppliesTo`.
+8. **Disabled fallback** — candidate-pool-derived names only; manual/Junk still return early.
+9. **Tooltip tentative** — if props recorded `_tooltipDataMissing`, return category but **`tentative=true`** so slot cache is not poisoned during cold tooltip/streaming.
+10. **`baseCategoryCache` write** on successful non-tentative resolution.
+
+**Important:** Slot overlays (**Upgrades**, **Recent**) live only in `GetItemCategory`; they **never** populate `baseCategoryCache`. Manual pins, Junk, and merged-pool results **do** use `baseCategoryCache` for reuse across slots with the same identity.
 
 **`Categories:FindManualPinForItem(itemID)`** — returns `{ kind, categoryId | categoryName, displayName }` or `nil`; used for **single-pin enforcement** when adding items (see `CategoryController`).
 
@@ -374,6 +387,10 @@ Shared by `CategoryView` and `BankCategoryView`. Contains the full shared layout
 
 Shared bottom-bar construction for `BankBar` and `GuildBankBar`: themed bar frame, gold + free-slot font strings, tab button recycling helpers.
 
+### Profile (`Core\Profile.lua`)
+
+Optional sampling profiler toggled with **`/owbprof`** (`on` / `off` / `reset` / `dump`). Used by `Categories:GetItemCategory`, `ResolveBaseCategory`, `BankSet`/`BagSet` hot paths, and `ItemButton:OWB_FullUpdate`. Disabled by default (zero overhead).
+
 ### ItemPool
 
 Acquire/release pool for `ContainerFrameItemButtonTemplate` buttons. `Preallocate(220)` at login. `OneWoW_GUI:SkinIconFrame` during creation; mixin applied when bound in `BagSet` / `BankSet` / `GuildBankSet`.
@@ -383,7 +400,7 @@ Acquire/release pool for `ContainerFrameItemButtonTemplate` buttons. `Preallocat
 Applied with `OneWoW_Bags:ApplyItemButtonMixin` (copies `OneWoW_Bags.ItemButtonMixin` methods onto the button once).
 
 - `OWB_SetSlot`, `OWB_MarkDirty`, `OWB_IsDirty`, `OWB_FullUpdate`
-- `OWB_UpdateNewItemGlow` — player bags only (`BagTypes:IsPlayerBag`); uses `OneWoW_GUI.PredicateEngine:BuildProps(...).isNew` + template overlays
+- `OWB_UpdateNewItemGlow` — player bags only (`BagTypes:IsPlayerBag`); uses `OneWoW_GUI.PredicateEngine:BuildProps(...).isNew` + template overlays; respects Masque (`Integrations\Masque.lua`) for border/glow ownership when Masque is active
 - `OWB_UpdateJunkDim`, `OWB_UpdateUnusableOverlay` — junk from `BuildProps(...).isJunk`
 - `OWB_RefreshCooldown`, `OWB_RefreshLock`, `OWB_SetIconSize`, `OWB_GetLink`
 
@@ -466,9 +483,9 @@ Cache invalidation boundary: `InvalidateCategorization("props")` on `BAG_UPDATE_
 
 ### Categories
 
-**28** builtin rows in `CATEGORY_DEFINITIONS` (including `1W Junk`, `1W Upgrades`, `Recent Items`, `Other`, `Empty`, and search-driven builtins such as `Housing`, `Toys`, `Mats`, `Junk`, etc.). Builtin search categories are collected into `SEARCH_CATEGORIES` sorted by `searchOrder`.
+**28** builtin rows in `CATEGORY_DEFINITIONS` (including `1W Junk`, `1W Upgrades`, `Recent Items`, crafting split **`Mats`** / **`Reagents`**, `Other`, `Empty`, and search-driven builtins such as `Housing`, `Toys`, `Junk`, etc.). Builtin search categories are collected into `SEARCH_CATEGORIES` sorted by `searchOrder` (ties retain stable relative order from definitions).
 
-Custom predicate and builtin search categories are merged into a **single candidate pool** during assignment. Tie-breaking: user-facing **priority** (`categoryModifications[].priority`, higher wins) → custom beats builtin at equal priority → `defaultOrder` (lower wins) → section order → `searchOrder` → stable tieKey.
+Custom predicate categories are mirrored into **`precomputedCustomCands`** when `customCategoriesV2` mutates so per-slot classification avoids repeating filter-mode inference and string lowercasing. During **`ResolveBaseCategory`**, custom predicate hits and builtin **`SEARCH_CATEGORIES`** hits are merged into a **single candidate pool**; tie-breaking: user-facing **priority** (`categoryModifications[].priority`, higher wins) → custom beats builtin at equal priority → `defaultOrder` (lower wins) → section order → `searchOrder` → stable tieKey.
 
 ---
 
@@ -518,7 +535,7 @@ A single hidden `eventFrame` in `OneWoW_Bags.lua` handles `ADDON_LOADED` and `PL
 | Merchant | `MERCHANT_SHOW` / `MERCHANT_CLOSED` (auto open/close with guards in `HookBlizzardBags`) |
 | Money | `PLAYER_MONEY`, `ACCOUNT_MONEY`, guild bank money events |
 | Quest | `QUEST_ACCEPTED` / `QUEST_REMOVED` → full-bag dirty rebuild |
-| Predicate-related | `EQUIPMENT_SETS_CHANGED`, `PLAYER_EQUIPMENT_CHANGED`, `GET_ITEM_INFO_RECEIVED` → `Events:OnPredicateInvalidation` → `InvalidateCategorization("props")` + deferred `RequestLayoutRefresh("all")` |
+| Predicate-related | `EQUIPMENT_SETS_CHANGED` / `PLAYER_EQUIPMENT_CHANGED` → `Events:OnPredicateInvalidation` → `InvalidateCategorization("props")` + deferred `RequestVisualRefresh` for visible windows; `GET_ITEM_INFO_RECEIVED` → coalesced `InvalidateItemIDs` + `UpdateSlotsForItemIDs` (no blanket categorization wipe) |
 
 ---
 
@@ -590,7 +607,7 @@ Shared: `bankShowWarband` (active mode), `bankFramePosition`, `collapsedBankCate
 14. `hide_in_to_applies_in` — convert `categoryModifications[*].hideIn` to `appliesIn` with inverted semantics
 15. `mats_crafting_category` — insert the `Mats` builtin before `Reagents` in all section/member/displayOrder lists so existing saves pick up the new crafting category
 16. `split_warband_bank_settings` — copy legacy `bank*` values into parallel `warbandBank*` keys when the warband key is not already set, preserving user settings during the personal/warband settings split
-17. `cleanup_legacy_root_keys` — remove stray legacy root-level SavedVariable keys while preserving supported root scopes such as `global`, `chars`, `realms`, and presets
+17. `cleanup_legacy_root_keys` — remove stray legacy root-level SavedVariable keys while preserving supported root scopes: `global`, `chars`, `realms`, `factions`, `classes`, `specs`, `presets`, and `_activePreset`
 
 ---
 
@@ -615,7 +632,7 @@ OneWoW_Bags:RegisterItemButtonCallback("MyAddon", function(button, bagID, slotID
 OneWoW_Bags:UnregisterItemButtonCallback("MyAddon")
 ```
 
-After `GUI:RefreshLayout`, visible inventory buttons fire registered callbacks (~50ms delay). After `BankGUI:RefreshLayout`, bank buttons fire when `enableBankOverlays` is true. After `GuildBankGUI:RefreshLayout`, the integration **clears** OneWoW overlays on guild bank buttons (`ClearGuildBankOverlays`) rather than invoking the same per-button callback loop.
+After `GUI:RefreshLayout`, visible inventory buttons fire registered callbacks (~50ms delay). After `BankGUI:RefreshLayout`, bank buttons fire when `enableBankOverlays` is true. After `GuildBankGUI:RefreshLayout`, when **`db.global.enableBankOverlays`** is true, the integration **clears** OneWoW overlays on guild bank buttons (`ClearGuildBankOverlays`) rather than invoking the same per-button callback loop. (Guild bank uses this shared key directly—not `BankController`-dispatched warband/personal overlay toggles.)
 
 ### TSM / Baganator
 
@@ -663,7 +680,7 @@ The addon folder includes `API/` (`README.md`, `INTEGRATION_GUIDE.md`, `INDEX.md
 
 - **Pooling:** `ItemPool`, `CategoryManagerBase` section/divider/header frames, `CategoryViewHelpers` compact label pools, bank/guild tab button recycling via `BarHelpers`
 - **Dirty batching:** `dirtyBags` until `BAG_UPDATE_DELAYED`
-- **Predicate / category caches** with targeted invalidation (`props` vs full)
+- **Predicate / category caches** with targeted invalidation (`props` vs full) and **`InvalidateItemIDs`** for streaming item-info batches
 - **Settings debounce** on high-churn sliders
 - **Combat-deferred cleanup** via `WindowHelpers:RegisterDeferredCleanup` when windows hide during lockdown
 - **Guild bank refresh coalescing** — `QueueGuildBankRefresh` uses a one-shot OnUpdate driver

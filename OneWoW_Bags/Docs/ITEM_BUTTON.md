@@ -120,11 +120,11 @@ callbacks ~50 ms later (after the layout has settled):
 | Window | Hook | Dispatch | Gating |
 |---|---|---|---|
 | Bags (`OneWoW_Bags.GUI`) | `RefreshLayout` | `FireCallbacksOnAllButtons` | Always (when window built) |
-| Personal/Warband Bank (`OneWoW_Bags.BankGUI`) | `RefreshLayout` | `FireCallbacksOnBankButtons` | Only when `BankController:Get("overlays") == true` |
-| Guild Bank (`OneWoW_Bags.GuildBankGUI`) | `RefreshLayout` | *(no callback dispatch)* | OneWoW overlays are **cleared**, not re-fired |
+| Personal/Warband Bank (`OneWoW_Bags.BankGUI`) | `RefreshLayout` | `FireCallbacksOnBankButtons` | Only when `BankController:Get("overlays")` is true (`enableBankOverlays` in personal bank mode, `enableWarbandBankOverlays` when `bankShowWarband`) |
+| Guild Bank (`OneWoW_Bags.GuildBankGUI`) | `RefreshLayout` | *(no callback dispatch)* | When **`db.global.enableBankOverlays`** is true, OneWoW overlays are **cleared** via `ClearGuildBankOverlays` (same global key as personal bank overlays—not the warband-specific overlay toggle) |
 
 Bank dispatch is also fired on `BANKFRAME_OPENED` (after a 100 ms delay) when
-the user has bank overlays enabled.
+the active bank mode's overlay toggle allows it (`BankController:Get("overlays")`).
 
 The dispatcher iterates only buttons where `button:IsVisible() == true` and
 the slot has been bound (`owb_bagID` / `owb_slotID` set), so empty layout
@@ -132,11 +132,11 @@ slots are skipped automatically.
 
 ### Junk-strip suppression
 
-When the user has **Strip Junk Overlays** enabled
-(`db.global.stripJunkOverlays`) and Alt-Show is not active, callbacks are
-**skipped** for slots whose item evaluates as junk by the OneWoW
-PredicateEngine, and the OneWoW `OverlayEngine:CleanButton` is invoked
-instead. If your overlay does not appear on grey items in this configuration,
+When **Strip Junk Overlays** is enabled (`db.global.stripJunkOverlays`) and
+Alt-Show is not active, `FireItemButtonCallback` **returns early** for slots
+where `button._owb_isJunk` is true (the internal flag OneWoW Bags sets from
+PredicateEngine junk state during `OWB_FullUpdate`), and the OneWoW
+`OverlayEngine:CleanButton` is invoked instead. If your overlay does not appear on grey items in this configuration,
 this is the reason — it is intentional, so the user's "hide everything on
 junk" preference is honored across integrations.
 
@@ -149,14 +149,13 @@ body.
 
 ### Error handling
 
-The dispatcher wraps each callback invocation in `pcall`, so an error thrown
-from your callback **will not break OneWoW Bags or other addons' callbacks**.
-However, the error is **silently swallowed** — there is no log entry. If you
-want visibility into your own failures, instrument the inside of your
-callback (e.g. `geterrorhandler()(...)` or your own logger).
+The dispatcher wraps each callback invocation in `pcall`. On failure, the
+error is forwarded to the game's **`geterrorhandler()`** (same pipeline as
+Blizzard's normal Lua errors), prefixed with the callback registration key so
+you can identify which integration broke. Other addons' callbacks still run.
 
-You do not need to add a defensive `pcall` of your own; doing so just buries
-errors deeper.
+You do not need to add a defensive `pcall` of your own unless you want to
+recover locally without surfacing to the global error handler.
 
 ---
 
@@ -308,7 +307,7 @@ Enum.ItemQuality.WoWToken   = 8
   registration is reached at file load.
 - Bank window: callbacks are gated on `BankController:Get("overlays")`. The
   user can disable bank overlays in OneWoW Bags settings; this is expected.
-- Guild bank: callbacks are not dispatched there at all.
+- Guild bank: callbacks are not dispatched; overlay clearing runs only when **`enableBankOverlays`** is true in SavedVariables (see [When Callbacks Fire](#when-callbacks-fire)).
 
 ### My overlay doesn't appear on grey/junk items
 

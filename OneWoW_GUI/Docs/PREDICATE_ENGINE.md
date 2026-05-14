@@ -24,7 +24,7 @@ If `OneWoW_GUI` is a hard dependency of your addon (`## RequiredDeps: OneWoW_GUI
 
 Two layers:
 
-- **Layer 1 — `BuildProps`:** enriches an item (by `itemID`, and optionally a bag slot via `bagID/slotID`, plus an optional `itemInfo` hint) into a flat property table. Tooltip-derived, bind, and stat fields are resolved **lazily** through a metatable on first access.
+- **Layer 1 — `BuildProps`:** enriches an item (by `itemID`, and optionally a bag slot via `bagID/slotID`, plus an optional `itemInfo` hint) into a flat property table. It uses a two-tier cache: shared identity props first, then a per-slot overlay when slot context is supplied. Tooltip-derived, bind, and stat fields are resolved **lazily** through a metatable on first access.
 - **Layer 2 — Tokenizer + Parser:** scans an expression string into a token array, then a recursive-descent parser produces a cached `function(props) -> bool`. Operators: `&` / `and`, `|` / `or`, `!` / `not`, parentheses. Comparisons: `==`, `!=`, `<`, `<=`, `>`, `>=`, and `~` (contains) / `~~` (Lua pattern). Numeric ranges: `min-max`. Shorthand numeric comparisons bind to `ilvl` when bare (e.g. `>600`, `200-300`); bare money tokens (`100g`, `10s-50s`) bind to `vendorprice`.
 
 ### Design decisions (from the module header)
@@ -33,7 +33,7 @@ Two layers:
 - Strict soulbound: character-only; account-bound does **not** match `#soulbound`.
 - `~` is literal string-contains only. Negation uses `!` or `not`.
 - `${CONSTANT}` curly-brace syntax for named constants and parameters (e.g. `quality==${EPIC}` resolves to `quality==4` before tokenizing).
-- Lazy tooltip metatable for the few remaining tooltip-only fields. The same metatable also drives lazy bind resolution (when API-based bind data is unavailable) and lazy stat resolution (`C_Item.GetItemStats` on first access).
+- Lazy tooltip metatable for the few remaining tooltip-only fields. The same metatable also drives lazy bind resolution and lazy stat resolution (`C_Item.GetItemStats` on first access).
 
 ### Tokenizer notes
 
@@ -63,15 +63,21 @@ Other binding values (`BindOnEquip`, `BindOnUse`, `Soulbound`, account variants,
 
 | Cache | Key | Contents | Cleared by |
 |---|---|---|---|
-| `propsCache` | `"bagID:slotID"` (slot context) or item-identity key (no slot) | Result of `BuildProps` | `InvalidatePropsCache`, `InvalidateCache` |
-| `tooltipCache` | `"bagID:slotID"` | Concatenated tooltip left-text | `InvalidatePropsCache`, `InvalidateCache` |
+| `propsCache` | `"bagID:slotID"` (slot context) or item-identity key (no slot) | Result of `BuildProps`: per-slot props or identity-only props | `InvalidatePropsCache`, `InvalidateCache`, matching entries in `InvalidateItemIDs` |
+| `identityPropsCache` | item-identity key | Slot-independent base props shared by every slot holding the same item identity | `InvalidatePropsCache`, `InvalidateCache`, matching entries in `InvalidateItemIDs` |
+| `tooltipCache` | `"bagID:slotID"` | Concatenated bag-tooltip left-text | `InvalidatePropsCache`, `InvalidateCache`, matching entries in `InvalidateItemIDs` |
+| `tooltipTextLinkCache` | hyperlink | Concatenated hyperlink-tooltip left-text | `InvalidatePropsCache`, `InvalidateCache`, matching entries in `InvalidateItemIDs` |
+| `tooltipDataCache` | `"bagID:slotID"` | Raw `TooltipData` from `C_TooltipInfo.GetBagItem` | `InvalidatePropsCache`, `InvalidateCache`, matching entries in `InvalidateItemIDs` |
+| `tooltipDataLinkCache` | hyperlink | Raw `TooltipData` from `C_TooltipInfo.GetHyperlink` | `InvalidatePropsCache`, `InvalidateCache`, matching entries in `InvalidateItemIDs` |
 | `compiledCache` | Expression string | Compiled `function(props) -> bool` | `InvalidateCache`, `RegisterKeyword`, `RegisterProperty` |
 | `knownProfs` | (single set) | Lowercase profession-name set used by `#myprofs` | `InvalidateCache`, `InvalidateKnownProfessions` |
 
 The slot/identity key strategy for `propsCache`:
 
 - When `bagID`/`slotID` are present, the key is `"bagID:slotID"` so slot-state fields (durability, `isNew`, `isLocked`, current bind state, equipment-set membership, `isRefundable`, `isScrappable`, etc.) can vary per slot.
-- Otherwise the key is an **identity key** (hyperlink for normal items; `itemID + species/level/quality/health/power/speed` for caged battle pets) so independent calls for the same item share work.
+- Otherwise the key is an **identity key** (`itemID|hyperlink` for normal items; `itemID|species:level:quality:health:power:speed` for caged battle pets; `itemID|` fallback when no hyperlink is available) so independent calls for the same item share work.
+
+`BuildProps` first populates or reuses `identityPropsCache`, then shallow-copies those base props into the final props table. Slot-only fields such as count, lock state, durability, equipment-set membership, refund/scrap state, quest slot fallback, and battle-pay state are applied on top. Lazy tooltip, bind, and stat fields are written to the final props table, not the shared identity base.
 
 Use `PE:GetItemCacheKey` / `PE:GetItemIdentityKey` to compute these keys yourself.
 
@@ -79,11 +85,12 @@ Use `PE:GetItemCacheKey` / `PE:GetItemIdentityKey` to compute these keys yoursel
 
 | Method | Effect |
 |---|---|
-| `PE:InvalidatePropsCache()` | Wipes props + tooltip caches only. Appropriate when slot contents changed but the set of registered keywords/properties did not (e.g. `BAG_UPDATE_DELAYED`). |
-| `PE:InvalidateCache()` | Wipes props + tooltip + compiled caches and clears `knownProfs`. Use when keyword set changed or for a full reset. |
+| `PE:InvalidatePropsCache()` | Wipes props, identity-props, tooltip-text, and tooltip-data caches. Appropriate when item/slot state changed but the set of registered keywords/properties did not (e.g. `BAG_UPDATE_DELAYED`). |
+| `PE:InvalidateCache()` | Wipes props, identity-props, tooltip-text, tooltip-data, and compiled caches, and clears `knownProfs`. Use when keyword set changed or for a full reset. |
+| `PE:InvalidateItemIDs(idSet) -> evictedSlotKeys` | Surgically evicts cached props and tooltip data for item IDs in `idSet` and returns the evicted `"bagID:slotID"` keys. Used by item-info streaming paths to avoid wiping unrelated cache entries. |
 | `PE:InvalidateKnownProfessions()` | Clears the cached "known professions" set used by `#myprofs`. Call on `SKILL_LINES_CHANGED`. |
 
-`RegisterKeyword` and `RegisterProperty` automatically wipe `compiledCache` (so future evaluations recompile against the new grammar) but leave `propsCache` and `tooltipCache` intact.
+`RegisterKeyword` and `RegisterProperty` automatically wipe `compiledCache` (so future evaluations recompile against the new grammar) but leave item and tooltip caches intact.
 
 ---
 
@@ -108,19 +115,17 @@ All functions are method-style (`PE:Func(...)`). Exported constants use dot synt
 | `PE:RegisterKeyword(nameOrNames, func)` | Register a `#keyword` (or a list of aliases — first name is canonical). `func(props)` returns truthy to match. Wipes `compiledCache`. Re-registering the same predicate function under a new name keeps the existing canonical entry. |
 | `PE:RegisterProperty(nameOrNames, def)` | Register a numeric or string property for comparison syntax (e.g. `haste>=200`). `def = { field = "fieldName", type = "number"\|"string", unit = "money"? }`. `unit = "money"` enables money parsing (`100g`, `5s50c`) on the RHS for number-typed properties. Wipes `compiledCache`. |
 | `PE:GetAllKeywords() -> { canonical, aliases[] }[]` | Every registered keyword in registration order. `aliases` excludes the canonical name and is alphabetically sorted. Intended for help/reference UIs. |
-| `PE:GetMatchingKeywords(itemID, bagID?, slotID?, itemInfo?) -> string[]` | Return canonical names of every registered keyword that matches this item, in registration order. Slot-specific keywords (`#new`, `#locked`, bind-state keywords, `#tradeableloot`, `#unique`/`#uniqueequipped`, `#charges`, `#alreadyknown` for non-recipes, etc.) only match when `bagID`/`slotID` are supplied — see the `PE:GetMatchingKeywords` doc-comment for the full degradation list. |
+| `PE:GetMatchingKeywords(itemID, bagID?, slotID?, itemInfo?) -> string[]` | Return canonical names of every registered keyword that matches this item, in registration order. With only hyperlink context, policy bind keywords such as `#boe`, `#bou`, `#warbound`, and `#wue` can still match via tooltip fallback, while current-bound state (`#bop` / `#soulbound` / `#bound`) cannot be inferred. Current slot-state keywords such as `#new`, `#locked`, `#tradeableloot`, durability, equipment-set membership, count, refund/scrap state, and battle-pay state require `bagID`/`slotID`. |
 
 ### Item helpers
 
 | Function | Purpose |
 |---|---|
-| `PE:GetItemCacheKey(itemID, bagID?, slotID?, hyperlink?) -> key` | Stable cache key keyed on item identity + slot context (slot when present, otherwise identity key). |
-| `PE:GetItemIdentityKey(itemID, hyperlink?) -> key` | Identity key for grouping/stacking (ignores slot). Hyperlink-based for normal items; itemID + pet stats for caged battle pets; `tostring(itemID)` fallback when no hyperlink is provided. |
+| `PE:GetItemCacheKey(itemID, bagID?, slotID?, hyperlink?) -> key` | Stable cache key keyed on item identity + slot context (`"bagID:slotID"` when both slot coordinates are present, otherwise identity key). |
+| `PE:GetItemIdentityKey(itemID, hyperlink?) -> key` | Identity key for grouping/stacking (ignores slot). Uses `itemID|hyperlink` for normal items, `itemID|species:level:quality:health:power:speed` for caged battle pets, and `itemID|` as the fallback when no hyperlink is provided. |
 | `PE:ParseItemLink(link) -> table\|nil` | Parse a full hyperlink or bare `item:...` string into a structured table (`itemID`, `enchantID`, `gems[]`, `suffixID`, `bonusIDs[]`, `modifiers`, `relicBonusIDs[1..3]`, `crafterGUID`, `extraEnchantID`, `quality`, `name`, etc.). Returns `nil` for inputs that do not match the item-link grammar. |
 | `PE:GetBattlePetData(itemID, hyperlink) -> table\|nil` | Extract battle-pet fields (`speciesID`, `petName`, `petLevel`, `petQuality`, `petMaxHealth`, `petPower`, `petSpeed`, `petType`, `isWild`, `canBattle`, `isTradeable`, `isUnique`, `numCollected`, `limit`). Returns `nil` for items with no associated species. |
-| `PE:GetTooltipText(bagID, slotID) -> string` | Concatenated tooltip left-text for the slot, cached. Returns `""` when bag/slot are missing or no tooltip data is available. |
-| `PE:GetExpansionID(itemID, hyperlink?) -> number\|nil` | Expansion ID for an item, preferring the hyperlink path. Returns `nil` when `C_Item.GetItemInfo` cannot supply expansion data. |
-| `PE:GetExpansionName(expID) -> string\|nil` | Localized expansion name from an ID (convenience wrapper over `_G["EXPANSION_NAME" .. expID]`). |
+| `PE:GetTooltipText(bagID, slotID) -> string` | Concatenated bag-tooltip left-text for the slot, cached when non-empty. Returns `""` when bag/slot are missing or no tooltip data is available. |
 | `PE:CanClassEquip(itemID?, hyperlink?, class?) -> bool` | Whether an item can be equipped by the given class. Pass a class token (`"WARRIOR"`, `"PALADIN"`, ...) to check an alt; pass `nil` to check the current player. Hyperlink is preferred over itemID because it carries modified-itemID context for reworked/tokenized gear. Treats universal gear (empty spec list) as usable; correctly rejects class-locked drops. |
 
 ### Exported constants
@@ -138,13 +143,13 @@ All functions are method-style (`PE:Func(...)`). Exported constants use dot synt
 
 | Group | Fields | Resolver | Marker flag |
 |---|---|---|---|
-| Tooltip | `tooltipText`, `hasCharges`, `hasUseAbility`, `hasEquipAbility`, `isAlreadyKnown`, `isTradeableLoot`, `isUnique`, `isUniqueEquipped` | `ResolveTooltipFields` | `_tooltipResolved` |
+| Tooltip | `tooltipText`, `hasCharges`, `hasUseAbility`, `hasEquipAbility`, `isAlreadyKnown`, `isTradeableLoot`, `isUnique`, `isUniqueEquipped` | `ResolveTooltipFields` | `_tooltipResolved` on success; `_tooltipDataMissing` on failure |
 | Bind | `currentbind`, `isSoulbound`, `isBOE`, `isBOA`, `isBOU`, `isWUE`, `isWarbound` | `ResolveBind` (source-aware; see Architecture) | `_bindResolved` |
-| Stats | `statIntellect`, `statAgility`, `statStrength`, `statStamina`, `statCrit`, `statHaste`, `statMastery`, `statVersatility`, `statSpeed`, `statLeech`, `statAvoidance`, `statArmor`, plus all `socket*` counters (`socketPrismatic`, `socketMeta`, color sockets, `socketCogwheel`, `socketDomination`, etc.) | `ResolveStats` (`C_Item.GetItemStats`) | `_statsResolved` |
+| Stats | `statIntellect`, `statAgility`, `statStrength`, `statStamina`, `statCrit`, `statHaste`, `statMastery`, `statVersatility`, `statSpeed`, `statLeech`, `statAvoidance`, `statArmor`, plus all `socket*` counters (`socketPrismatic`, `socketMeta`, color sockets, `socketCogwheel`, `socketHydraulic`, `socketDomination`, `socketCypher`, `socketTinker`, `socketPrimordial`, `socketFragrance`, `socketFiber`, punchcard sockets, and singing sockets) | `ResolveStats` (`C_Item.GetItemStats`) | `_statsResolved` |
 
-Each group resolves all of its fields on the first read of any field in that group. The marker flag is set on the props table so subsequent reads skip the resolver. The metatable is left attached for the lifetime of the cached props entry.
+Each group resolves all of its fields on the first read of any field in that group. The marker flag is set on the props table so subsequent reads skip the resolver. Tooltip resolution is the exception when no tooltip data is available: it writes safe false/empty defaults, sets `_tooltipDataMissing`, and leaves `_tooltipResolved` unset so later reads can retry after item data streams in. The metatable is left attached for the lifetime of the cached props entry.
 
-`_bagID` / `_slotID` are stored on the props table so resolvers that need slot context (tooltip scan, bag-mode bind resolution) can recover it.
+`_bagID` / `_slotID` are stored on the props table so resolvers that need slot context (tooltip scan, bag-mode bind resolution) can recover it. Tooltip and bind resolvers prefer bag-tooltip data when slot context is available, then fall back to hyperlink-tooltip data when a caller only supplied an item identity.
 
 ---
 
