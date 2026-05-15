@@ -22,4 +22,12 @@ OneWoW_Bags.InfoBar = OneWoW_Bags.InfoBarFactory:Create({
         filterKey  = "activeExpansionFilter",
         settingKey = "enableExpansionFilter",
     },
+    cleanupCallback = function(controller)
+        if controller and controller.SortBags then
+            controller:SortBags()
+        end
+    end,
+    categoryManagerCallback = function(controller)
+        controller:ToggleCategoryManager()
+    end,
 })

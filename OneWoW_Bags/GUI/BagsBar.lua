@@ -174,7 +174,7 @@ function BagsBar:Create(parent)
     local controlCluster = CreateFrame("Frame", nil, toolbarBand)
     controlCluster:SetPoint("LEFT", toolbarBand, "LEFT", bagsBarLeftInset, 0)
     controlCluster:SetHeight(ROW2_HEIGHT)
-    controlCluster:SetWidth(72)
+    controlCluster:SetWidth(20)
     bagsBarFrame.trackerControlCluster = controlCluster
 
     -- Bag icon buttons (row 1, left)
@@ -239,46 +239,6 @@ function BagsBar:Create(parent)
         ClearCursor()
     end)
     bagsBarFrame.addTrackerBtn = addTrackerBtn
-
-    local cleanupBagsBtn = OneWoW_GUI:CreateAtlasIconButton(controlCluster, {
-        atlas = "crosshair_ui-cursor-broom_32",
-        width = 20,
-        height = 20,
-    })
-    cleanupBagsBtn:SetPoint("LEFT", addTrackerBtn, "RIGHT", 4, 0)
-    cleanupBagsBtn:SetScript("OnClick", function()
-        local controller = GetController()
-        if controller and controller.SortBags then
-            controller:SortBags()
-        end
-    end)
-    cleanupBagsBtn:HookScript("OnEnter", function(myself)
-        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
-        GameTooltip:SetText(L["CLEANUP"], 1, 1, 1)
-        GameTooltip:Show()
-    end)
-    cleanupBagsBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    bagsBarFrame.cleanupBagsBtn = cleanupBagsBtn
-
-    local categoriesBtn = OneWoW_GUI:CreateAtlasIconButton(controlCluster, {
-        atlas = "decor-ability-layoutmode-active",
-        width = 20,
-        height = 20,
-    })
-    categoriesBtn:SetPoint("LEFT", cleanupBagsBtn, "RIGHT", 4, 0)
-    categoriesBtn:SetScript("OnClick", function()
-        local controller = GetController()
-        if controller and controller.ToggleCategoryManager then
-            controller:ToggleCategoryManager()
-        end
-    end)
-    categoriesBtn:HookScript("OnEnter", function(myself)
-        GameTooltip:SetOwner(myself, "ANCHOR_TOP")
-        GameTooltip:SetText(L["CATEGORY_MANAGER_BTN"], 1, 1, 1)
-        GameTooltip:Show()
-    end)
-    categoriesBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    bagsBarFrame.categoriesBtn = categoriesBtn
 
     local goldBtn = CreateFrame("Button", nil, toolbarBand)
     goldBtn:SetHeight(20)
@@ -911,16 +871,6 @@ function BagsBar:UpdateRowVisibility()
 
     if bagsBarFrame.goldBtn then
         bagsBarFrame.goldBtn:SetShown(showMoney)
-    end
-
-    if bagsBarFrame.cleanupBagsBtn then
-        local showCleanup = (db.global.showHeaderBar ~= false) or altShow
-        bagsBarFrame.cleanupBagsBtn:SetShown(showCleanup)
-    end
-
-    if bagsBarFrame.categoriesBtn then
-        local showCategories = (db.global.showHeaderBar ~= false) or altShow
-        bagsBarFrame.categoriesBtn:SetShown(showCategories)
     end
 
     if bagsBarFrame.row2Frame then
