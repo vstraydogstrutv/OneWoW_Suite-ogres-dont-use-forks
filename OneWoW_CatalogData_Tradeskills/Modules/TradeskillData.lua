@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Tradeskills/Modules/TradeskillData.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 ns.TradeskillData = {}
 local TD = ns.TradeskillData
@@ -64,7 +61,7 @@ local function BuildRecipeIndex()
     for _, prof in ipairs(PROFESSIONS) do
         local data = _G[prof.global]
         if data and data.r then
-            for recipeID, recipe in pairs(data.r) do
+            for recipeID, _ in pairs(data.r) do
                 recipeIndex[recipeID] = prof.name
             end
         end
@@ -147,7 +144,7 @@ function TD:GetRecipesByProfession(professionName, expFilter, searchText)
     local results = {}
     local searchLower = searchText and searchText:lower() or nil
 
-    for recipeID, recipe in pairs(data.r) do
+    for _, recipe in pairs(data.r) do
         local include = true
 
         if expFilter and expFilter ~= "" and recipe.exp ~= expFilter then
@@ -208,7 +205,6 @@ function TD:SearchRecipes(searchText, professionFilter, expansionFilter)
     if not searchText or searchText == "" then return {} end
 
     local results = {}
-    local searchLower = searchText:lower()
 
     local profsToSearch = {}
     if professionFilter and professionFilter ~= "" then

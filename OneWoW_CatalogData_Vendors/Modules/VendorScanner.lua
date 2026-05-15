@@ -1,10 +1,21 @@
-local addonName, ns = ...
+local _, ns = ...
 
 ns.VendorScanner = {}
 local VendorScanner = ns.VendorScanner
 
+local tinsert = tinsert
+local pcall, time = pcall, time
+local floor, tonumber = math.floor, tonumber
+local UnitGUID, UnitName, UnitCreatureType, UnitClassification, UnitLevel  = UnitGUID, UnitName, UnitCreatureType, UnitClassification, UnitLevel
+local GetMerchantNumItems, GetMerchantItemLink = GetMerchantNumItems, GetMerchantItemLink
+local GetMerchantItemCostInfo, GetMerchantItemCostItem = GetMerchantItemCostInfo, GetMerchantItemCostItem
+local C_Timer = C_Timer
+local C_Map, GetSubZoneText = C_Map, GetSubZoneText
+local C_MerchantFrame = C_MerchantFrame
+local C_CurrencyInfo = C_CurrencyInfo
+local C_Item = C_Item
+
 local scanInProgress = false
-local lastScannedNPCID = nil
 
 function VendorScanner:ExtractNPCID(guid)
     if not guid then return 0 end
@@ -26,8 +37,8 @@ function VendorScanner:GetCurrentLocation()
 
     local position = C_Map.GetPlayerMapPosition(mapID, "player")
     if position then
-        location.x = math.floor(position.x * 10000) / 100
-        location.y = math.floor(position.y * 10000) / 100
+        location.x = floor(position.x * 10000) / 100
+        location.y = floor(position.y * 10000) / 100
     else
         location.x = 0
         location.y = 0
@@ -109,7 +120,7 @@ function VendorScanner:ScanVendor()
                         end
 
                         if costEntry.amount and costEntry.amount > 0 then
-                            table.insert(itemEntry.currencies, costEntry)
+                            tinsert(itemEntry.currencies, costEntry)
                         end
                     end
                 end
@@ -177,9 +188,7 @@ function VendorScanner:ScanVendor()
         db.nameCache[npcID] = name
     end
 
-    lastScannedNPCID = npcID
     scanInProgress = false
-
     ns:FireScanCallbacks(db.vendors[npcID])
 end
 
@@ -196,7 +205,6 @@ function VendorScanner:Initialize()
             end)
         elseif event == "MERCHANT_CLOSED" then
             scanInProgress = false
-            lastScannedNPCID = nil
         elseif event == "MERCHANT_UPDATE" then
             if not scanInProgress then
                 VendorScanner:ScanVendor()

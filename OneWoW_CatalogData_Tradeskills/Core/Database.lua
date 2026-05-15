@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Tradeskills/Core/Database.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 ns.DatabaseDefaults = {
     settings = {
@@ -14,7 +11,7 @@ ns.DatabaseDefaults = {
 }
 
 function ns:MigrateScanCacheKeys()
-    local db = _G.OneWoW_CatalogData_Tradeskills_DB
+    local db = OneWoW_CatalogData_Tradeskills_DB
     if not db or not db.scanCache then return end
 
     local newCache = {}
@@ -31,9 +28,9 @@ function ns:MigrateScanCacheKeys()
 end
 
 function ns:GetSettings()
-    return _G.OneWoW_CatalogData_Tradeskills_DB and _G.OneWoW_CatalogData_Tradeskills_DB.settings or {}
+    return OneWoW_CatalogData_Tradeskills_DB and OneWoW_CatalogData_Tradeskills_DB.settings or {}
 end
 
 function ns:GetDB()
-    return _G.OneWoW_CatalogData_Tradeskills_DB
+    return OneWoW_CatalogData_Tradeskills_DB
 end

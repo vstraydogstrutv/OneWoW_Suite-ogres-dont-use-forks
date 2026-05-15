@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Tradeskills/Locales/koKR.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 ns.Locales = ns.Locales or {}
 ns.Locales["koKR"] = {}

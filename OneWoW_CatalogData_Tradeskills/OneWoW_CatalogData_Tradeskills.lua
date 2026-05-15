@@ -1,9 +1,6 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Tradeskills/OneWoW_CatalogData_Tradeskills.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
-_G.OneWoW_CatalogData_Tradeskills = ns
+OneWoW_CatalogData_Tradeskills = ns
 
 OneWoW_CatalogData_Tradeskills_API = {
     GetSettings = function()

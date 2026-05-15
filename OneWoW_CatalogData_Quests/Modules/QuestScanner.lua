@@ -178,7 +178,7 @@ end
 local scanFrame = CreateFrame("Frame")
 scanFrame:RegisterEvent("QUEST_ACCEPTED")
 scanFrame:RegisterEvent("QUEST_TURNED_IN")
-scanFrame:SetScript("OnEvent", function(self, event, ...)
+scanFrame:SetScript("OnEvent", function(_, event, ...)
     if event == "QUEST_ACCEPTED" then
         local questLogIndex, questID = ...
         local qID = questID or questLogIndex

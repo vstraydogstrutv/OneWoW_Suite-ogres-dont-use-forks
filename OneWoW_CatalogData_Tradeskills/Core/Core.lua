@@ -1,21 +1,18 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Tradeskills/Core/Core.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local ADDON_NAME, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
 OneWoW_GUI.DB:BootSubModule(ns, {
-    addonName = addonName,
+    addonName = ADDON_NAME,
     savedVar = "OneWoW_CatalogData_Tradeskills_DB",
     defaults = ns.DatabaseDefaults,
     withScanCallbacks = true,
     initDB = function()
         local DB = OneWoW_GUI.DB
-        if not _G.OneWoW_CatalogData_Tradeskills_DB then _G.OneWoW_CatalogData_Tradeskills_DB = {} end
-        DB:MergeMissing(_G.OneWoW_CatalogData_Tradeskills_DB, ns.DatabaseDefaults)
-        local db = _G.OneWoW_CatalogData_Tradeskills_DB
+        if not OneWoW_CatalogData_Tradeskills_DB then OneWoW_CatalogData_Tradeskills_DB = {} end
+        DB:MergeMissing(OneWoW_CatalogData_Tradeskills_DB, ns.DatabaseDefaults)
+        local db = OneWoW_CatalogData_Tradeskills_DB
         if db.version < 2 then
             ns:MigrateScanCacheKeys()
             db.version = 2
@@ -37,7 +34,7 @@ OneWoW_GUI.DB:BootSubModule(ns, {
             ns.TradeskillScanner:Initialize()
         end
 
-        local catalog = _G.OneWoW_Catalog
+        local catalog = OneWoW_Catalog
         if catalog and catalog.Catalog then
             catalog.Catalog:RegisterDataAddon("tradeskills", ns)
         end

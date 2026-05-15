@@ -1,9 +1,6 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Journal/OneWoW_CatalogData_Journal.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
-_G.OneWoW_CatalogData_Journal = ns
+OneWoW_CatalogData_Journal = ns
 
 OneWoW_CatalogData_Journal_API = {
     GetSettings = function()

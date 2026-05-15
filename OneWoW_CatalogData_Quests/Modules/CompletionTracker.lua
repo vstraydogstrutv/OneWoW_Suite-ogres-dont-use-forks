@@ -20,7 +20,7 @@ end
 local function BuildAltTrackerCache()
     if cacheBuilt then return end
 
-    local altApi = _G.OneWoW_AltTracker_Collections_API
+    local altApi = OneWoW_AltTracker_Collections_API
     if not altApi or not altApi.GetAllCharacters then
         cacheBuilt = true
         return
@@ -114,7 +114,7 @@ function CompletionTracker:GetCompletedCharacters(questID)
     end
 
     -- AltTracker supplements with characters that have never logged in while our addon was running
-    local altApi = _G.OneWoW_AltTracker_Collections_API
+    local altApi = OneWoW_AltTracker_Collections_API
     if altApi and altApi.GetAllCharacters then
         BuildAltTrackerCache()
         if completedCache then
@@ -167,7 +167,7 @@ function CompletionTracker:GetAllTrackedCharacters()
     end
 
     -- AltTracker supplements with characters not yet in our DB
-    local altApi = _G.OneWoW_AltTracker_Collections_API
+    local altApi = OneWoW_AltTracker_Collections_API
     if altApi and altApi.GetAllCharacters then
         BuildAltTrackerCache()
         if completedCache then

@@ -1,6 +1,6 @@
-local addonName, ns = ...
+local _, ns = ...
 
-_G.OneWoW_CatalogData_Vendors = ns
+OneWoW_CatalogData_Vendors = ns
 
 OneWoW_CatalogData_Vendors_API = {
     GetSettings = function()

@@ -1,5 +1,5 @@
 -- OneWoW_CatalogData_Vendors/Core/Database.lua
-local addonName, ns = ...
+local _, ns = ...
 
 ns.DatabaseDefaults = {
     settings = {
@@ -13,9 +13,9 @@ ns.DatabaseDefaults = {
 }
 
 function ns:GetSettings()
-    return _G.OneWoW_CatalogData_Vendors_DB and _G.OneWoW_CatalogData_Vendors_DB.settings or {}
+    return OneWoW_CatalogData_Vendors_DB and OneWoW_CatalogData_Vendors_DB.settings or {}
 end
 
 function ns:GetDB()
-    return _G.OneWoW_CatalogData_Vendors_DB
+    return OneWoW_CatalogData_Vendors_DB
 end

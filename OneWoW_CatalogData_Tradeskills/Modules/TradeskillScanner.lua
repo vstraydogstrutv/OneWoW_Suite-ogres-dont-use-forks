@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Tradeskills/Modules/TradeskillScanner.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 ns.TradeskillScanner = {}
 local Scanner = ns.TradeskillScanner
@@ -194,7 +191,7 @@ function Scanner:IsRecipeKnown(recipeID)
     local db = ns:GetDB()
     if not db.scanCache then return false, nil end
     for charKey, professions in pairs(db.scanCache) do
-        for profName, profData in pairs(professions) do
+        for _, profData in pairs(professions) do
             if profData.known and profData.known[recipeID] then
                 return true, charKey
             end
@@ -208,7 +205,7 @@ function Scanner:GetRecipeKnownBy(recipeID)
     if not db.scanCache then return {} end
     local knownBy = {}
     for charKey, professions in pairs(db.scanCache) do
-        for profName, profData in pairs(professions) do
+        for _, profData in pairs(professions) do
             if profData.known and profData.known[recipeID] then
                 table.insert(knownBy, charKey)
             end

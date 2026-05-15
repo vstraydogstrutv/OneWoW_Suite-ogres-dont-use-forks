@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Journal/Modules/JournalData.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 ns.JournalData = {}
 local JournalData = ns.JournalData
@@ -143,7 +140,7 @@ function JournalData:IsItemCollected(itemID, itemData, specialType)
                 return recipeInfo.learned
             end
         end
-        local Util = _G.OneWoW_RecipeKnownUtil
+        local Util = OneWoW_RecipeKnownUtil
         if Util then
             local result = Util:IsRecipeKnown(itemID, itemData.link)
             if result ~= nil then return result end
@@ -329,7 +326,6 @@ end
 
 function JournalData:RecalculateInstanceTotals(inst)
     if not inst or not inst.encounters then return end
-    local L = ns.L
     local hasMounts, hasPets, hasToys, hasRecipes, hasQuest, hasHousing = false, false, false, false, false, false
     local totalItems = 0
     local seenItemIDs = {}

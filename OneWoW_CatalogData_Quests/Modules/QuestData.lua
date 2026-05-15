@@ -150,7 +150,7 @@ function QuestData:GetSortedQuests(expansionFilter, zoneFilter, typeFilter, ques
     local result = {}
     local search = searchText and searchText:lower() or ""
 
-    for questID, quest in pairs(db.quests) do
+    for _, quest in pairs(db.quests) do
         if quest.name and quest.description and not quest.isInternal and not IsInternalName(quest.name) then
             local pass = true
 

@@ -1,7 +1,5 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Journal/Modules/EJLiveLoot.lua
 -- Merges live Encounter Journal loot into the static journal cache (same pattern as common EJ tools).
-local addonName, ns = ...
+local _, ns = ...
 
 local JournalData = ns.JournalData
 local EJLive = {}
@@ -48,8 +46,8 @@ end
 local function EJ_GetLootFilterCompat()
     if CEJ.GetLootFilter then
         return CEJ.GetLootFilter()
-    elseif _G.EJ_GetLootFilter then
-        return _G.EJ_GetLootFilter()
+    elseif EJ_GetLootFilter then
+        return EJ_GetLootFilter()
     end
     return nil, nil
 end

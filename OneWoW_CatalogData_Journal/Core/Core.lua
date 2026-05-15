@@ -1,13 +1,10 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Journal/Core/Core.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local ADDON_NAME, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
 
 OneWoW_GUI.DB:BootSubModule(ns, {
-    addonName = addonName,
+    addonName = ADDON_NAME,
     savedVar = "OneWoW_CatalogData_Journal_DB",
     defaults = ns.DatabaseDefaults,
     withScanCallbacks = true,
@@ -22,7 +19,7 @@ OneWoW_GUI.DB:BootSubModule(ns, {
             ns.JournalScanner:Initialize()
         end
 
-        local catalog = _G.OneWoW_Catalog
+        local catalog = OneWoW_Catalog
         if catalog and catalog.Catalog then
             catalog.Catalog:RegisterDataAddon("journal", ns)
         end

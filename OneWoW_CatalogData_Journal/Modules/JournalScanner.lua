@@ -1,7 +1,4 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Journal/Modules/JournalScanner.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
 
 ns.JournalScanner = {}
 local JournalScanner = ns.JournalScanner

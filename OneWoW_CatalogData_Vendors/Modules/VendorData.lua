@@ -1,7 +1,11 @@
-local addonName, ns = ...
+local _, ns = ...
 
 ns.VendorData = {}
 local VendorData = ns.VendorData
+
+local pairs = pairs
+local tinsert, sort = tinsert, sort
+local C_Map, C_SuperTrack = C_Map, C_SuperTrack
 
 local staticIndex = nil
 local function BuildStaticIndex()
@@ -127,7 +131,7 @@ function VendorData:GetVendorsByItem(itemID)
     if db.vendors then
         for npcID, vendor in pairs(db.vendors) do
             if vendor.items and vendor.items[itemID] then
-                table.insert(results, vendor)
+                tinsert(results, vendor)
                 seen[npcID] = true
             end
         end
@@ -139,9 +143,9 @@ function VendorData:GetVendorsByItem(itemID)
             if not seen[npcID] then
                 local liveVendor = db.vendors and db.vendors[npcID]
                 if liveVendor then
-                    table.insert(results, liveVendor)
+                    tinsert(results, liveVendor)
                 else
-                    table.insert(results, { npcID = npcID, items = staticIndex[npcID] or {}, isStaticOnly = true })
+                    tinsert(results, { npcID = npcID, items = staticIndex[npcID] or {}, isStaticOnly = true })
                 end
                 seen[npcID] = true
             end
@@ -198,10 +202,10 @@ end
 function VendorData:GetSortedVendors(searchTerm)
     local vendors = searchTerm and self:SearchVendors(searchTerm) or self:GetAllVendors()
     local sorted = {}
-    for npcID, vendor in pairs(vendors) do
-        table.insert(sorted, vendor)
+    for _, vendor in pairs(vendors) do
+        tinsert(sorted, vendor)
     end
-    table.sort(sorted, function(a, b)
+    sort(sorted, function(a, b)
         if a.lastScanned and not b.lastScanned then return true end
         if not a.lastScanned and b.lastScanned then return false end
         if a.lastScanned and b.lastScanned then
