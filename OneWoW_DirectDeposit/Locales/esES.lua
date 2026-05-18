@@ -68,13 +68,6 @@ OneWoW_DirectDeposit.Locales["esES"] = {
     ["ABOUT_SECTION"] = "Acerca de Depósito Directo",
     ["ABOUT_TEXT"] = "Depósito Directo es un addon de calidad de vida del conjunto OneWoW. Este addon también está disponible como parte del conjunto completo OneWoW Suite, que incluye muchos otros addons útiles para mejorar tu experiencia en World of Warcraft. ¡Descubre más addons que pueden ayudarte a organizar tus aventuras y mejorar tu juego!",
 
-    ["LINKS_SECTION"] = "Soporte y Comunidad",
-    ["DISCORD_LABEL"] = "Únete a nuestra comunidad de Discord",
-    ["DISCORD_URL"] = "https://discord.gg/wownotes",
-    ["WEBSITE_LABEL"] = "Visita nuestro sitio web para soporte",
-    ["WEBSITE_URL"] = "https://wow2.xyz/",
-    ["COPY_HINT"] = "Haz clic para seleccionar, luego Ctrl+C para copiar",
-
     ["THEME_SECTION"] = "Tema de Color",
     ["THEME_DESC"] = "Elige un tema de color para la interfaz del addon. Los cambios se aplican instantáneamente sin recargar.",
     ["THEME_CURRENT"] = "Tema Actual",

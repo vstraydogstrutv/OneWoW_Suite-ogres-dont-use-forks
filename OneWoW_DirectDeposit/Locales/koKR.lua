@@ -68,13 +68,6 @@ OneWoW_DirectDeposit.Locales["koKR"] = {
     ["ABOUT_SECTION"] = "자동 입금 정보",
     ["ABOUT_TEXT"] = "자동 입금은 OneWoW Suite의 편의성 애드온입니다. 이 애드온은 또한 World of Warcraft 경험을 향상시키는 많은 다른 유용한 애드온을 포함하는 완전한 OneWoW Suite의 일부로 제공됩니다. 모험을 정리하고 게임 플레이를 개선하는 데 도움이 되는 더 많은 애드온을 찾아보세요!",
 
-    ["LINKS_SECTION"] = "지원 및 커뮤니티",
-    ["DISCORD_LABEL"] = "Discord 커뮤니티에 가입하세요",
-    ["DISCORD_URL"] = "https://discord.gg/wownotes",
-    ["WEBSITE_LABEL"] = "지원을 위해 웹사이트를 방문하세요",
-    ["WEBSITE_URL"] = "https://wow2.xyz/",
-    ["COPY_HINT"] = "클릭하여 선택한 다음 Ctrl+C를 눌러 복사",
-
     ["THEME_SECTION"] = "색상 테마",
     ["THEME_DESC"] = "애드온 인터페이스의 색상 테마를 선택하세요. 변경 사항은 재로드 없이 즉시 적용됩니다.",
     ["THEME_CURRENT"] = "현재 테마",

@@ -68,13 +68,6 @@ OneWoW_DirectDeposit.Locales["enUS"] = {
     ["ABOUT_SECTION"] = "About Direct Deposit",
     ["ABOUT_TEXT"] = "Direct Deposit is a quality-of-life addon from the OneWoW Suite. This addon is also available as part of the complete OneWoW Suite, which includes many other useful addons to enhance your World of Warcraft experience. Discover more addons that can help you organize your adventures and improve your gameplay!",
 
-    ["LINKS_SECTION"] = "Support & Community",
-    ["DISCORD_LABEL"] = "Join our Discord Community",
-    ["DISCORD_URL"] = "https://discord.gg/wownotes",
-    ["WEBSITE_LABEL"] = "Visit our Website for Support",
-    ["WEBSITE_URL"] = "https://wow2.xyz/",
-    ["COPY_HINT"] = "Click to select, then Ctrl+C to copy",
-
     ["THEME_SECTION"] = "Color Theme",
     ["THEME_DESC"] = "Choose a color theme for the addon interface. Changes apply instantly without reloading.",
     ["THEME_CURRENT"] = "Current Theme",

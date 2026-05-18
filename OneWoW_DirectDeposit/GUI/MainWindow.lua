@@ -747,59 +747,6 @@ function GUI:CreateSettingsPanel(parent)
 
     yOffset = yOffset - 140
 
-    local linksSection = OneWoW_GUI:CreateSectionHeader(scrollContent, {
-        title   = L["LINKS_SECTION"],
-        yOffset = yOffset,
-    })
-    yOffset = linksSection.bottomY - 10
-
-    local function CreateLinkBox(myparent, labelKey, urlKey, yOff)
-        local container = OneWoW_GUI:CreateFrame(myparent, {
-            backdrop    = BACKDROP_INNER_NO_INSETS,
-            bgColor     = "BG_TERTIARY",
-            borderColor = "BORDER_SUBTLE",
-        })
-        container:SetPoint("TOPLEFT",  myparent, "TOPLEFT",  20, yOff)
-        container:SetPoint("TOPRIGHT", myparent, "TOPRIGHT", -20, yOff)
-        container:SetHeight(85)
-
-        local lbl = OneWoW_GUI:CreateFS(container, 12)
-        lbl:SetPoint("TOPLEFT", container, "TOPLEFT", 15, -10)
-        lbl:SetText(L[labelKey])
-        lbl:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
-
-        local box = OneWoW_GUI:CreateEditBox(container, { height = 26 })
-        box:SetPoint("TOPLEFT",  container, "TOPLEFT",  15, -33)
-        box:SetPoint("TOPRIGHT", container, "TOPRIGHT", -15, -33)
-        box:SetText(L[urlKey])
-        box:SetAutoFocus(false)
-        box:SetScript("OnEditFocusGained", function(myself)
-            myself:HighlightText()
-            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
-        end)
-        box:SetScript("OnEditFocusLost", function(myself)
-            myself:HighlightText(0, 0)
-            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-        end)
-        box:SetScript("OnMouseDown", function(myself)
-            myself:SetFocus()
-            myself:HighlightText()
-        end)
-
-        local hint = OneWoW_GUI:CreateFS(container, 10)
-        hint:SetPoint("TOPLEFT", container, "TOPLEFT", 15, -66)
-        hint:SetText(L["COPY_HINT"])
-        hint:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
-
-        return container
-    end
-
-    CreateLinkBox(scrollContent, "DISCORD_LABEL", "DISCORD_URL", yOffset)
-    yOffset = yOffset - 95
-
-    CreateLinkBox(scrollContent, "WEBSITE_LABEL", "WEBSITE_URL", yOffset)
-    yOffset = yOffset - 95
-
     scrollContent:SetHeight(math.abs(yOffset) + 40)
     panel.scrollContent = scrollContent
 

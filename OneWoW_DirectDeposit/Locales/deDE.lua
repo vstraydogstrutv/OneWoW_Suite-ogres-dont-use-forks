@@ -68,13 +68,6 @@ OneWoW_DirectDeposit.Locales["deDE"] = {
     ["ABOUT_SECTION"] = "Über Direkte Einzahlung",
     ["ABOUT_TEXT"] = "Direkte Einzahlung ist ein Quality-of-Life-Addon aus der OneWoW Suite. Dieses Addon ist auch als Teil der vollständigen OneWoW Suite erhältlich, die viele andere nützliche Addons enthält, um Ihr World of Warcraft-Erlebnis zu verbessern. Entdecken Sie weitere Addons, die Ihnen helfen können, Ihre Abenteuer zu organisieren und Ihr Gameplay zu verbessern!",
 
-    ["LINKS_SECTION"] = "Unterstützung und Gemeinschaft",
-    ["DISCORD_LABEL"] = "Treten Sie unserer Discord-Community bei",
-    ["DISCORD_URL"] = "https://discord.gg/wownotes",
-    ["WEBSITE_LABEL"] = "Besuchen Sie unsere Website für Unterstützung",
-    ["WEBSITE_URL"] = "https://wow2.xyz/",
-    ["COPY_HINT"] = "Klicken zum Auswählen, dann Strg+C zum Kopieren",
-
     ["THEME_SECTION"] = "Farbthema",
     ["THEME_DESC"] = "Wählen Sie ein Farbthema für die Addon-Oberfläche. Änderungen werden sofort ohne Neuladen angewendet.",
     ["THEME_CURRENT"] = "Aktuelles Thema",
