@@ -39,9 +39,9 @@ for _, v in ipairs(DB.ScopePriority) do
 end
 
 function OneWoW_GUI:GetCharacterKey(name, realm)
-    name = name or UnitName("player") or "Unknown"
-    realm = realm or GetRealmName() or "Unknown"
-    if not name or not realm or realm == "" then return nil end
+    name = name or UnitName("player")
+    realm = realm or GetRealmName()
+    if not name or name == "" or not realm or realm == "" then return nil end
     realm = realm:gsub("%s", "")
     return name .. "-" .. realm
 end
@@ -50,6 +50,84 @@ function OneWoW_GUI:BuildCharKey()
     local name = UnitName("player")
     local realm = GetRealmName()
     return OneWoW_GUI:GetCharacterKey(name, realm)
+end
+
+--- Re-parses an arbitrary historical character key into the current canonical form.
+--- Handles all three legacy shapes that exist in OneWoW SavedVariables:
+---   "Name - Realm"           (AceDB-era, space-dash-space, realm spaces kept)
+---   "Name-Realm With Space"  (early DB:NewCompat, no padding, realm spaces kept)
+---   "Name-RealmNoSpace"      (current GetCharacterKey, realm whitespace stripped)
+--- Returns nil if the input cannot be parsed into a non-empty name+realm pair so
+--- callers can safely skip metadata keys like "_migrated".
+---@param charKey string|nil
+---@return string|nil canonical
+function OneWoW_GUI:CanonicalizeCharacterKey(charKey)
+    if type(charKey) ~= "string" then return nil end
+    local name, realm = charKey:match("^(.-)%s*-%s*(.+)$")
+    if not name or not realm or name == "" or realm == "" then return nil end
+    return OneWoW_GUI:GetCharacterKey(name, realm)
+end
+
+--- One-shot consolidation pass for a `[charKey] = data` style SavedVariables table.
+--- Walks every entry, recomputes the canonical key, and merges payloads using
+--- gap-fill semantics (canonical wins on scalar conflicts; old fills only where
+--- canonical is nil). Naturally idempotent — a second call after every key is
+--- canonical is a no-op. Non-table values (e.g. favorites `[charKey] = true`)
+--- are handled as plain renames; if both old and canonical exist, canonical
+--- wins and old is discarded.
+--- Safe to call during InitializeDatabase; callers should still gate behind a
+--- one-time flag for the perf cost on large character tables.
+---@param charactersTable table|nil
+---@return number migrated count of legacy keys remapped
+function DB:ConsolidateCharacterKeys(charactersTable)
+    if type(charactersTable) ~= "table" then return 0 end
+
+    -- Snapshot keys before mutating; pairs() over a table that gains keys
+    -- mid-iteration is undefined behavior in Lua 5.1.
+    local oldKeys = {}
+    for k in pairs(charactersTable) do oldKeys[#oldKeys + 1] = k end
+
+    local migrated = 0
+    for _, oldKey in ipairs(oldKeys) do
+        local canonical = OneWoW_GUI:CanonicalizeCharacterKey(oldKey)
+        if canonical and canonical ~= oldKey then
+            local target = charactersTable[canonical]
+            local old    = charactersTable[oldKey]
+            if target == nil then
+                charactersTable[canonical] = old
+            elseif type(target) == "table" and type(old) == "table" then
+                self:MergeMissing(target, old)
+            end
+            -- else: target is non-nil non-table (e.g. true); keep target, drop old
+            charactersTable[oldKey] = nil
+            migrated = migrated + 1
+        end
+    end
+
+    return migrated
+end
+
+--- Variant of ConsolidateCharacterKeys for flat arrays of records whose
+--- character identity lives in a named field (e.g. accounting transactions
+--- keyed by tx.character). No merging — records are independent — just a
+--- per-record key rewrite.
+---@param recordsArray table|nil
+---@param fieldName string field on each record holding the legacy charKey
+---@return number rewritten count of records whose field was canonicalized
+function DB:ConsolidateRecordCharacterField(recordsArray, fieldName)
+    if type(recordsArray) ~= "table" or type(fieldName) ~= "string" then return 0 end
+
+    local rewritten = 0
+    for _, record in ipairs(recordsArray) do
+        if type(record) == "table" then
+            local canonical = OneWoW_GUI:CanonicalizeCharacterKey(record[fieldName])
+            if canonical and canonical ~= record[fieldName] then
+                record[fieldName] = canonical
+                rewritten = rewritten + 1
+            end
+        end
+    end
+    return rewritten
 end
 
 local function GetIdentityKeys()
