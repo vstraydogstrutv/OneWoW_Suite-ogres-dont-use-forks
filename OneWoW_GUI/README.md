@@ -612,13 +612,18 @@ local cb = OneWoW_GUI:CreateCheckbox(parent, {
     name = "MyCheckbox",        -- optional, global frame name
     label = "Label text",       -- optional, default ""
     checked = true,             -- optional, initial checked state
+    labelSide = "right",        -- optional, "right" (default) or "left"
+    labelMaxWidth = 220,        -- optional, caps label width to prevent overlap
+    wrap = false,               -- optional, allow label to wrap when capped
     onClick = function(self)    -- optional, fires on click
         local isChecked = self:GetChecked()
     end,
 })
+
+cb:GetMeasuredWidth()  -- box width + gap + (capped) label width
+cb:GetMeasuredHeight() -- max(box height, label height)
 ```
-Uses UICheckButtonTemplate. Access label via `cb.label`.
-Call `cb:GetChecked()` / `cb:SetChecked(bool)` for state.
+Uses UICheckButtonTemplate. Access label via `cb.label`. Call `cb:GetChecked()` / `cb:SetChecked(bool)` for state. Use `labelMaxWidth` whenever the checkbox sits next to other widgets so the label cannot extend onto neighbors at large font sizes.
 
 ### Edit box
 ```lua
@@ -755,6 +760,7 @@ local section = OneWoW_GUI:CreateSectionHeader(parent, {
 -- section.bottomY = yOffset below the header for continued layout
 ```
 Creates a themed bar with background, border, and accent-colored title text.
+Auto-grows in height when the title wraps (e.g. larger fonts).
 
 ### Hero panel
 ```lua
@@ -767,7 +773,7 @@ local hero = OneWoW_GUI:CreateHeroPanel(parent, {
     yOffset = -10,
 })
 ```
-Creates a branded accent panel for onboarding, empty states, or feature introductions. Returns `hero.bottomY` for continued vertical layout.
+Creates a branded accent panel for onboarding, empty states, or feature introductions. The panel **self-measures** its real height after content and any `fontSizeOffset` is applied; `hero.bottomY` is updated automatically. Use `hero:OnHeightChanged(function(panel, h) ... end)` to react to growth.
 
 ### Summary strip
 ```lua
@@ -781,7 +787,7 @@ local summary = OneWoW_GUI:CreateSummaryStrip(parent, {
 })
 summary:SetItemValue(1, "8 / 9")
 ```
-Creates a horizontal row of themed stat boxes. Use `SetItemValue(index, value)` for live updates.
+Creates a horizontal row of themed stat boxes. Self-measures and grows in height when the value/label strings would clip. Use `SetItemValue(index, value)` for live updates.
 
 ### Selectable card
 ```lua
@@ -795,7 +801,52 @@ local card = OneWoW_GUI:CreateSelectableCard(parent, {
 })
 card:SetChecked(false)
 ```
-Creates a checkbox-backed feature card with icon, badge, hover state, and selected styling. Use for setup pickers and richer checklist rows.
+Creates a checkbox-backed feature card with icon, badge, hover state, and selected styling. The card **self-measures** its real height from the wrapped summary text (and icon), so it never clips at large fonts. Use `card:GetMeasuredHeight()` or `card:OnHeightChanged(...)` if a parent layout needs to re-flow when text wraps.
+
+---
+
+## Stacking & Action Bars
+
+These primitives replace hand-rolled `rowY = rowY + fixedHeight` chains and any layout that puts two clusters on the same row at risk of overlapping.
+
+### Stack vertically (no overlap, ever)
+```lua
+local stack = OneWoW_GUI:StackVertically(content, {
+    header,
+    card1,
+    card2,
+    card3,
+}, {
+    gap = OneWoW_GUI:GetSpacing("SM"),  -- default gap between rows
+    topPadding = 8,                      -- initial Y offset
+    sidePadding = 12,                    -- horizontal inset
+    onLayout = function(totalHeight) end,
+    autoHeight = true,                   -- parent:SetHeight(totalHeight)
+})
+
+stack:Add(extraCard)         -- append a child later
+stack:Refresh()              -- re-measure on demand
+```
+Anchors each child `TOPLEFT/TOPRIGHT` inside `parent` using its **measured** height (calling `child:GetMeasuredHeight()` if available, else `child:GetHeight()`). Re-runs whenever any child fires `OnSizeChanged` or notifies via `OnHeightChanged`. Use this everywhere instead of `rowY = rowY + SOME_CONSTANT`.
+
+### Action bar (left + right, auto-wraps when narrow)
+```lua
+local bar = OneWoW_GUI:CreateActionBar(parent, {
+    yOffset = -OneWoW_GUI:GetSpacing("MD"),
+    insetX = 12,
+    gap = OneWoW_GUI:GetSpacing("MD"),
+})
+
+-- Fill bar.left and bar.right with widgets:
+local presetBtn = OneWoW_GUI:CreateFitTextButton(bar.left, { text = "Preset", height = 26 })
+presetBtn:SetPoint("LEFT", bar.left, "LEFT", 0, 0)
+
+local applyBtn = OneWoW_GUI:CreateFitTextButton(bar.right, { text = L.APPLY, height = 26 })
+applyBtn:SetPoint("RIGHT", bar.right, "RIGHT", 0, 0)
+
+bar:Refresh()
+```
+If the combined measured width of `bar.left` and `bar.right` would overflow the bar, the bar automatically stacks them on two rows (left on top, right below) and grows its own height. `bar.bottomY` always reflects the current measured height. Use this any time you have a "checkbox + button" or "left toolbar + right toolbar" pattern that previously used hardcoded TOPLEFT/TOPRIGHT anchors on the same row.
 
 ---
 

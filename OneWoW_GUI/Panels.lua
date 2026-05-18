@@ -229,6 +229,73 @@ function OneWoW_GUI:CreateConfirmDialog(config)
     return result
 end
 
+-- Single shared dialog reused across calls; lazy-created on first invocation.
+local _urlDialog
+local _urlBox
+local _urlInstructions
+
+--- Show a small modal containing a copy-friendly editbox for `url`.
+--- Reuses one shared dialog across calls. ESC closes (registered via `name`).
+---@param title string Heading/title shown in the title bar (e.g. "Discord").
+---@param url string URL to display in the editbox.
+function OneWoW_GUI:ShowCopyURLDialog(title, url)
+    title = title or ""
+    url = url or ""
+
+    if not _urlDialog then
+        _urlDialog = self:CreateDialog({
+            name = "OneWoW_GUI_CopyURLDialog",
+            title = title,
+            width = 400,
+            height = 140,
+            movable = false,
+            escClose = true,
+            showBrand = false,
+            buttons = {
+                { text = "Close", onClick = function(frame) frame:Hide() end },
+            },
+        })
+
+        _urlInstructions = self:CreateFS(_urlDialog.contentFrame, 12)
+        _urlInstructions:SetPoint("TOPLEFT", _urlDialog.contentFrame, "TOPLEFT", 15, -12)
+        _urlInstructions:SetPoint("TOPRIGHT", _urlDialog.contentFrame, "TOPRIGHT", -15, -12)
+        _urlInstructions:SetJustifyH("LEFT")
+        _urlInstructions:SetText("Press Ctrl+C to copy:")
+        _urlInstructions:SetTextColor(self:GetThemeColor("TEXT_SECONDARY"))
+
+        _urlBox = self:CreateEditBox(_urlDialog.contentFrame, { height = 24 })
+        _urlBox:SetPoint("TOPLEFT", _urlDialog.contentFrame, "TOPLEFT", 15, -36)
+        _urlBox:SetPoint("TOPRIGHT", _urlDialog.contentFrame, "TOPRIGHT", -15, -36)
+        _urlBox:SetAutoFocus(false)
+        _urlBox:SetScript("OnEditFocusGained", function(myself)
+            myself:HighlightText()
+            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+        end)
+        _urlBox:SetScript("OnEditFocusLost", function(myself)
+            myself:HighlightText(0, 0)
+            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+        end)
+        _urlBox:SetScript("OnMouseDown", function(myself)
+            myself:SetFocus()
+            myself:HighlightText()
+        end)
+        _urlBox:SetScript("OnEscapePressed", function(myself)
+            myself:ClearFocus()
+            _urlDialog.frame:Hide()
+        end)
+    end
+
+    if _urlDialog.titleBar and _urlDialog.titleBar._titleText then
+        _urlDialog.titleBar._titleText:SetText(title)
+    end
+    _urlBox:SetText(url)
+    _urlBox:SetCursorPosition(0)
+
+    _urlDialog.frame:Show()
+    _urlBox:SetFocus()
+    _urlBox:HighlightText()
+end
+
 local SCROLL_FRAME_CHILD_RIGHT_GUTTER = 24
 
 function OneWoW_GUI:CreateScrollFrame(parent, options)
@@ -1106,6 +1173,25 @@ function OneWoW_GUI:CreateDataRow(scrollContent, options)
             rowHeight = rowHeight,
             rowGap = rowGap,
         })
+    end
+
+    -- Public expand API. Lets callers programmatically open/close rows
+    -- (e.g. auto-expanding the first row of a tab on initial render to hint
+    -- that more data lives behind the +). All three call into the same
+    -- ToggleExpanded path used by the button click and OnMouseDown handlers.
+    function row:Toggle()
+        if not expandable then return end
+        ToggleExpanded()
+    end
+
+    function row:Expand()
+        if not expandable or row.isExpanded then return end
+        ToggleExpanded()
+    end
+
+    function row:Collapse()
+        if not expandable or not row.isExpanded then return end
+        ToggleExpanded()
     end
 
     if expandable and expandBtn then

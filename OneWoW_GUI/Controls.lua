@@ -140,6 +140,11 @@ function OneWoW_GUI:CreateCheckbox(parent, options)
     local label = options.label or ""
     local checked = options.checked
     local onClick = options.onClick
+    local labelSide = options.labelSide or "right"
+    local labelMaxWidth = options.labelMaxWidth
+    local wrap = options.wrap
+    local labelGap = OneWoW_GUI:GetSpacing("XS")
+
     local cb = CreateFrame("CheckButton", name, parent, "UICheckButtonTemplate")
     cb:SetSize(Constants.GUI.CHECKBOX_SIZE, Constants.GUI.CHECKBOX_SIZE)
     cb:SetChecked(checked and true or false)
@@ -147,9 +152,50 @@ function OneWoW_GUI:CreateCheckbox(parent, options)
     cb.label = cb:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     OneWoW_GUI:SetFontBaseSize(cb.label, 12)
     OneWoW_GUI:SafeSetFont(cb.label, OneWoW_GUI:GetFont(), 12)
-    cb.label:SetPoint("LEFT", cb, "RIGHT", OneWoW_GUI:GetSpacing("XS"), 0)
+    if labelSide == "left" then
+        cb.label:SetPoint("RIGHT", cb, "LEFT", -labelGap, 0)
+        cb.label:SetJustifyH("RIGHT")
+    else
+        cb.label:SetPoint("LEFT", cb, "RIGHT", labelGap, 0)
+        cb.label:SetJustifyH("LEFT")
+    end
     cb.label:SetText(label)
     cb.label:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+    if labelMaxWidth and labelMaxWidth > 0 then
+        cb.label:SetWidth(labelMaxWidth)
+        cb.label:SetWordWrap(wrap and true or false)
+        cb.label:SetNonSpaceWrap(false)
+    elseif wrap then
+        cb.label:SetWordWrap(true)
+    else
+        cb.label:SetWordWrap(false)
+    end
+
+    cb._labelSide = labelSide
+    cb._labelGap = labelGap
+
+    function cb:GetLabelStringWidth()
+        if not self.label then return 0 end
+        local w = self.label:GetStringWidth() or 0
+        if labelMaxWidth and labelMaxWidth > 0 and w > labelMaxWidth then
+            w = labelMaxWidth
+        end
+        return w
+    end
+
+    function cb:GetMeasuredWidth()
+        local boxW = self:GetWidth() or Constants.GUI.CHECKBOX_SIZE
+        local textW = self:GetLabelStringWidth()
+        if textW <= 0 then return boxW end
+        return boxW + self._labelGap + textW
+    end
+
+    function cb:GetMeasuredHeight()
+        local boxH = self:GetHeight() or Constants.GUI.CHECKBOX_SIZE
+        local textH = self.label and (self.label:GetStringHeight() or 0) or 0
+        if textH > boxH then return textH end
+        return boxH
+    end
 
     if type(onClick) == "function" then
         cb:SetScript("OnClick", onClick)

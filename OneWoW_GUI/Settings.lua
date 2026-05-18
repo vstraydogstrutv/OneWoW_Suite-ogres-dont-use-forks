@@ -682,23 +682,32 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
         return container, lp, mp, rp
     end
 
+    -- Builds a centered clickable label inside a column. Clicking opens
+    -- ShowCopyURLDialog so the user can copy the URL — keeps the row compact
+    -- on smaller addon settings panels.
     local function CreateLinkPanel(panel, title, url)
-        local titleText = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        titleText:SetPoint("TOPLEFT", panel, "TOPLEFT", 15, -12)
-        titleText:SetText(title)
-        titleText:SetTextColor(self:GetThemeColor("ACCENT_PRIMARY"))
+        local btn = CreateFrame("Button", nil, panel)
+        btn:SetAllPoints(panel)
+        btn:EnableMouse(true)
 
-        local linkBox = self:CreateEditBox(panel, { width = 270, height = 24 })
-        linkBox:SetPoint("TOPLEFT", panel, "TOPLEFT", 15, -45)
-        linkBox:SetText(url)
-        linkBox:SetAutoFocus(false)
-        linkBox:SetScript("OnEditFocusGained", function(s) s:HighlightText() end)
-        linkBox:SetScript("OnEditFocusLost", function(s)
-            s:HighlightText(0, 0)
-            s:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+        local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        label:SetPoint("CENTER", btn, "CENTER", 0, 0)
+        label:SetText(title)
+        label:SetTextColor(self:GetThemeColor("ACCENT_PRIMARY"))
+
+        btn:SetScript("OnEnter", function()
+            label:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+            SetCursor("Interface\\CURSOR\\Point")
+        end)
+        btn:SetScript("OnLeave", function()
+            label:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
+            ResetCursor()
+        end)
+        btn:SetScript("OnClick", function()
+            OneWoW_GUI:ShowCopyURLDialog(title, url)
         end)
 
-        return linkBox
+        return btn
     end
 
     ----------------------------------------------------------------
@@ -1373,15 +1382,17 @@ function OneWoW_GUI:CreateSettingsPanel(parent, options)
     yOffset = yOffset - 178
 
     ----------------------------------------------------------------
-    -- ROW 5: Discord | Buy Me A Coffee | OneWoW Home
+    -- ROW 5: Discord | Donate | OneWoW Home
     ----------------------------------------------------------------
-    local _, discordPanel, coffeePanel, homePanel = CreateThreeColumnRow(88)
+    -- Compact row of clickable labels. Each opens a copy-URL dialog so the
+    -- row stays small on addon settings panels with limited vertical space.
+    local _, discordPanel, donatePanel, homePanel = CreateThreeColumnRow(36)
 
     CreateLinkPanel(discordPanel, "Discord", "https://discord.gg/6vnabDVnDu")
-    CreateLinkPanel(coffeePanel, "Buy Me A Coffee", "https://buymeacoffee.com/migugin")
+    CreateLinkPanel(donatePanel, "Donate", "https://buymeacoffee.com/migugin")
     CreateLinkPanel(homePanel, "OneWoW Home", "https://wow2.xyz/")
 
-    yOffset = yOffset - 108
+    yOffset = yOffset - 56
 
     local function refreshThemePickerLabels()
         OneWoW_GUI:ApplyTheme()
