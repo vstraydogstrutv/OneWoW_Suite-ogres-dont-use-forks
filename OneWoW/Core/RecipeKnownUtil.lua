@@ -104,8 +104,9 @@ function RecipeKnownUtil:IsRecipeKnown(itemID)
 
     local profsDB = _G.OneWoW_AltTracker_Professions_DB
     if profsDB and profsDB.characters then
-        local charKey = UnitName("player") .. "-" .. GetRealmName()
-        local charData = profsDB.characters[charKey]
+        local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+        local charKey = OneWoW_GUI and OneWoW_GUI:BuildCharKey()
+        local charData = charKey and profsDB.characters[charKey]
         if charData and charData.recipes then
             for _, recipeSet in pairs(charData.recipes) do
                 if recipeSet[recipeSpellID] then

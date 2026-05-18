@@ -185,7 +185,8 @@ function DataAccess:GetItemInventoryData(itemID, list)
     local altOwned  = 0
     local locations = {}
 
-    local currentChar = UnitName("player") .. "-" .. GetRealmName()
+    local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+    local currentChar = OneWoW_GUI and OneWoW_GUI:BuildCharKey()
     local currentName = UnitName("player")
 
     for bagID = 0, 5 do

@@ -1,5 +1,7 @@
 local addonName, ns = ...
 
+local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+
 ns.MigrationFix = {}
 local MigrationFix = ns.MigrationFix
 
@@ -175,6 +177,41 @@ function MigrationFix:FixImportedData()
     end
 
     return fixedCount > 0, fixedCount
+end
+
+-- Consolidates cross-reference tables that key by charKey but don't live in any
+-- submodule DB (so they aren't reached by the per-submodule consolidator pass).
+-- Gated by db.global.migrationStatus.charKeysCanonicalized; one-shot per save file.
+function MigrationFix:ConsolidateCrossReferenceCharKeys()
+    local addon = _G.OneWoW_AltTracker
+    if not addon or not addon.db or not addon.db.global then return 0 end
+    if not OneWoW_GUI or not OneWoW_GUI.DB then return 0 end
+
+    local ms = addon.db.global.migrationStatus
+    if ms and ms.charKeysCanonicalized then return 0 end
+
+    local DB = OneWoW_GUI.DB
+    local total = 0
+
+    total = total + DB:ConsolidateCharacterKeys(addon.db.global.favorites)
+
+    if _G.OneWoW_CatalogData_Quests_DB then
+        total = total + DB:ConsolidateCharacterKeys(_G.OneWoW_CatalogData_Quests_DB.completion)
+    end
+
+    if _G.OneWoW_CatalogData_Tradeskills_DB then
+        total = total + DB:ConsolidateCharacterKeys(_G.OneWoW_CatalogData_Tradeskills_DB.scanCache)
+    end
+
+    if ms then ms.charKeysCanonicalized = true end
+
+    if total > 0 then
+        C_Timer.After(5, function()
+            print("|cFFFFD100OneWoW AltTracker:|r consolidated " .. total .. " legacy character key(s) across favorites / catalog data.")
+        end)
+    end
+
+    return total
 end
 
 function MigrationFix:CleanupWrongPlacedData()

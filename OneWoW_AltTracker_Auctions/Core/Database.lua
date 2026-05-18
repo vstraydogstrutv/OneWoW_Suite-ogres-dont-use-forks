@@ -29,6 +29,16 @@ function ns:InitializeDatabase()
         OneWoW_AltTracker_Auctions_DB.version = ns.DatabaseDefaults.version
     end
 
+    if not OneWoW_AltTracker_Auctions_DB.charKeysCanonicalized then
+        local migrated = DB:ConsolidateCharacterKeys(OneWoW_AltTracker_Auctions_DB.characters)
+        OneWoW_AltTracker_Auctions_DB.charKeysCanonicalized = true
+        if migrated > 0 then
+            C_Timer.After(5, function()
+                print("|cFFFFD100OneWoW AltTracker:|r consolidated " .. migrated .. " legacy character key(s) in auctions data.")
+            end)
+        end
+    end
+
     if not _G.OneWoW_AHPrices then
         _G.OneWoW_AHPrices = {}
     end

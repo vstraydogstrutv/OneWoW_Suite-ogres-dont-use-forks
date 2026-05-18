@@ -47,6 +47,16 @@ function ns:InitializeDatabase()
     if not OneWoW_AltTracker_Accounting_DB.version then
         OneWoW_AltTracker_Accounting_DB.version = ns.DatabaseDefaults.version
     end
+
+    if not OneWoW_AltTracker_Accounting_DB.charKeysCanonicalized then
+        local rewritten = DB:ConsolidateRecordCharacterField(OneWoW_AltTracker_Accounting_DB.transactions, "character")
+        OneWoW_AltTracker_Accounting_DB.charKeysCanonicalized = true
+        if rewritten > 0 then
+            C_Timer.After(5, function()
+                print("|cFFFFD100OneWoW AltTracker:|r canonicalized character key on " .. rewritten .. " legacy transaction(s).")
+            end)
+        end
+    end
 end
 
 function ns:GetNextTransactionID()

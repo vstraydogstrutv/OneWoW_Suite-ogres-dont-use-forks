@@ -112,7 +112,8 @@ function Formatters:EstimateRestedXP(charData, charKey)
     local multiplier = (race == "Pandaren") and MAX_RESTED_MULTIPLIER_PANDAREN or MAX_RESTED_MULTIPLIER
     local maxRestedXP = maxXP * multiplier
 
-    local currentCharKey = UnitName("player") .. "-" .. GetRealmName()
+    local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+    local currentCharKey = OneWoW_GUI and OneWoW_GUI:BuildCharKey()
     if charKey and charKey == currentCharKey then
         return math.min(savedRestedXP, maxRestedXP)
     end

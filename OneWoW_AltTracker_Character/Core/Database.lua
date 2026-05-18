@@ -80,6 +80,19 @@ function ns:InitializeDatabase()
         OneWoW_AltTracker_Character_DB.actionBarSets = {}
     end
 
+    -- One-shot consolidation of legacy character keys (see OneWoW_GUI/Database.lua
+    -- DB:ConsolidateCharacterKeys for the three historical key shapes this fixes).
+    -- Idempotent — the flag is a perf gate, not a correctness gate.
+    if not OneWoW_AltTracker_Character_DB.charKeysCanonicalized then
+        local migrated = DB:ConsolidateCharacterKeys(OneWoW_AltTracker_Character_DB.characters)
+        OneWoW_AltTracker_Character_DB.charKeysCanonicalized = true
+        if migrated > 0 then
+            C_Timer.After(5, function()
+                print("|cFFFFD100OneWoW AltTracker:|r consolidated " .. migrated .. " legacy character key(s) in character data.")
+            end)
+        end
+    end
+
     MigrateProfilesFlat()
 
     if ns.ActionBars and ns.ActionBars.MigrateToNamedSets then

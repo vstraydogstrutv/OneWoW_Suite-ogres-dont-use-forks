@@ -111,7 +111,8 @@ local function RecipeKnowledgeProvider(tooltip, context)
 
     local Util           = OneWoW.RecipeKnownUtil
     local L              = OneWoW.L
-    local currentCharKey = UnitName("player") .. "-" .. GetRealmName()
+    local OneWoW_GUI     = LibStub("OneWoW_GUI-1.0", true)
+    local currentCharKey = OneWoW_GUI and OneWoW_GUI:BuildCharKey()
     local currentKnows   = Util and Util:IsRecipeKnown(context.itemID)
 
     local knownBy  = {}

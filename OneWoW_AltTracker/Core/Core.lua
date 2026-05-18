@@ -40,6 +40,8 @@ function Core:Initialize()
 
         ns.MigrationFix:CleanupWrongPlacedData()
 
+        ns.MigrationFix:ConsolidateCrossReferenceCharKeys()
+
     end
 
 
