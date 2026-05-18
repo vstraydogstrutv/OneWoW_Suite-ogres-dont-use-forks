@@ -6,6 +6,14 @@ local Module = ns.MythicPlus
 function Module:CollectData(charKey, charData)
     if not charKey or not charData then return false end
 
+    -- Per-map best run data is delivered async by the server. GetSeasonBestForMap
+    -- returns nil for every mapID until RequestMapInfo has resolved; the server
+    -- then fires CHALLENGE_MODE_MAPS_UPDATE and DataManager re-runs CollectData,
+    -- which picks up the populated data on that follow-up pass. previousSeasonBest
+    -- preserves prior captures so the first pass after login does not wipe known
+    -- runs while the request is in flight.
+    local previousSeasonBest = (charData.mythicPlus or {}).seasonBest or {}
+
     local mplusData = {
         currentKeystone = {
             mapID = nil,
@@ -37,6 +45,8 @@ function Module:CollectData(charKey, charData)
 
     local mapTable = C_ChallengeMode.GetMapTable()
     if mapTable then
+        C_MythicPlus.RequestMapInfo()
+
         for _, mapID in ipairs(mapTable) do
             local intimeInfo, overtimeInfo = C_MythicPlus.GetSeasonBestForMap(mapID)
 
@@ -78,6 +88,8 @@ function Module:CollectData(charKey, charData)
                 end
 
                 mplusData.seasonBest[mapID] = mapInfo
+            elseif previousSeasonBest[mapID] then
+                mplusData.seasonBest[mapID] = previousSeasonBest[mapID]
             end
         end
     end
