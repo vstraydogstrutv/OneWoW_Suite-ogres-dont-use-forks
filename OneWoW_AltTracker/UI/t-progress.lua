@@ -829,6 +829,16 @@ local function RefreshSubTabContent(contentFrame, subTabKey, progressTab, buildC
 
     OneWoW_GUI:LayoutDataRows(scrollContent, { rowHeight = rowHeight, rowGap = rowGap })
 
+    -- First-open hint: auto-expand row 1 the first time each sub-tab renders
+    -- rows in the current session so users discover the per-character expand
+    -- panel. Per-session and per-sub-tab; the flag lives on the sub-tab state
+    -- (resets on /reload). User-initiated collapse/expand is preserved on
+    -- subsequent refreshes.
+    if not state._didInitialExpand and state.rows[1] then
+        state.rows[1]:Expand()
+        state._didInitialExpand = true
+    end
+
     if progressTab and progressTab.statusText then
         progressTab.statusText:SetText(string.format(L["CHARACTERS_TRACKED"], #allChars, ""))
     end

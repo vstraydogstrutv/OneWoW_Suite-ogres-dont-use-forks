@@ -353,6 +353,14 @@ function ns.UI.RefreshLockoutsTab(lockoutsTab)
 
     OneWoW_GUI:LayoutDataRows(scrollContent)
 
+    -- First-open hint: auto-expand row 1 the first time this tab renders rows
+    -- in the current session so users discover the per-character expand panel.
+    -- Per-session only (flag lives on the tab frame, resets on /reload).
+    if not lockoutsTab._didInitialExpand and characterRows[1] then
+        characterRows[1]:Expand()
+        lockoutsTab._didInitialExpand = true
+    end
+
     if lockoutsTab.statusText then
         lockoutsTab.statusText:SetText(string.format(L["CHARACTERS_TRACKED"], #allChars, ""))
     end

@@ -665,6 +665,15 @@ function ns.UI.RefreshSummaryTab(summaryTab)
 
     OneWoW_GUI:LayoutDataRows(scrollContent, { rowHeight = rowHeight, rowGap = rowGap })
 
+    -- First-open hint: auto-expand row 1 the first time this tab renders rows
+    -- in the current session so users discover the per-character expand panel.
+    -- Per-session only (flag lives on the tab frame, resets on /reload). After
+    -- the user collapses or interacts with rows we leave their state alone.
+    if not summaryTab._didInitialExpand and characterRows[1] then
+        characterRows[1]:Expand()
+        summaryTab._didInitialExpand = true
+    end
+
     if summaryTab.statusText then
         summaryTab.statusText:SetText(string.format(L["CHARACTERS_TRACKED"], #allChars, ""))
     end

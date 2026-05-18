@@ -652,6 +652,14 @@ function ns.UI.RefreshEquipmentTab(equipmentTab)
 
     OneWoW_GUI:LayoutDataRows(scrollContent, { rowHeight = rowHeight, rowGap = rowGap })
 
+    -- First-open hint: auto-expand row 1 the first time this tab renders rows
+    -- in the current session so users discover the per-character expand panel.
+    -- Per-session only (flag lives on the tab frame, resets on /reload).
+    if not equipmentTab._didInitialExpand and characterRows[1] then
+        characterRows[1]:Expand()
+        equipmentTab._didInitialExpand = true
+    end
+
     if equipmentTab.statusText then
         equipmentTab.statusText:SetText(string.format(L["CHARACTERS_TRACKED"], #allChars, ""))
     end
