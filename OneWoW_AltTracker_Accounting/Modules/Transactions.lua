@@ -46,19 +46,24 @@ function Transactions:RecordTransaction(txData)
     return true
 end
 
-function Transactions:IsAmountClaimed(amount, withinSeconds)
-    withinSeconds = withinSeconds or 1.5
+-- Claims are FIFO match-and-consume. Each categorized record adds one claim;
+-- each PLAYER_MONEY event consumes the first matching claim. CLAIM_LIFETIME
+-- only bounds how long a stuck claim lingers before cleanup -- it is NOT a
+-- match window, because the user-action -> PLAYER_MONEY gap is server-latency
+-- bound and can exceed any reasonable sub-window.
+local CLAIM_LIFETIME = 10
+
+function Transactions:IsAmountClaimed(amount)
     local now = GetTime()
 
     for i = #recentClaims, 1, -1 do
-        if (now - recentClaims[i].time) > 5 then
+        if (now - recentClaims[i].time) > CLAIM_LIFETIME then
             table.remove(recentClaims, i)
         end
     end
 
     for i, claim in ipairs(recentClaims) do
-        if (now - claim.time) <= withinSeconds and
-           math.abs(claim.amount - amount) <= 1 then
+        if math.abs(claim.amount - amount) <= 1 then
             table.remove(recentClaims, i)
             return true
         end
@@ -67,7 +72,7 @@ function Transactions:IsAmountClaimed(amount, withinSeconds)
     local remaining = amount
     local matched = {}
     for i, claim in ipairs(recentClaims) do
-        if (now - claim.time) <= withinSeconds and claim.amount <= remaining + 1 then
+        if claim.amount <= remaining + 1 then
             table.insert(matched, i)
             remaining = remaining - claim.amount
             if remaining <= 1 then break end

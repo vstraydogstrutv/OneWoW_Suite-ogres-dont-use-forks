@@ -109,7 +109,7 @@ function GoldWatcher:OnMoneyChanged()
     local isIncome = delta > 0
 
     C_Timer.After(FALLBACK_DELAY, function()
-        if ns.Transactions:IsAmountClaimed(absDelta, FALLBACK_DELAY + 0.5) then
+        if ns.Transactions:IsAmountClaimed(absDelta) then
             return
         end
 
