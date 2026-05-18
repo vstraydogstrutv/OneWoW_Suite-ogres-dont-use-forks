@@ -212,40 +212,93 @@ function FirstRun:BuildPanel(parent)
         },
     })
 
-    local actionBar = OneWoW_GUI:CreateLayoutFrame(content, { height = C.ACTION_BAR_HEIGHT })
-    actionBar:SetPoint("TOPLEFT", content, "TOPLEFT", 12, summary.bottomY - 8)
-    actionBar:SetPoint("TOPRIGHT", content, "TOPRIGHT", -12, summary.bottomY - 8)
-
-    local presetButtons, presetFinalY = OneWoW_GUI:CreateFitFrameButtons(actionBar, {
-        yOffset = 0,
-        width = C.WIZARD_PRESET_WIDTH,
-        marginX = 0,
-        items = {
-            { text = L["WIZARD_PRESET_RECOMMENDED"], value = "recommended" },
-            { text = L["WIZARD_PRESET_MINIMAL"], value = "minimal" },
-            { text = L["WIZARD_PRESET_MANUAL"], value = "manual", isActive = true },
-        },
+    local actionBar = OneWoW_GUI:CreateActionBar(content, {
+        yOffset  = summary.bottomY - 8,
+        insetX   = 12,
+        gap      = OneWoW_GUI:GetSpacing("MD"),
+        rowHeight = C.ACTION_BAR_HEIGHT,
     })
-    local actionHeight = math.max(C.ACTION_BAR_HEIGHT, math.abs(presetFinalY))
-    actionBar:SetHeight(actionHeight)
 
-    local applyBtn = OneWoW_GUI:CreateFitTextButton(actionBar, {
+    local presetItems = {
+        { text = L["WIZARD_PRESET_RECOMMENDED"], value = "recommended" },
+        { text = L["WIZARD_PRESET_MINIMAL"],     value = "minimal" },
+        { text = L["WIZARD_PRESET_MANUAL"],      value = "manual", isActive = true },
+    }
+    local presetGap = OneWoW_GUI:GetSpacing("XS")
+    local presetHeight = 26
+    local presetButtons = {}
+
+    local function ApplyPresetVisual(btn)
+        if btn.isActive then
+            btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+            btn.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+        else
+            btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_NORMAL"))
+            btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BTN_BORDER"))
+            btn.text:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
+        end
+    end
+
+    local maxBtnWidth = 0
+    for i, item in ipairs(presetItems) do
+        local btn = OneWoW_GUI:CreateFitTextButton(actionBar.left, {
+            text     = item.text,
+            height   = presetHeight,
+            minWidth = 80,
+        })
+        btn.itemValue = item.value
+        btn.isActive  = item.isActive or false
+        ApplyPresetVisual(btn)
+        btn:HookScript("OnEnter", function(self)
+            if not self.isActive then
+                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_HOVER"))
+                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BTN_BORDER_HOVER"))
+            end
+        end)
+        btn:HookScript("OnLeave", function(self) ApplyPresetVisual(self) end)
+        local w = btn:GetWidth() or 0
+        if w > maxBtnWidth then maxBtnWidth = w end
+        presetButtons[i] = btn
+    end
+
+    local prevBtn
+    for _, btn in ipairs(presetButtons) do
+        btn:SetWidth(maxBtnWidth)
+        if prevBtn then
+            btn:SetPoint("LEFT", prevBtn, "RIGHT", presetGap, 0)
+        else
+            btn:SetPoint("TOPLEFT", actionBar.left, "TOPLEFT", 0, 0)
+        end
+        prevBtn = btn
+    end
+    local clusterWidth = (#presetButtons * maxBtnWidth) + ((#presetButtons - 1) * presetGap)
+
+    function presetButtons.SetActiveByValue(value)
+        for _, btn in ipairs(presetButtons) do
+            btn.isActive = (btn.itemValue == value)
+            ApplyPresetVisual(btn)
+        end
+    end
+
+    actionBar.left:SetWidth(clusterWidth)
+    actionBar.left:SetHeight(presetHeight)
+
+    local applyBtn = OneWoW_GUI:CreateFitTextButton(actionBar.right, {
         text = L["WIZARD_APPLY_RELOAD"],
         height = 26,
         minWidth = 130,
     })
-    applyBtn:SetPoint("TOPRIGHT", actionBar, "TOPRIGHT", 0, 0)
+    applyBtn:SetPoint("TOPRIGHT", actionBar.right, "TOPRIGHT", 0, 0)
+    actionBar.right:SetWidth(applyBtn:GetWidth())
+    actionBar:Refresh()
 
-    -- "Do not show again" checkbox owns OneWoW_DB.wizardShown directly:
-    --   - Initial state mirrors the DB (default checked on first run).
-    --   - The current state is written to the DB now and on every toggle, so
-    --     ANY close path (Apply, X, ESC, navigating away) already has the
-    --     correct value persisted - no onClose hook needed.
     local initialDontShow = (_G.OneWoW_DB and _G.OneWoW_DB.wizardShown ~= false) and true or false
     if _G.OneWoW_DB then
         _G.OneWoW_DB.wizardShown = initialDontShow
     end
-    local dontShowCB = OneWoW_GUI:CreateCheckbox(actionBar, {
+    local dontShowRow = OneWoW_GUI:CreateLayoutFrame(content, { height = C.CHECKBOX_SIZE or 24 })
+    local dontShowCB = OneWoW_GUI:CreateCheckbox(dontShowRow, {
         label   = L["WIZARD_DONT_SHOW_AGAIN"],
         checked = initialDontShow,
         onClick = function(myself)
@@ -254,15 +307,10 @@ function FirstRun:BuildPanel(parent)
             end
         end,
     })
-    dontShowCB:SetPoint("RIGHT", applyBtn, "LEFT", -OneWoW_GUI:GetSpacing("MD"), 0)
+    dontShowCB:SetPoint("LEFT", dontShowRow, "LEFT", 0, 0)
 
     local listContainer = OneWoW_GUI:CreateLayoutFrame(content, {})
-    listContainer:SetPoint("TOPLEFT", content, "TOPLEFT", 12, summary.bottomY - actionHeight - 16)
-    listContainer:SetPoint("TOPRIGHT", content, "TOPRIGHT", -12, summary.bottomY - actionHeight - 16)
-    listContainer:SetHeight(600)
-
-    local cards = {}
-    local rowY = 0
+    listContainer:SetHeight(1)
 
     local groupLabels = {
         feature = L["WIZARD_GROUP_FEATURES"],
@@ -270,6 +318,8 @@ function FirstRun:BuildPanel(parent)
         utility = L["WIZARD_GROUP_UTILITY"],
     }
     local groupOrder  = { "feature", "standalone", "utility" }
+
+    local cards = {}
 
     local function RefreshSummary()
         summary:SetItemValue(1, format(L["WIZARD_SUMMARY_SELECTED_FORMAT"], CountSelected(), #FirstRun.CATALOG))
@@ -295,19 +345,23 @@ function FirstRun:BuildPanel(parent)
         RefreshSummary()
     end
 
+    local listItems = {}
+    local extraGapForHeader = OneWoW_GUI:GetSpacing("MD")
+    local headerIndices = {}
     for _, group in ipairs(groupOrder) do
         local groupHeader = OneWoW_GUI:CreateSectionHeader(listContainer, {
             title   = groupLabels[group],
-            yOffset = -rowY,
+            yOffset = 0,
         })
-        rowY = -groupHeader.bottomY + 6
+        groupHeader:ClearAllPoints()
+        table.insert(listItems, groupHeader)
+        headerIndices[#listItems] = true
 
         for _, entry in ipairs(FirstRun.CATALOG) do
             if entry.group == group then
                 local card = OneWoW_GUI:CreateSelectableCard(listContainer, {
                     title = L[entry.labelKey],
                     summary = L[entry.summaryKey],
-                    badgeText = groupLabels[group],
                     iconTexture = entry.iconTexture,
                     checked = selections[entry.addonName],
                     onToggle = function(_, checked)
@@ -316,17 +370,50 @@ function FirstRun:BuildPanel(parent)
                         RefreshSummary()
                     end,
                 })
-                card:SetPoint("TOPLEFT",  listContainer, "TOPLEFT",  0, -rowY)
-                card:SetPoint("TOPRIGHT", listContainer, "TOPRIGHT", 0, -rowY)
+                card:ClearAllPoints()
                 cards[entry.addonName] = card
-                rowY = rowY + C.SELECTABLE_CARD_HEIGHT + 6
+                table.insert(listItems, card)
             end
         end
-        rowY = rowY + 10
     end
 
-    listContainer:SetHeight(math.max(1, rowY))
-    content:SetHeight(math.abs(summary.bottomY) + actionHeight + rowY + 60)
+    local stackGaps = {}
+    for i = 1, #listItems do
+        if headerIndices[i + 1] then
+            stackGaps[i] = extraGapForHeader
+        else
+            stackGaps[i] = OneWoW_GUI:GetSpacing("XS")
+        end
+    end
+
+    OneWoW_GUI:StackVertically(listContainer, listItems, {
+        gap = OneWoW_GUI:GetSpacing("XS"),
+        gaps = stackGaps,
+        topPadding = 0,
+        sidePadding = 0,
+        autoHeight = true,
+    })
+
+    local mainStackGap = OneWoW_GUI:GetSpacing("SM")
+    local mainStackGaps = {
+        [1] = mainStackGap,
+        [2] = mainStackGap,
+        [3] = OneWoW_GUI:GetSpacing("XS"),
+        [4] = OneWoW_GUI:GetSpacing("MD"),
+    }
+    OneWoW_GUI:StackVertically(content, {
+        hero,
+        summary,
+        actionBar,
+        dontShowRow,
+        listContainer,
+    }, {
+        gap = mainStackGap,
+        gaps = mainStackGaps,
+        topPadding = 10,
+        sidePadding = OneWoW_GUI:GetSpacing("MD"),
+        autoHeight = true,
+    })
 
     presetButtons[1]:SetScript("OnClick", function()
         presetButtons.SetActiveByValue("recommended")

@@ -164,12 +164,6 @@ OneWoW.Locales["enUS"] = {
     ["CMD_SL_MINIMAP"] = "Toggle minimap button",
     ["CMD_OPEN_DEVTOOLS"] = "Open DevTools",
 
-    ["LINKS_SECTION"] = "Support & Community",
-    ["DISCORD_LABEL"] = "Join our Discord Community",
-    ["DISCORD_URL"] = "https://discord.gg/6vnabDVnDu",
-    ["WEBSITE_LABEL"] = "Visit our Website for Support",
-    ["WEBSITE_URL"] = "https://wow2.xyz/",
-    ["COPY_HINT"] = "Click to select, then Ctrl+C to copy",
     ["RESET_UI_SECTION"] = "Window Layout",
     ["RESET_UI_DESC"] = "Reset the OneWoW window to its default size and position.",
     ["RESET_UI_BTN"] = "Reset Window",

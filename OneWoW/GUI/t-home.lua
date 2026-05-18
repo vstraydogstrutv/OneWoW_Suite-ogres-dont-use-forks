@@ -334,46 +334,49 @@ function GUI:CreateHomeTab(parent)
     divider1:SetColorTexture(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
     yOffset = yOffset - 20
 
-    local discordRow = CreateFrame("Frame", nil, content)
-    discordRow:SetHeight(28)
-    discordRow:SetPoint("TOPLEFT", content, "TOPLEFT", 40, yOffset)
-    discordRow:SetPoint("TOPRIGHT", content, "TOPRIGHT", -40, yOffset)
+    local linksRow = CreateFrame("Frame", nil, content)
+    linksRow:SetHeight(24)
+    linksRow:SetPoint("TOPLEFT", content, "TOPLEFT", 40, yOffset)
+    linksRow:SetPoint("TOPRIGHT", content, "TOPRIGHT", -40, yOffset)
 
-    local discordLabel = OneWoW_GUI:CreateFS(discordRow, 12)
-    discordLabel:SetPoint("LEFT", discordRow, "LEFT", 0, 0)
-    discordLabel:SetText((L["HOME_DISCORD"] or "Discord") .. ":")
-    discordLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+    -- Builds a clickable label that opens ShowCopyURLDialog. Used for the
+    -- compact link row on the home tab.
+    local function CreateLinkButton(parentFrame, title, url)
+        local btn = CreateFrame("Button", nil, parentFrame)
+        btn:SetSize(140, 24)
+        btn:EnableMouse(true)
 
-    local discordBox = OneWoW_GUI:CreateEditBox(discordRow, { name = "OneWoW_DiscordLink", width = 350, height = 24 })
-    discordBox:SetPoint("LEFT", discordLabel, "RIGHT", OneWoW_GUI:GetSpacing("SM"), 0)
-    discordBox:SetText(L["HOME_DISCORD_LINK"] or "https://discord.gg/6vnabDVnDu")
-    discordBox:SetAutoFocus(false)
-    discordBox:SetScript("OnEditFocusGained", function(self)
-        self:HighlightText()
-    end)
-    discordBox:SetScript("OnEditFocusLost", function(self)
-        self:HighlightText(0, 0)
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-    end)
+        local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        label:SetPoint("CENTER", btn, "CENTER", 0, 0)
+        label:SetText(title)
+        label:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
 
-    local supportLabel = OneWoW_GUI:CreateFS(discordRow, 12)
-    supportLabel:SetPoint("RIGHT", discordRow, "RIGHT", -358, 0)
-    supportLabel:SetText((L["HOME_SUPPORT"] or "Support OneWoW") .. ":")
-    supportLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+        btn:SetScript("OnEnter", function()
+            label:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+            SetCursor("Interface\\CURSOR\\Point")
+        end)
+        btn:SetScript("OnLeave", function()
+            label:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
+            ResetCursor()
+        end)
+        btn:SetScript("OnClick", function()
+            OneWoW_GUI:ShowCopyURLDialog(title, url)
+        end)
 
-    local supportBox = OneWoW_GUI:CreateEditBox(discordRow, { name = "OneWoW_SupportLink", width = 350, height = 24 })
-    supportBox:SetPoint("LEFT", supportLabel, "RIGHT", OneWoW_GUI:GetSpacing("SM"), 0)
-    supportBox:SetText(L["HOME_SUPPORT_LINK"] or "https://buymeacoffee.com/migugin")
-    supportBox:SetAutoFocus(false)
-    supportBox:SetScript("OnEditFocusGained", function(self)
-        self:HighlightText()
-    end)
-    supportBox:SetScript("OnEditFocusLost", function(self)
-        self:HighlightText(0, 0)
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-    end)
+        return btn
+    end
 
-    yOffset = yOffset - 38
+    local discordBtn = CreateLinkButton(linksRow,
+        L["HOME_DISCORD"] or "Discord",
+        L["HOME_DISCORD_LINK"] or "https://discord.gg/6vnabDVnDu")
+    discordBtn:SetPoint("LEFT", linksRow, "CENTER", -160, 0)
+
+    local supportBtn = CreateLinkButton(linksRow,
+        L["HOME_SUPPORT"] or "Support OneWoW",
+        L["HOME_SUPPORT_LINK"] or "https://buymeacoffee.com/migugin")
+    supportBtn:SetPoint("LEFT", linksRow, "CENTER", 20, 0)
+
+    yOffset = yOffset - 34
 
     local thanksBar = CreateFrame("Frame", nil, content, "BackdropTemplate")
     thanksBar:SetPoint("TOPLEFT",  content, "TOPLEFT",  10, yOffset)

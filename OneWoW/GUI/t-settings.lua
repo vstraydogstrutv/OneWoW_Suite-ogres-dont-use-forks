@@ -15,54 +15,9 @@ function GUI:CreateSettingsMainTab(parent)
 
     local yOffset = -10
 
-    if OneWoW_GUI and OneWoW_GUI.CreateSettingsPanel then
-        yOffset = OneWoW_GUI:CreateSettingsPanel(content, { yOffset = yOffset })
-    end
+    yOffset = OneWoW_GUI:CreateSettingsPanel(content, { yOffset = yOffset })
 
-    local linksContainer = CreateFrame("Frame", nil, content, "BackdropTemplate")
-    linksContainer:SetPoint("TOPLEFT", content, "TOPLEFT", 10, yOffset)
-    linksContainer:SetPoint("TOPRIGHT", content, "TOPRIGHT", -10, yOffset)
-    linksContainer:SetHeight(120)
-    linksContainer:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-    linksContainer:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-    linksContainer:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-
-    local linksTitle = OneWoW_GUI:CreateFS(linksContainer, 16)
-    linksTitle:SetPoint("TOPLEFT", linksContainer, "TOPLEFT", 15, -12)
-    linksTitle:SetText(L["LINKS_SECTION"] or "Support & Community")
-    linksTitle:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
-
-    local discordLinkLabel = OneWoW_GUI:CreateFS(linksContainer, 12)
-    discordLinkLabel:SetPoint("TOPLEFT", linksContainer, "TOPLEFT", 15, -40)
-    discordLinkLabel:SetText(L["DISCORD_LABEL"] or "Discord")
-    discordLinkLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-
-    local discordLinkBox = OneWoW_GUI:CreateEditBox(linksContainer, { name = "OneWoW_SettingsDiscord", width = 300, height = 24 })
-    discordLinkBox:SetPoint("LEFT", discordLinkLabel, "RIGHT", OneWoW_GUI:GetSpacing("SM"), 0)
-    discordLinkBox:SetText(L["DISCORD_URL"] or "https://discord.gg/6vnabDVnDu")
-    discordLinkBox:SetAutoFocus(false)
-    discordLinkBox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-    discordLinkBox:SetScript("OnEditFocusLost", function(self)
-        self:HighlightText(0, 0)
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-    end)
-
-    local websiteLinkLabel = OneWoW_GUI:CreateFS(linksContainer, 12)
-    websiteLinkLabel:SetPoint("TOPLEFT", linksContainer, "TOPLEFT", 15, -72)
-    websiteLinkLabel:SetText(L["WEBSITE_LABEL"] or "Website")
-    websiteLinkLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
-
-    local websiteLinkBox = OneWoW_GUI:CreateEditBox(linksContainer, { name = "OneWoW_SettingsWebsite", width = 300, height = 24 })
-    websiteLinkBox:SetPoint("LEFT", websiteLinkLabel, "RIGHT", OneWoW_GUI:GetSpacing("SM"), 0)
-    websiteLinkBox:SetText(L["WEBSITE_URL"] or "https://wow2.xyz/")
-    websiteLinkBox:SetAutoFocus(false)
-    websiteLinkBox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-    websiteLinkBox:SetScript("OnEditFocusLost", function(self)
-        self:HighlightText(0, 0)
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-    end)
-
-    yOffset = yOffset - 140
+    yOffset = yOffset - 10
 
     local resetContainer = CreateFrame("Frame", nil, content, "BackdropTemplate")
     resetContainer:SetPoint("TOPLEFT", content, "TOPLEFT", 10, yOffset)

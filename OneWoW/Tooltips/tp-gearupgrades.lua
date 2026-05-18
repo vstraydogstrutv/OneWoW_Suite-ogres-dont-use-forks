@@ -76,6 +76,17 @@ local function BuildCharLine(diff, name, class, equipped, new, isDecimal, detail
     }
 end
 
+-- Shopping/comparison tooltips (ShoppingTooltip1/2, ItemRefShoppingTooltip1/2)
+-- show the player's currently-equipped item next to a hovered item. Cross-
+-- character alt upgrade info doesn't belong on those — it belongs on the
+-- tooltip for the candidate item only.
+local function IsComparisonTooltip(tooltip)
+    local name = tooltip and tooltip.GetName and tooltip:GetName()
+    if not name then return false end
+    return name:find("^ShoppingTooltip%d") ~= nil
+        or name:find("^ItemRefShoppingTooltip%d") ~= nil
+end
+
 local function ResolveItemLocation(tooltip)
     if not tooltip or not tooltip.GetOwner then return nil end
     local owner = tooltip:GetOwner()
@@ -202,6 +213,7 @@ end
 
 local function GearUpgradeProvider(tooltip, context)
     if not context or not context.itemID then return nil end
+    if IsComparisonTooltip(tooltip) then return nil end
 
     local db = OneWoW.db and OneWoW.db.global and OneWoW.db.global.settings
     if not db or not db.overlays or not db.overlays.upgrade then return nil end
