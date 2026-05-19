@@ -1,7 +1,10 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Quests/Modules/QuestData.lua
--- Created by MichinMuggin (Ricky)
-local addonName, ns = ...
+local _, ns = ...
+
+local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+if not OneWoW_GUI then return end
+
+local ipairs, pairs = ipairs, pairs
+local tinsert, sort = tinsert, sort
 local time = time
 
 ns.QuestData = {}
@@ -24,6 +27,7 @@ local EXPANSION_NAMES = {
 
 local INTERNAL_NAME_PATTERNS = {
     "tracking quest",
+    "^decor ",
     "^deprecated",
     "^test ",
     "^qa ",
@@ -94,41 +98,52 @@ function QuestData:StoreQuestInfo(questID, data)
     local db = GetDB()
     if not db or not questID then return end
 
-    local db = GetDB()
-    if not db or not questID then return end
-
     local existing = db.quests[questID] or {}
 
+    -- Resolve best mapID from candidate sources
+    local resolvedMapID = data.mapID
+
+    if (not resolvedMapID or resolvedMapID == 0)
+    and ns.QuestMapResolver
+    and ns.QuestMapResolver.GetBestMapID then
+
+        local mapID, source = ns.QuestMapResolver:GetBestMapID(questID, data)
+
+        if mapID and mapID ~= 0 then
+            resolvedMapID = mapID
+            data.mapID = mapID
+
+            print("QuestMapResolver:", questID, "→", mapID, "(" .. source .. ")")
+        end
+    end
+
+    -- Resolve expansion from final mapID
+    if resolvedMapID
+    and ns.QuestExpansionResolver
+    and ns.QuestExpansionResolver.GetExpansion then
+
+        local expansionID = ns.QuestExpansionResolver:GetExpansion(questID, {
+            mapID = resolvedMapID,
+            expansion = existing.expansion,
+        })
+
+        if expansionID ~= nil then
+            data.expansion = expansionID
+        end
+    end
+
+    -- Merge final data
     for k, v in pairs(data) do
         if v ~= nil then
             existing[k] = v
         end
     end
-
+    
     existing.lastUpdated = time()
     if not existing.firstSeen then
         existing.firstSeen = time()
     end
-
     db.quests[questID] = existing
-
-    -- 🔥 NEW SYSTEM HOOKS
-    if ns.QuestIndex then
-        ns.QuestIndex:IndexQuest(questID, existing)
-    end
-
-    if ns.QuestNPCLink then
-        ns.QuestNPCLink:Link(questID, existing)
-    end
-    
-    -- 🔥 NEW SYSTEM HOOKS
-    if ns.QuestIndex then
-        ns.QuestIndex:IndexQuest(questID, existing)
-    end
-
-    if ns.QuestNPCLink then
-        ns.QuestNPCLink:Link(questID, existing)
-    end
 end
 
 function QuestData:GetQuest(questID)
@@ -219,12 +234,12 @@ function QuestData:GetSortedQuests(expansionFilter, zoneFilter, typeFilter, ques
             end
 
             if pass then
-                table.insert(result, quest)
+                tinsert(result, quest)
             end
         end
     end
 
-    table.sort(result, function(a, b)
+    sort(result, function(a, b)
         return (a.name or "") < (b.name or "")
     end)
 
@@ -244,12 +259,12 @@ function QuestData:GetAvailableExpansions()
 
     local result = {}
     for expID in pairs(seen) do
-        table.insert(result, {
+        tinsert(result, {
             id   = expID,
             name = EXPANSION_NAMES[expID] or "Unknown",
         })
     end
-    table.sort(result, function(a, b) return a.id < b.id end)
+    sort(result, function(a, b) return a.id < b.id end)
     return result
 end
 
@@ -272,26 +287,8 @@ function QuestData:GetAvailableZones(expansionFilter)
 
     local result = {}
     for zoneName in pairs(seen) do
-        table.insert(result, zoneName)
+        tinsert(result, zoneName)
     end
-    table.sort(result)
+    sort(result)
     return result
-end
-
-function QuestData:FormatGold(copper)
-    if not copper or copper == 0 then return nil end
-    local gold   = math.floor(copper / 10000)
-    local silver = math.floor((copper % 10000) / 100)
-    local c      = copper % 100
-    local parts  = {}
-    if gold   > 0 then table.insert(parts, gold .. "g")   end
-    if silver > 0 then table.insert(parts, silver .. "s") end
-    if c      > 0 then table.insert(parts, c .. "c")       end
-    return table.concat(parts, " ")
-end
-
-function QuestData:FormatNumber(num)
-    if not num or num == 0 then return nil end
-    local str = tostring(math.floor(num))
-    return str:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
 end
