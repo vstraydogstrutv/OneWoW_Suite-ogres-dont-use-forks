@@ -981,6 +981,7 @@ RegisterKeyword("hearthstone",  function(p) return p.isHearthstone end)
 RegisterKeyword("keystone",     function(p) return p.isKeystone end)
 RegisterKeyword("tierset",      function(p) return p.isTierSet end)
 RegisterKeyword("battlepay",    function(p) return p.isBattlePayItem end)
+RegisterKeyword("currency",     function(p) return p.isCurrency end)
 
 -- ---- 7.24  Stat keywords ----
 -- Primary stats
@@ -1854,10 +1855,10 @@ local function PopulateBaseProps(props, itemID, hyperlink)
 
     props.craftedQuality = hyperlink and C_TradeSkillUI.GetItemCraftedQualityByItemInfo(hyperlink) or 0
     props.reagentQuality = hyperlink and C_TradeSkillUI.GetItemReagentQualityByItemInfo(hyperlink) or 0
-    props.isKeystone = C_Item.IsItemKeystoneByID(itemID) == true
 
+    props.isCurrency = hyperlink and C_CurrencyInfo.GetCurrencyInfoFromLink(hyperlink) or false
+    props.isKeystone = C_Item.IsItemKeystoneByID(itemID) == true
     props.isEquipment = C_Item.IsEquippableItem(itemID) == true
-    -- ---- Profession equipment ----
     props.isProfessionEquipment = props.classID == Enum.ItemClass.Profession and props.isEquipment
 
     -- 'Usable' in this context is equivalent to the item having a 'Use: ' text in tooltip
