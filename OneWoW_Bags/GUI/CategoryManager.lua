@@ -1265,6 +1265,102 @@ function CatMgrUI:RefreshRight()
         return labels[fallbackIdx or 1]
     end
 
+    local SORT_DIR_ATLAS = "CovenantSanctum-Renown-DoubleArrow"
+    local SORT_DIR_BTN_SIZE = 22
+    local SORT_DIR_ROT_ASC = -math.pi / 2
+    local SORT_DIR_ROT_DESC = math.pi / 2
+
+    local MODE_DEFAULT_DESCENDING = {
+        default = false,
+        name = false,
+        rarity = true,
+        ilvl = true,
+        type = false,
+        expansion = true,
+    }
+
+    local SORT_DIR_TOOLTIP = {
+        default = { asc = "CAT_SORT_DIR_DEFAULT_ASC", desc = "CAT_SORT_DIR_DEFAULT_DESC" },
+        name = { asc = "CAT_SORT_DIR_NAME_ASC", desc = "CAT_SORT_DIR_NAME_DESC" },
+        rarity = { asc = "CAT_SORT_DIR_RARITY_ASC", desc = "CAT_SORT_DIR_RARITY_DESC" },
+        ilvl = { asc = "CAT_SORT_DIR_ILVL_ASC", desc = "CAT_SORT_DIR_ILVL_DESC" },
+        type = { asc = "CAT_SORT_DIR_TYPE_ASC", desc = "CAT_SORT_DIR_TYPE_DESC" },
+        expansion = { asc = "CAT_SORT_DIR_EXPANSION_ASC", desc = "CAT_SORT_DIR_EXPANSION_DESC" },
+    }
+
+    local function EffectiveDescending(mode, stored)
+        if stored ~= nil then return stored end
+        return MODE_DEFAULT_DESCENDING[mode] or false
+    end
+
+    local function ShowSortDirectionTooltip(btn)
+        GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
+        GameTooltip:ClearLines()
+        if btn.sortDirEnabled and btn.sortDirMode ~= "none" then
+            GameTooltip:AddLine(L["CAT_SORT_DIRECTION"], 1, 1, 1)
+            local keys = SORT_DIR_TOOLTIP[btn.sortDirMode]
+            local tipKey = keys and (btn.sortDirDescending and keys.desc or keys.asc)
+            if tipKey then
+                GameTooltip:AddLine(L[tipKey], 0.8, 0.8, 0.8, true)
+            end
+        else
+            GameTooltip:AddLine(L[btn.sortDirDisabledKey or "CAT_SORT_DIRECTION_DISABLED"], 0.8, 0.8, 0.8, true)
+        end
+        GameTooltip:Show()
+    end
+
+    local function ApplySortDirectionButton(btn, mode, descending, enabled, disabledTooltipKey)
+        if not btn then return end
+        btn.sortDirMode = mode
+        btn.sortDirDescending = descending
+        btn.sortDirEnabled = enabled
+        btn.sortDirDisabledKey = disabledTooltipKey
+        if enabled and mode ~= "none" then
+            btn.icon:SetRotation(descending and SORT_DIR_ROT_DESC or SORT_DIR_ROT_ASC)
+            btn.icon:SetDesaturated(false)
+            btn.icon:SetAlpha(1)
+            btn:Enable()
+            btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BTN_NORMAL"))
+            btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BTN_BORDER"))
+        else
+            btn.icon:SetRotation(SORT_DIR_ROT_DESC)
+            btn.icon:SetDesaturated(true)
+            btn.icon:SetAlpha(0.45)
+            btn:Disable()
+            btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+        end
+    end
+
+    local sortDirBtn
+    local subSortDirBtn
+
+    local function RefreshSubSortDirectionState()
+        if not subSortDirBtn then return end
+        local primary = catMod.sortMode or "none"
+        local sub = catMod.subSortMode or "none"
+        local subEnabled = sub ~= "none" and sub ~= primary
+        ApplySortDirectionButton(
+            subSortDirBtn,
+            sub,
+            EffectiveDescending(sub, catMod.subSortDescending),
+            subEnabled,
+            "CAT_SUB_SORT_DIRECTION_DISABLED"
+        )
+    end
+
+    local function RefreshPrimarySortDirectionState()
+        if not sortDirBtn then return end
+        local mode = catMod.sortMode or "none"
+        ApplySortDirectionButton(
+            sortDirBtn,
+            mode,
+            EffectiveDescending(mode, catMod.sortDescending),
+            mode ~= "none",
+            "CAT_SORT_DIRECTION_DISABLED"
+        )
+    end
+
     BuildLabelRow("CAT_SORT", yPos)
     local currentSort = catMod.sortMode or "none"
     local sortDropdown, sortDropdownText = OneWoW_GUI:CreateDropdown(rightTopWrapper, {
@@ -1273,6 +1369,22 @@ function CatMgrUI:RefreshRight()
         text = LabelFromOptions(SORT_OPTIONS, SORT_LABELS, currentSort, 1),
     })
     sortDropdown:SetPoint("TOPLEFT", rightTopWrapper, "TOPLEFT", CONTROL_X, yPos + 2)
+    sortDirBtn = OneWoW_GUI:CreateAtlasIconButton(rightTopWrapper, {
+        atlas = SORT_DIR_ATLAS,
+        width = SORT_DIR_BTN_SIZE,
+        height = SORT_DIR_BTN_SIZE,
+    })
+    sortDirBtn:SetPoint("LEFT", sortDropdown, "RIGHT", 6, 0)
+    sortDirBtn:SetScript("OnEnter", function(myself) ShowSortDirectionTooltip(myself) end)
+    sortDirBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    sortDirBtn:SetScript("OnClick", function(myself)
+        if not myself:IsEnabled() then return end
+        local mode = catMod.sortMode or "none"
+        local controller = GetController()
+        if controller and controller.SetCategorySortDescending then
+            controller:SetCategorySortDescending(capCatName, not EffectiveDescending(mode, catMod.sortDescending))
+        end
+    end)
     OneWoW_GUI:AttachFilterMenu(sortDropdown, {
         searchable = false,
         buildItems = function()
@@ -1291,6 +1403,7 @@ function CatMgrUI:RefreshRight()
             end
         end,
     })
+    RefreshPrimarySortDirectionState()
     yPos = yPos - ROW_H
 
     BuildLabelRow("CAT_SUB_SORT", yPos)
@@ -1301,6 +1414,22 @@ function CatMgrUI:RefreshRight()
         text = LabelFromOptions(SORT_OPTIONS, SORT_LABELS, currentSubSort, 1),
     })
     subSortDropdown:SetPoint("TOPLEFT", rightTopWrapper, "TOPLEFT", CONTROL_X, yPos + 2)
+    subSortDirBtn = OneWoW_GUI:CreateAtlasIconButton(rightTopWrapper, {
+        atlas = SORT_DIR_ATLAS,
+        width = SORT_DIR_BTN_SIZE,
+        height = SORT_DIR_BTN_SIZE,
+    })
+    subSortDirBtn:SetPoint("LEFT", subSortDropdown, "RIGHT", 6, 0)
+    subSortDirBtn:SetScript("OnEnter", function(myself) ShowSortDirectionTooltip(myself) end)
+    subSortDirBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    subSortDirBtn:SetScript("OnClick", function(myself)
+        if not myself:IsEnabled() then return end
+        local mode = catMod.subSortMode or "none"
+        local controller = GetController()
+        if controller and controller.SetCategorySubSortDescending then
+            controller:SetCategorySubSortDescending(capCatName, not EffectiveDescending(mode, catMod.subSortDescending))
+        end
+    end)
     OneWoW_GUI:AttachFilterMenu(subSortDropdown, {
         searchable = false,
         buildItems = function()
@@ -1319,6 +1448,7 @@ function CatMgrUI:RefreshRight()
             end
         end,
     })
+    RefreshSubSortDirectionState()
     yPos = yPos - ROW_H
 
     BuildLabelRow("GROUP_BY", yPos)

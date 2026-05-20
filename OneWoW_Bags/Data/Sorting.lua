@@ -8,6 +8,25 @@ local function CompareValues(aValue, bValue, descending)
     return aValue < bValue and -1 or 1
 end
 
+local MODE_DEFAULT_DESCENDING = {
+    default = false,
+    name = false,
+    rarity = true,
+    ilvl = true,
+    type = false,
+    expansion = true,
+}
+
+local function ResolveDescending(mode, overrideDescending)
+    if overrideDescending ~= nil then
+        return overrideDescending
+    end
+    if MODE_DEFAULT_DESCENDING[mode] ~= nil then
+        return MODE_DEFAULT_DESCENDING[mode]
+    end
+    return false
+end
+
 local function CompactButtons(buttons)
     local count = #buttons
     local writeIndex = 1
@@ -29,10 +48,10 @@ local function CompareHasItem(a, b)
     return CompareValues(aHasItem, bHasItem, true)
 end
 
-local function CompareDefault(a, b)
-    local result = CompareValues(a and a.owb_bagID or 0, b and b.owb_bagID or 0)
+local function CompareDefault(a, b, descending)
+    local result = CompareValues(a and a.owb_bagID or 0, b and b.owb_bagID or 0, descending)
     if result ~= 0 then return result end
-    return CompareValues(a and a.owb_slotID or 0, b and b.owb_slotID or 0)
+    return CompareValues(a and a.owb_slotID or 0, b and b.owb_slotID or 0, descending)
 end
 
 local function GetItemID(button)
@@ -55,7 +74,7 @@ local function GetItemLevel(button, itemLink)
     return ilvl
 end
 
-local function CompareName(a, b)
+local function CompareName(a, b, descending)
     local aID = GetItemID(a)
     local bID = GetItemID(b)
     local result = CompareValues(aID and 1 or 0, bID and 1 or 0, true)
@@ -63,7 +82,7 @@ local function CompareName(a, b)
     if not aID or not bID then return 0 end
     local aName = GetSortName(a, aID)
     local bName = GetSortName(b, bID)
-    return CompareValues(aName, bName)
+    return CompareValues(aName, bName, descending)
 end
 
 local function GetCachedItemQuality(button)
@@ -81,23 +100,23 @@ local function GetCachedCraftedQuality(button)
     return button and button._owb_craftedQuality or 0
 end
 
-local function CompareRarity(a, b)
-    local result = CompareValues(GetCachedItemQuality(a), GetCachedItemQuality(b), true)
+local function CompareRarity(a, b, descending)
+    local result = CompareValues(GetCachedItemQuality(a), GetCachedItemQuality(b), descending)
     if result ~= 0 then return result end
-    result = CompareValues(GetCachedReagentQuality(a), GetCachedReagentQuality(b), true)
+    result = CompareValues(GetCachedReagentQuality(a), GetCachedReagentQuality(b), descending)
     if result ~= 0 then return result end
-    return CompareValues(GetCachedCraftedQuality(a), GetCachedCraftedQuality(b), true)
+    return CompareValues(GetCachedCraftedQuality(a), GetCachedCraftedQuality(b), descending)
 end
 
-local function CompareItemLevel(a, b)
+local function CompareItemLevel(a, b, descending)
     local aLink = a and a.owb_itemInfo and a.owb_itemInfo.hyperlink
     local bLink = b and b.owb_itemInfo and b.owb_itemInfo.hyperlink
     local aIlvl = GetItemLevel(a, aLink)
     local bIlvl = GetItemLevel(b, bLink)
-    return CompareValues(aIlvl, bIlvl, true)
+    return CompareValues(aIlvl, bIlvl, descending)
 end
 
-local function CompareType(a, b)
+local function CompareType(a, b, descending)
     local aID = GetItemID(a)
     local bID = GetItemID(b)
     local result = CompareValues(aID and 1 or 0, bID and 1 or 0, true)
@@ -115,14 +134,14 @@ local function CompareType(a, b)
     end
     aClass = aClass or 0
     bClass = bClass or 0
-    result = CompareValues(aClass, bClass)
+    result = CompareValues(aClass, bClass, descending)
     if result ~= 0 then return result end
     aSub = aSub or 0
     bSub = bSub or 0
-    return CompareValues(aSub, bSub)
+    return CompareValues(aSub, bSub, descending)
 end
 
-local function CompareExpansion(a, b)
+local function CompareExpansion(a, b, descending)
     local aExp = a and a._owb_expansionID
     local bExp = b and b._owb_expansionID
     if aExp == nil and a and a.owb_itemInfo then
@@ -133,7 +152,7 @@ local function CompareExpansion(a, b)
     end
     aExp = aExp or -1
     bExp = bExp or -1
-    return CompareValues(aExp, bExp, true)
+    return CompareValues(aExp, bExp, descending)
 end
 
 local COMPARE_BY_MODE = {
@@ -152,23 +171,30 @@ local LEGACY_TIE_BREAKERS = {
     expansion = { "rarity" },
 }
 
-local function CompareMode(a, b, mode)
+local function CompareMode(a, b, mode, descending)
     local compare = COMPARE_BY_MODE[mode]
-    return compare and compare(a, b) or 0
+    return compare and compare(a, b, descending) or 0
 end
 
-local function CompareChain(a, b, modes)
+local function CompareChain(a, b, specs)
     local hasItemResult = CompareHasItem(a, b)
     if hasItemResult ~= 0 then return hasItemResult end
 
-    for _, mode in ipairs(modes) do
-        local result = CompareMode(a, b, mode)
+    for _, spec in ipairs(specs) do
+        local result = CompareMode(a, b, spec.mode, spec.descending)
         if result ~= 0 then return result end
     end
     return 0
 end
 
-function OneWoW_Bags:SortButtons(buttons, overrideSortMode, overrideSubSortMode)
+local function AppendSpec(specs, mode, overrideDescending)
+    specs[#specs + 1] = {
+        mode = mode,
+        descending = ResolveDescending(mode, overrideDescending),
+    }
+end
+
+function OneWoW_Bags:SortButtons(buttons, overrideSortMode, overrideSubSortMode, sortDescending, subSortDescending)
     local sortMode = overrideSortMode or "default"
     if sortMode == "none" then
         return buttons
@@ -179,26 +205,27 @@ function OneWoW_Bags:SortButtons(buttons, overrideSortMode, overrideSubSortMode)
         subSortMode = nil
     end
 
-    local modes = { sortMode }
+    local specs = {}
+    AppendSpec(specs, sortMode, sortDescending)
+
     if subSortMode then
-        modes[2] = subSortMode
-        modes[3] = "default"
+        AppendSpec(specs, subSortMode, subSortDescending)
+        AppendSpec(specs, "default", false)
     else
         local tieBreakers = LEGACY_TIE_BREAKERS[sortMode]
         if tieBreakers then
             for _, mode in ipairs(tieBreakers) do
-                modes[#modes + 1] = mode
+                AppendSpec(specs, mode, nil)
             end
         end
-    end
-
-    if modes[#modes] ~= "default" then
-        modes[#modes + 1] = "default"
+        if specs[#specs].mode ~= "default" then
+            AppendSpec(specs, "default", false)
+        end
     end
 
     CompactButtons(buttons)
     sort(buttons, function(a, b)
-        return CompareChain(a, b, modes) < 0
+        return CompareChain(a, b, specs) < 0
     end)
 
     return buttons

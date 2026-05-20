@@ -419,12 +419,26 @@ function CategoryController:GetCategoryModification(categoryName)
 end
 
 function CategoryController:SetCategorySortMode(categoryName, value)
-    self:GetCategoryModification(categoryName).sortMode = value
+    local mod = self:GetCategoryModification(categoryName)
+    mod.sortMode = value
+    mod.sortDescending = nil
     self:RefreshUI({ invalidate = false })
 end
 
 function CategoryController:SetCategorySubSortMode(categoryName, value)
-    self:GetCategoryModification(categoryName).subSortMode = value
+    local mod = self:GetCategoryModification(categoryName)
+    mod.subSortMode = value
+    mod.subSortDescending = nil
+    self:RefreshUI({ invalidate = false })
+end
+
+function CategoryController:SetCategorySortDescending(categoryName, value)
+    self:GetCategoryModification(categoryName).sortDescending = value
+    self:RefreshUI({ invalidate = false })
+end
+
+function CategoryController:SetCategorySubSortDescending(categoryName, value)
+    self:GetCategoryModification(categoryName).subSortDescending = value
     self:RefreshUI({ invalidate = false })
 end
 

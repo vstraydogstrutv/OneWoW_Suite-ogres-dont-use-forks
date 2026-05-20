@@ -90,8 +90,8 @@ end
 function WindowLayoutController:CreateViewContext(config)
     local context = {}
 
-    context.sortButtons = function(buttons, overrideSortMode, overrideSubSortMode)
-        self.addon:SortButtons(buttons, overrideSortMode or config.sortMode, overrideSubSortMode)
+    context.sortButtons = function(buttons, overrideSortMode, overrideSubSortMode, sortDescending, subSortDescending)
+        self.addon:SortButtons(buttons, overrideSortMode or config.sortMode, overrideSubSortMode, sortDescending, subSortDescending)
     end
 
     context.acquireSection = function(parent)

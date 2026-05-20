@@ -73,7 +73,7 @@ When two categories with the same name collide and the user picks `Merge`:
 - **items** — always unioned (pinned item IDs from both sides are kept).
 - **enabled** — sticky; stays enabled if either side was enabled.
 - **modifications** (per category, per scope)
-  - `sortMode`, `subSortMode`, `groupBy`, `priority`, `color`, `forceOwnLine`: imported wins
+  - `sortMode`, `subSortMode`, `sortDescending`, `subSortDescending`, `groupBy`, `priority`, `color`, `forceOwnLine`: imported wins
     when set, otherwise keep existing.
   - `appliesIn` (bag/bank/etc. scoping): intersected (fewer scopes kept).
   - `addedItems`: unioned.

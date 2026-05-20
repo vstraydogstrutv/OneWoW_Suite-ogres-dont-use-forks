@@ -601,7 +601,7 @@ function H.FilterItems(categoryName, itemsByCategory, filterToken, catMods, sort
     local mod = catMods[categoryName]
     local catSort = mod and mod.sortMode or nil
     local catSubSort = mod and mod.subSortMode or nil
-    sortButtons(items, catSort, catSubSort)
+    sortButtons(items, catSort, catSubSort, mod and mod.sortDescending, mod and mod.subSortDescending)
     items = H.StackItems(items, db, PE)
     Profile:Stop("CategoryView.FilterItems")
     return items

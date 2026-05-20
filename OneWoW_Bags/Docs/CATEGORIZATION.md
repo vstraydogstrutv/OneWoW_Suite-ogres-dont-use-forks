@@ -181,6 +181,7 @@ If **`sectionOrder` is empty**, `GetSectionedLayout` returns `GetSortedCategoryN
 - Default mode from `db.global.itemSort` via `WindowLayoutController:CreateViewContext`.
 - **Per-category override**: `categoryModifications[categoryName].sortMode`. In both `CategoryView` and `BankCategoryView`, if set, it is passed as the primary override argument to `sortButtons`. Mode **`none`** leaves order unchanged (typically bag/slot from the pool).
 - **Per-category sub-sort**: `categoryModifications[categoryName].subSortMode` is an optional secondary criterion. When present and different from the primary sort mode, `SortButtons` compares primary sort first, then sub-sort, then `default` bag/slot order as the deterministic fallback.
+- **Sort direction**: `sortDescending` and `subSortDescending` (optional booleans on `categoryModifications`) override asc/desc per row; unset uses each mode's built-in default. Configured via direction toggles beside Sort / Sub-sort in Category Manager.
 - **Legacy tie-breakers**: when no explicit sub-sort is configured, some primary modes keep their older built-in tie-breakers (`rarity -> name`, `ilvl -> rarity`, `type -> name`, `expansion -> rarity`) before falling back to `default`.
 - **`rarity` / sub-sort `rarity`**: uses cached `_owb_itemQuality`, then `_owb_reagentQuality`, then `_owb_craftedQuality` (set on full update from container info and PredicateEngine props); see `Docs/ARCHITECTURE.md` sorting section.
 
@@ -223,7 +224,7 @@ Search strings use its expression language (`#keyword`, operators, etc.). `Build
 |-----------|------|
 | `customCategoriesV2` | Custom categories: `items`, `searchExpression`, `itemType` / `itemSubType`, `filterMode`, `typeMatchMode`, `enabled`, `sortOrder`, `isTSM`, etc. |
 | `savedSearches` | Named predicate shortcuts expanded from `SAVED(Name)` before custom search categories are evaluated |
-| `categoryModifications[name]` | `sortMode`, `subSortMode`, `groupBy`, `priority`, `color`, `appliesIn`, `addedItems` |
+| `categoryModifications[name]` | `sortMode`, `subSortMode`, `sortDescending`, `subSortDescending`, `groupBy`, `priority`, `color`, `appliesIn`, `addedItems` |
 | `disabledCategories` | Disable builtin/custom by name; classification remaps to **Other** when applicable |
 | `enableJunkCategory` | Separate toggle for **phase B2** (default `true`); disabling skips the 1W Junk check entirely |
 | `enableUpgradeCategory` | Separate toggle for **phase A2** (default `true`); disabling skips the 1W Upgrades overlay entirely |

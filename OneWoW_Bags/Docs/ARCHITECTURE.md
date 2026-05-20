@@ -508,9 +508,18 @@ Modes: `none` (no reorder), `default` (bagID then slotID among occupied slots), 
 Default in **fresh DB defaults** is `itemSort = "none"` (migration 5); `GetItemSortMode` returns `db.global.itemSort or "default"` if the key were absent.
 
 Per-category `categoryModifications[name].subSortMode` provides a secondary
-criterion after `sortMode`. When no explicit sub-sort is set, legacy tie-breakers
-remain for selected primary modes, then all sorts fall back to `default` bag/slot
-order.
+criterion after `sortMode`. Optional `sortDescending` / `subSortDescending`
+booleans override direction per row (`nil` = mode default). Category Manager
+shows a direction toggle (`CovenantSanctum-Renown-DoubleArrow`, rotated for
+asc/desc); disabled when sort/sub-sort is `none` or when sub-sort duplicates
+primary. `SortButtons(buttons, sortMode, subSortMode, sortDescending, subSortDescending)`.
+
+**Mode default direction** when `*Descending` is unset: `default`/`name`/`type` asc;
+`rarity`/`ilvl`/`expansion` desc. Final bag/slot tie-break is always asc. Global
+`itemSort` does not expose direction UI (always uses mode defaults).
+
+When no explicit sub-sort is set, legacy tie-breakers remain for selected primary
+modes, then all sorts fall back to `default` bag/slot order.
 
 ### Width calculation (`WindowLayoutController:UpdateFixedWidth`)
 
