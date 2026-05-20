@@ -294,6 +294,7 @@ RegisterPropAlias("bindtype",       "bindType")
 RegisterPropAlias("currentbind",    "currentbind")
 RegisterPropAlias("totalvalue",     "totalValue",     "number", "money")
 RegisterPropAlias("craftedquality", "craftedQuality")
+RegisterPropAlias("reagentquality", "reagentQuality")
 RegisterPropAlias("upgradelevel",   "upgradeLevel")
 RegisterPropAlias("upgrademax",     "upgradeMax")
 RegisterPropAlias("maxlevel",       "maxLevel")
@@ -1852,6 +1853,7 @@ local function PopulateBaseProps(props, itemID, hyperlink)
     props.isCatalystUpgrade = false
 
     props.craftedQuality = hyperlink and C_TradeSkillUI.GetItemCraftedQualityByItemInfo(hyperlink) or 0
+    props.reagentQuality = hyperlink and C_TradeSkillUI.GetItemReagentQualityByItemInfo(hyperlink) or 0
     props.isKeystone = C_Item.IsItemKeystoneByID(itemID) == true
 
     props.isEquipment = C_Item.IsEquippableItem(itemID) == true

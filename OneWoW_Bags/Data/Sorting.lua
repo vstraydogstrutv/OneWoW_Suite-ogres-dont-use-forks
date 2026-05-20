@@ -66,10 +66,27 @@ local function CompareName(a, b)
     return CompareValues(aName, bName)
 end
 
+local function GetCachedItemQuality(button)
+    if button and button._owb_itemQuality ~= nil then
+        return button._owb_itemQuality
+    end
+    return button and button.owb_itemInfo and button.owb_itemInfo.quality or 0
+end
+
+local function GetCachedReagentQuality(button)
+    return button and button._owb_reagentQuality or 0
+end
+
+local function GetCachedCraftedQuality(button)
+    return button and button._owb_craftedQuality or 0
+end
+
 local function CompareRarity(a, b)
-    local aQ = a and a.owb_itemInfo and a.owb_itemInfo.quality or 0
-    local bQ = b and b.owb_itemInfo and b.owb_itemInfo.quality or 0
-    return CompareValues(aQ, bQ, true)
+    local result = CompareValues(GetCachedItemQuality(a), GetCachedItemQuality(b), true)
+    if result ~= 0 then return result end
+    result = CompareValues(GetCachedReagentQuality(a), GetCachedReagentQuality(b), true)
+    if result ~= 0 then return result end
+    return CompareValues(GetCachedCraftedQuality(a), GetCachedCraftedQuality(b), true)
 end
 
 local function CompareItemLevel(a, b)

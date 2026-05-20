@@ -501,6 +501,10 @@ Three windows share the same structural pattern (shell from `WindowHelpers:Creat
 
 Modes: `none` (no reorder), `default` (bagID then slotID among occupied slots), `name`, `rarity`, `ilvl`, `type` (item class ID, subclass ID, then name), `expansion` (expansion ID via `WindowHelpers:ResolveExpansionID`, then quality). Empty slots are ordered last where the comparator considers `owb_hasItem`.
 
+**Sort caches on buttons** (`ItemButton:OWB_FullUpdate`, mirrored in `GuildBankSet`): `_owb_sortName`, `_owb_ilvl`, `_owb_classID`, `_owb_subClassID`, `_owb_expansionID`, `_owb_itemQuality` (container `info.quality`), `_owb_reagentQuality` and `_owb_craftedQuality` (copied from `PE:BuildProps` — no `BuildProps` in the sort loop). Cleared in `ItemPool:ResetButton` and empty-slot updates.
+
+**`rarity` mode** (`CompareRarity`): descending comparisons in order — (1) item quality (`_owb_itemQuality`, fallback `owb_itemInfo.quality`), (2) reagent profession tier (`_owb_reagentQuality`), (3) crafted tier (`_owb_craftedQuality`). Item rarity wins globally; profession tiers break ties (e.g. same-name common herbs with different diamond tiers).
+
 Default in **fresh DB defaults** is `itemSort = "none"` (migration 5); `GetItemSortMode` returns `db.global.itemSort or "default"` if the key were absent.
 
 Per-category `categoryModifications[name].subSortMode` provides a secondary

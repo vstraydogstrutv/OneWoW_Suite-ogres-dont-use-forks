@@ -200,6 +200,9 @@ local function ClearGuildBankButton(button)
     button._owb_expansionID = nil
     button._owb_classID = nil
     button._owb_subClassID = nil
+    button._owb_itemQuality = nil
+    button._owb_reagentQuality = nil
+    button._owb_craftedQuality = nil
 end
 
 local function GetOrCreateGuildBankFrame(tabID)
@@ -359,6 +362,9 @@ local function ApplyCachedItemToButton(button, cached)
         button._owb_expansionID = props.expansionID
         button._owb_classID = props.classID
         button._owb_subClassID = props.subClassID
+        button._owb_itemQuality = cached.quality
+        button._owb_reagentQuality = props.reagentQuality
+        button._owb_craftedQuality = props.craftedQuality
 
         local masqueActive = OneWoW_Bags.Masque and OneWoW_Bags.Masque:IsActive()
         if button.SetItemButtonQuality then

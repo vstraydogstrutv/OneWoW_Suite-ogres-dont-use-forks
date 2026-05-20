@@ -133,6 +133,9 @@ function Pool:ResetButton(button)
     button._owb_expansionID = nil
     button._owb_classID = nil
     button._owb_subClassID = nil
+    button._owb_itemQuality = nil
+    button._owb_reagentQuality = nil
+    button._owb_craftedQuality = nil
     button._owb_stackCount = nil
     button._owb_virtualStackButtons = nil
     button.owb_categoryName = nil

@@ -182,6 +182,7 @@ If **`sectionOrder` is empty**, `GetSectionedLayout` returns `GetSortedCategoryN
 - **Per-category override**: `categoryModifications[categoryName].sortMode`. In both `CategoryView` and `BankCategoryView`, if set, it is passed as the primary override argument to `sortButtons`. Mode **`none`** leaves order unchanged (typically bag/slot from the pool).
 - **Per-category sub-sort**: `categoryModifications[categoryName].subSortMode` is an optional secondary criterion. When present and different from the primary sort mode, `SortButtons` compares primary sort first, then sub-sort, then `default` bag/slot order as the deterministic fallback.
 - **Legacy tie-breakers**: when no explicit sub-sort is configured, some primary modes keep their older built-in tie-breakers (`rarity -> name`, `ilvl -> rarity`, `type -> name`, `expansion -> rarity`) before falling back to `default`.
+- **`rarity` / sub-sort `rarity`**: uses cached `_owb_itemQuality`, then `_owb_reagentQuality`, then `_owb_craftedQuality` (set on full update from container info and PredicateEngine props); see `Docs/ARCHITECTURE.md` sorting section.
 
 ---
 

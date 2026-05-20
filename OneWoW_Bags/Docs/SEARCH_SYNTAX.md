@@ -611,12 +611,21 @@ For `#knowledge`, see **Consumable Subtypes** (same predicate).
 | `#crafted` | Items whose item link carries a **crafter GUID** (player-crafted instances) |
 | `#professionequipment` | Profession tools and accessories |
 
+> **`craftedquality` vs `reagentquality`:** Profession tier numbers read from the
+> item link (0 when the API returns nil). `craftedquality` uses
+> `C_TradeSkillUI.GetItemCraftedQualityByItemInfo` — quality stars on
+> **player-crafted** outputs. `reagentquality` uses
+> `C_TradeSkillUI.GetItemReagentQualityByItemInfo` — tier diamonds on
+> **profession reagents** (herbs, ore, leather, etc.). These are independent of
+> Blizzard item `quality` (rarity) and of each other; an item may have one, both,
+> or neither.
+>
 > **`#crafted` vs `craftedquality`:** `#crafted` follows **crafter presence in the
-> link**, not the crafted-quality stars. The numeric property `craftedquality`
-> comes from `C_TradeSkillUI.GetItemCraftedQualityByItemInfo` (tier 1–5, or 0
-> when none). An item can have a non-zero `craftedquality` without matching
-> `#crafted`, or match `#crafted` with `craftedquality==0`, depending on the
-> item and link data.
+> link**, not the crafted-quality stars. `craftedquality` is separate from that
+> keyword (see above). An item can have a non-zero `craftedquality` without
+> matching `#crafted`, or match `#crafted` with `craftedquality==0`, depending on
+> the item and link data. `reagentquality` is likewise independent of
+> `#craftingreagent` (class/subclass keywords only describe item type, not tier).
 
 ### Upgrades
 
@@ -712,7 +721,8 @@ Syntax: `property>=value`, `property<=value`, `property>value`, `property<value`
 | `petspeed` | | Battle pet speed |
 | `bindtype` | | Bind type ID from item data (0=None, 1=BoP, 2=BoE, 3=BoU, 8=Warband, 9=WUE) |
 | `currentbind` | | Current tooltip bind state (from `Enum.TooltipDataItemBinding`). Reflects actual binding, not item definition. |
-| `craftedquality` | | Crafted quality tier from trade-skill UI (1–5, or 0 if none); independent of `#crafted` (see Crafting keywords) |
+| `craftedquality` | | Crafted quality tier from `C_TradeSkillUI.GetItemCraftedQualityByItemInfo` (1–5, or 0 if none); player-crafted outputs; independent of `#crafted` (see Crafting keywords) |
+| `reagentquality` | | Reagent quality tier from `C_TradeSkillUI.GetItemReagentQualityByItemInfo` (tier 1–N per item, or 0 if none); profession reagent diamonds; independent of `#craftingreagent` and `craftedquality` (see Crafting keywords) |
 | `upgradelevel` | | Current upgrade level |
 | `upgrademax` | | Maximum upgrade level |
 | `maxlevel` | | Maximum possible item level after upgrades |
@@ -792,6 +802,8 @@ crit>0                  Items with any crit (same as #crit)
 pettype=8               Beast battle pets
 petlevel:1-10           Low-level pets
 petquality>=4           Epic or better pets
+reagentquality>=3       Profession reagents at tier 3+
+craftedquality>=2       Player-crafted items at crafted tier 2+
 ilvl>=reqlevel          Item level at or above required level (property vs property)
 reqlevel<=mylevel       Items the current character meets the level requirement for
 durabilitypct<100       Damaged gear (bag/slot only; see durability note above)
