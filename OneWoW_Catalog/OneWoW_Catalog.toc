@@ -29,6 +29,9 @@ Core\Favorites.lua
 # Main
 OneWoW_Catalog.lua
 
+# Services
+Services\ItemDataLoader.lua
+
 # UI
 UI\MainFrame.lua
 

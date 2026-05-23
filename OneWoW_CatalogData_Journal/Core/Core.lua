@@ -9,7 +9,7 @@ OneWoW_GUI.DB:BootSubModule(ns, {
     defaults = ns.DatabaseDefaults,
     withScanCallbacks = true,
     onLogin = function()
-        ns.DataLoader = OneWoW_GUI:CreateItemDataLoader(ns:GetDB())
+        ns.DataLoader = OneWoW_Catalog:CreateItemDataLoader(ns:GetDB())
         ns.DataLoader:Initialize()
 
         if ns.JournalData then

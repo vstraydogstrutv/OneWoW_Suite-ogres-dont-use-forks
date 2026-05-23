@@ -1,10 +1,13 @@
--- OneWoW_CatalogData_Vendors/Modules/DataLoader.lua
--- Item loading is handled by OneWoW_GUI:CreateItemDataLoader() in Core.lua.
--- This file adds vendor-specific NPC name resolution to the shared loader.
+-- Adds vendor-specific NPC name resolution to the ItemDataLoader.
 local _, ns = ...
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
 if not OneWoW_GUI then return end
+
+local tremove = tremove
+local pairs = pairs
+local C_Timer = C_Timer
+local C_TooltipInfo = C_TooltipInfo
 
 local nameQueue = {}
 local totalNamesResolved = 0
@@ -37,7 +40,7 @@ function ns:ExtendDataLoaderWithNPC(loader)
         local db = ns:GetDB()
 
         for _ = 1, 20 do
-            local npcID = table.remove(nameQueue, 1)
+            local npcID = tremove(nameQueue, 1)
             if not npcID then break end
 
             local tooltipData = C_TooltipInfo.GetHyperlink(

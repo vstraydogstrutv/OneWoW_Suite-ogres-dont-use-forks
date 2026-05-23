@@ -40,7 +40,6 @@ Core\Database.lua
 Core\Core.lua
 
 # Modules
-Modules\DataLoader.lua
 Modules\TradeskillData.lua
 Modules\TradeskillScanner.lua
 

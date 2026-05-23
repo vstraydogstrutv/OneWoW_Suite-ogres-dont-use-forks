@@ -1,5 +1,0 @@
--- OneWoW Addon File
--- OneWoW_CatalogData_Journal/Modules/DataLoader.lua
--- Created by MichinMuggin (Ricky)
--- DataLoader is now created via OneWoW_GUI:CreateItemDataLoader() in Core.lua onLogin.
--- This file is kept for TOC compatibility but has no code.

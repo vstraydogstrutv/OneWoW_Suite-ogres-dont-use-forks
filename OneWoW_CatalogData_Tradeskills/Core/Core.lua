@@ -24,7 +24,7 @@ OneWoW_GUI.DB:BootSubModule(ns, {
             ns.L = ns.Locales[locale]
         end
 
-        ns.DataLoader = OneWoW_GUI:CreateItemDataLoader(ns:GetDB())
+        ns.DataLoader = OneWoW_Catalog:CreateItemDataLoader(ns:GetDB())
         ns.DataLoader:Initialize()
 
         if ns.TradeskillData then
