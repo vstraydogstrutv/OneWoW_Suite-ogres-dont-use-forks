@@ -6,7 +6,6 @@ if not OneWoW_GUI then return end
 OneWoW_GUI.DB:BootSubModule(ns, {
     addonName = ADDON_NAME,
     savedVar = "OneWoW_CatalogData_Quests_DB",
-    defaults = ns.DatabaseDefaults,
     onLogin = function()
         ns.CompletionTracker:Initialize()
         ns.QuestScanner:Initialize()

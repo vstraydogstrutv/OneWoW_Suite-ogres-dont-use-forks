@@ -13,10 +13,6 @@ local CompletionTracker = ns.CompletionTracker
 local completedCache = nil
 local cacheBuilt     = false
 
-local function GetDB()
-    return OneWoW_CatalogData_Quests_DB
-end
-
 local function BuildAltTrackerCache()
     if cacheBuilt then return end
 
@@ -46,7 +42,7 @@ local function BuildAltTrackerCache()
 end
 
 function CompletionTracker:Initialize()
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return end
 
     local charKey = OneWoW_GUI:BuildCharKey()
@@ -67,7 +63,7 @@ end
 function CompletionTracker:MarkCompleted(questID)
     if not questID then return end
 
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return end
 
     local charKey = OneWoW_GUI:BuildCharKey()
@@ -102,7 +98,7 @@ function CompletionTracker:GetCompletedCharacters(questID)
     end
 
     -- Our own DB is the primary source — populated for every character on login and on every turn-in
-    local db = GetDB()
+    local db = ns:GetDB()
     if db and db.completion then
         for charKey, completedMap in pairs(db.completion) do
             if not seen[charKey] and completedMap[questID] then
@@ -155,7 +151,7 @@ function CompletionTracker:GetAllTrackedCharacters()
     end
 
     -- Our own DB is primary — all characters that have ever logged in with this addon
-    local db = GetDB()
+    local db = ns:GetDB()
     if db and db.completion then
         for charKey, _ in pairs(db.completion) do
             if not seen[charKey] then

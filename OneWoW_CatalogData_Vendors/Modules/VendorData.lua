@@ -24,13 +24,13 @@ local function BuildStaticIndex()
 end
 
 function VendorData:GetVendor(npcID)
-    local db = OneWoW_CatalogData_Vendors_DB
+    local db = ns:GetDB()
     return db.vendors and db.vendors[npcID]
 end
 
 function VendorData:GetAllVendors()
     BuildStaticIndex()
-    local db = OneWoW_CatalogData_Vendors_DB
+    local db = ns:GetDB()
     local result = {}
     local seen = {}
     if db.vendors then
@@ -49,7 +49,7 @@ end
 
 function VendorData:GetVendorCount()
     local count = 0
-    local db = OneWoW_CatalogData_Vendors_DB
+    local db = ns:GetDB()
     if db.vendors then
         for _ in pairs(db.vendors) do
             count = count + 1
@@ -65,7 +65,7 @@ function VendorData:SearchVendors(searchTerm)
 
     BuildStaticIndex()
     local results = {}
-    local db = OneWoW_CatalogData_Vendors_DB
+    local db = ns:GetDB()
     local seen = {}
     local term = searchTerm:lower()
 
@@ -125,7 +125,7 @@ end
 
 function VendorData:GetVendorsByItem(itemID)
     local results = {}
-    local db = OneWoW_CatalogData_Vendors_DB
+    local db = ns:GetDB()
     local seen = {}
 
     if db.vendors then
@@ -157,7 +157,7 @@ end
 
 function VendorData:GetUniqueItemCount()
     local items = {}
-    local db = OneWoW_CatalogData_Vendors_DB
+    local db = ns:GetDB()
     if not db.vendors then return 0 end
 
     for _, vendor in pairs(db.vendors) do
@@ -191,7 +191,7 @@ function VendorData:GetStats()
 end
 
 function VendorData:DeleteVendor(npcID)
-    local db = OneWoW_CatalogData_Vendors_DB
+    local db = ns:GetDB()
     if db.vendors and db.vendors[npcID] then
         db.vendors[npcID] = nil
         return true

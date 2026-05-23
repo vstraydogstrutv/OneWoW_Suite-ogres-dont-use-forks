@@ -6,7 +6,6 @@ if not OneWoW_GUI then return end
 OneWoW_GUI.DB:BootSubModule(ns, {
     addonName = ADDON_NAME,
     savedVar = "OneWoW_CatalogData_Journal_DB",
-    defaults = ns.DatabaseDefaults,
     withScanCallbacks = true,
     onLogin = function()
         ns.DataLoader = OneWoW_Catalog:CreateItemDataLoader(ns:GetDB())

@@ -130,7 +130,7 @@ function VendorScanner:ScanVendor()
         end
     end
 
-    local db = OneWoW_CatalogData_Vendors_DB
+    local db = ns:GetDB()
     if not db.vendors then db.vendors = {} end
 
     local existing = db.vendors[npcID]

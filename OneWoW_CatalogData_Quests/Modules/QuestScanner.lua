@@ -155,8 +155,7 @@ local function ScanActiveQuestLog()
 end
 
 local function ScanCompletedBatch(completedIDs, startIndex)
-    local db = OneWoW_CatalogData_Quests_DB
-    if not db then return end
+    local db = ns:GetDB()
 
     local endIndex = math.min(startIndex + SCAN_BATCH_SIZE - 1, #completedIDs)
     for i = startIndex, endIndex do

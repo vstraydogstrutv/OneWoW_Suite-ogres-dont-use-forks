@@ -71,10 +71,6 @@ local CLASSIFICATION_TYPE = {
     [10] = "worldquest",
 }
 
-local function GetDB()
-    return OneWoW_CatalogData_Quests_DB
-end
-
 function QuestData:GetExpansionName(expansionID)
     if expansionID == nil then return nil end
     return EXPANSION_NAMES[expansionID]
@@ -95,7 +91,7 @@ function QuestData:GetClassificationType(classificationID)
 end
 
 function QuestData:StoreQuestInfo(questID, data)
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db or not questID then return end
 
     local existing = db.quests[questID] or {}
@@ -112,19 +108,19 @@ function QuestData:StoreQuestInfo(questID, data)
 end
 
 function QuestData:GetQuest(questID)
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return nil end
     return db.quests[questID]
 end
 
 function QuestData:GetAllQuests()
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return {} end
     return db.quests
 end
 
 function QuestData:GetQuestCount()
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return 0 end
     local count = 0
     for _ in pairs(db.quests) do count = count + 1 end
@@ -132,7 +128,7 @@ function QuestData:GetQuestCount()
 end
 
 function QuestData:GetCapturedQuestCount()
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return 0 end
     local count = 0
     for _, quest in pairs(db.quests) do
@@ -144,7 +140,7 @@ function QuestData:GetCapturedQuestCount()
 end
 
 function QuestData:GetSortedQuests(expansionFilter, zoneFilter, typeFilter, questTypeFilter, searchText)
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return {} end
 
     local result = {}
@@ -212,7 +208,7 @@ function QuestData:GetSortedQuests(expansionFilter, zoneFilter, typeFilter, ques
 end
 
 function QuestData:GetAvailableExpansions()
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return {} end
 
     local seen = {}
@@ -234,7 +230,7 @@ function QuestData:GetAvailableExpansions()
 end
 
 function QuestData:GetAvailableZones(expansionFilter)
-    local db = GetDB()
+    local db = ns:GetDB()
     if not db then return {} end
 
     local seen = {}

@@ -6,18 +6,7 @@ if not OneWoW_GUI then return end
 OneWoW_GUI.DB:BootSubModule(ns, {
     addonName = ADDON_NAME,
     savedVar = "OneWoW_CatalogData_Tradeskills_DB",
-    defaults = ns.DatabaseDefaults,
     withScanCallbacks = true,
-    initDB = function()
-        local DB = OneWoW_GUI.DB
-        if not OneWoW_CatalogData_Tradeskills_DB then OneWoW_CatalogData_Tradeskills_DB = {} end
-        DB:MergeMissing(OneWoW_CatalogData_Tradeskills_DB, ns.DatabaseDefaults)
-        local db = OneWoW_CatalogData_Tradeskills_DB
-        if db.version < 2 then
-            ns:MigrateScanCacheKeys()
-            db.version = 2
-        end
-    end,
     onLogin = function()
         local locale = GetLocale()
         if ns.Locales and ns.Locales[locale] then
