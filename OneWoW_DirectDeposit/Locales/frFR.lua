@@ -29,7 +29,7 @@ OneWoW_DirectDeposit.Locales["frFR"] = {
     ["USE_CHAR_SETTINGS_DESC"] = "Activez ceci pour utiliser différents paramètres pour ce personnage au lieu des paramètres du compte.",
 
     ["TARGET_GOLD"] = "Montant à Conserver sur le Personnage",
-    ["TARGET_GOLD_DESC"] = "Entrez le montant d'or (en pièces d'or) que vous souhaitez maintenir sur votre personnage.",
+    ["TARGET_GOLD_DESC"] = "Entrez le montant d'or (en pièces d'or) que vous souhaitez maintenir sur votre personnage. Laissez vide pour désactiver les transferts automatiques jusqu'à saisie d'une valeur. 0 = ne garder aucun or sur le personnage.",
     ["GOLD"] = "or",
 
     ["DEPOSIT_ENABLE"] = "Déposer l'Or dans la Banque de Groupe de Guerre",

@@ -17,7 +17,8 @@ local defaults = {
         },
         directDeposit = {
             enabled = false,
-            targetGold = 0,
+            -- targetGold omitted: nil = not configured, 0 = keep zero on character.
+            -- Do NOT add targetGold = 0 here — MergeMissing would refill nil every login.
             depositEnabled = false,
             withdrawEnabled = false,
             itemDepositEnabled = false,
@@ -29,7 +30,8 @@ local defaults = {
     char = {
         directDeposit = {
             useAccountSettings = true,
-            targetGold = 0,
+            -- targetGold omitted: nil = not configured, 0 = keep zero on character.
+            -- Do NOT add targetGold = 0 here — MergeMissing would refill nil every login.
             depositEnabled = false,
             withdrawEnabled = false,
         },
@@ -98,6 +100,22 @@ function OneWoW_DirectDeposit:InitializeDatabase()
             if not root then return end
             for k in pairs(root) do
                 if not keep[k] then root[k] = nil end
+            end
+        end },
+        { version = 4, name = "target_gold_unset_nil", run = function(d)
+            local function clearLegacyUnsetTargetGold(dd)
+                if type(dd) == "table" and dd.targetGold == 0 then
+                    dd.targetGold = nil
+                end
+            end
+            clearLegacyUnsetTargetGold(d.global.directDeposit)
+            local root = d.root
+            if root and root.chars then
+                for _, charData in pairs(root.chars) do
+                    if type(charData) == "table" then
+                        clearLegacyUnsetTargetGold(charData.directDeposit)
+                    end
+                end
             end
         end },
     })

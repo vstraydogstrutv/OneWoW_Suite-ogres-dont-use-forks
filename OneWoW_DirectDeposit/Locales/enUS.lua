@@ -29,7 +29,7 @@ OneWoW_DirectDeposit.Locales["enUS"] = {
     ["USE_CHAR_SETTINGS_DESC"] = "Enable this to use different settings for this character instead of the account-wide settings.",
 
     ["TARGET_GOLD"] = "Amount to Keep on Character",
-    ["TARGET_GOLD_DESC"] = "Enter the amount of gold (in gold pieces) you want to maintain on your character.",
+    ["TARGET_GOLD_DESC"] = "Enter the amount of gold (in gold pieces) you want to maintain on your character. Leave blank for no automatic gold moves until set. Enter 0 to keep no gold on the character.",
     ["GOLD"] = "gold",
 
     ["DEPOSIT_ENABLE"] = "Deposit Gold to Warband Bank",

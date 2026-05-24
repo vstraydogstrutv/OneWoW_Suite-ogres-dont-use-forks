@@ -173,7 +173,8 @@ function DirectDeposit:NormalizeGold()
     local settings = self:GetActiveSettings()
     local targetGold = self:GetTargetGold()
 
-    if targetGold == 0 then
+    -- nil = not configured; 0 is a valid target (keep zero gold on character).
+    if targetGold == nil then
         return
     end
 

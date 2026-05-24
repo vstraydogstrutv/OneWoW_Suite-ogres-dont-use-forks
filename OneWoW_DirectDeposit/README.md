@@ -10,7 +10,7 @@
 Set a target amount of gold to keep on each character, and Direct Deposit will automatically handle deposits and withdrawals from your Warband Bank whenever you open the bank interface. No more manually transferring gold between characters.
 
 ### Gold Management
-- Set a target gold amount per character
+- Set a target gold amount per character (leave blank to disable gold targeting until you enter a value; use **0** to keep no gold on the character and deposit everything to Warband when deposit is enabled)
 - Automatically deposit excess gold to Warband Bank
 - Automatically withdraw from Warband Bank when you fall below your target
 - Choose which characters use account-wide settings vs. custom per-character settings

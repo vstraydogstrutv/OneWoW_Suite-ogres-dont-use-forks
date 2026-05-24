@@ -29,7 +29,7 @@ OneWoW_DirectDeposit.Locales["koKR"] = {
     ["USE_CHAR_SETTINGS_DESC"] = "계정 전체 설정 대신 이 캐릭터에 대해 다른 설정을 사용하려면 활성화하십시오.",
 
     ["TARGET_GOLD"] = "캐릭터에 유지할 금액",
-    ["TARGET_GOLD_DESC"] = "캐릭터에 유지할 골드 금액(골드 단위)을 입력하십시오.",
+    ["TARGET_GOLD_DESC"] = "캐릭터에 유지할 골드 금액(골드 단위)을 입력하십시오. 비워 두면 값을 입력할 때까지 자동 골드 이동이 비활성화됩니다. 0 = 캐릭터에 골드를 남기지 않음.",
     ["GOLD"] = "골드",
 
     ["DEPOSIT_ENABLE"] = "워밴드 은행에 골드 입금",

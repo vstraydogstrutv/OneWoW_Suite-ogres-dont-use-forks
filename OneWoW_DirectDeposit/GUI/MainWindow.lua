@@ -10,6 +10,14 @@ local Constants = OneWoW_DirectDeposit.Constants
 local L        = OneWoW_DirectDeposit.L
 
 local BACKDROP_INNER_NO_INSETS = OneWoW_GUI.Constants.BACKDROP_INNER_NO_INSETS
+local strtrim, tonumber, tostring = strtrim, tonumber, tostring
+
+local function FormatTargetGoldForEditBox(value)
+    if value == nil then
+        return ""
+    end
+    return tostring(value)
+end
 
 ---@class DirectDepositMainWindowFrame : Frame
 ---@field titleBar table
@@ -234,10 +242,17 @@ function GUI:CreateGoldPanel(parent)
 
     local targetGoldBox = OneWoW_GUI:CreateEditBox(scrollContent, { width = 100, height = 26 })
     targetGoldBox:SetPoint("LEFT", targetGoldLabel, "RIGHT", 10, 0)
-    targetGoldBox:SetText(tostring(OneWoW_DirectDeposit.db.global.directDeposit.targetGold))
+    targetGoldBox:SetText(FormatTargetGoldForEditBox(OneWoW_DirectDeposit.db.global.directDeposit.targetGold))
     targetGoldBox:SetScript("OnTextChanged", function(myself)
-        local value = tonumber(myself:GetText()) or 0
-        OneWoW_DirectDeposit.db.global.directDeposit.targetGold = value
+        local trimmed = strtrim(myself:GetText() or "")
+        if trimmed == "" then
+            OneWoW_DirectDeposit.db.global.directDeposit.targetGold = nil
+            return
+        end
+        local value = tonumber(trimmed)
+        if value ~= nil then
+            OneWoW_DirectDeposit.db.global.directDeposit.targetGold = value
+        end
     end)
     targetGoldBox:SetScript("OnEnterPressed", function(myself) myself:ClearFocus() end)
     panel.targetGoldBox = targetGoldBox
@@ -305,10 +320,17 @@ function GUI:CreateCharacterSettings(scrollContent, yOffset, framesTable, panel)
 
     local charTargetGoldBox = OneWoW_GUI:CreateEditBox(scrollContent, { width = 100, height = 26 })
     charTargetGoldBox:SetPoint("LEFT", charTargetGoldLabel, "RIGHT", 10, 0)
-    charTargetGoldBox:SetText(tostring(OneWoW_DirectDeposit.db.char.directDeposit.targetGold))
+    charTargetGoldBox:SetText(FormatTargetGoldForEditBox(OneWoW_DirectDeposit.db.char.directDeposit.targetGold))
     charTargetGoldBox:SetScript("OnTextChanged", function(myself)
-        local value = tonumber(myself:GetText()) or 0
-        OneWoW_DirectDeposit.db.char.directDeposit.targetGold = value
+        local trimmed = strtrim(myself:GetText() or "")
+        if trimmed == "" then
+            OneWoW_DirectDeposit.db.char.directDeposit.targetGold = nil
+            return
+        end
+        local value = tonumber(trimmed)
+        if value ~= nil then
+            OneWoW_DirectDeposit.db.char.directDeposit.targetGold = value
+        end
     end)
     charTargetGoldBox:SetScript("OnEnterPressed", function(myself) myself:ClearFocus() end)
     table.insert(framesTable, charTargetGoldBox)
