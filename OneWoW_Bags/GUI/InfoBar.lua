@@ -10,6 +10,13 @@ OneWoW_Bags.InfoBar = OneWoW_Bags.InfoBarFactory:Create({
     viewModeDBKey = "viewMode",
     searchName = "OneWoW_BagsSearch",
     savedSearches = true,
+    searchTransfer = {
+        atlas = "Banker",
+        direction = "toBank",
+        tooltipKey = "SEARCH_TRANSFER_TO_BANK",
+        emptyTooltipKey = "SEARCH_TRANSFER_TO_BANK_EMPTY",
+        disabledTooltipKey = "SEARCH_TRANSFER_TO_BANK_DISABLED",
+    },
     showHeaderFn = function(db) return BagsChromeOverride(db, "showHeaderBar") end,
     showSearchFn = function(db) return BagsChromeOverride(db, "showSearchBar") end,
     viewModes = {

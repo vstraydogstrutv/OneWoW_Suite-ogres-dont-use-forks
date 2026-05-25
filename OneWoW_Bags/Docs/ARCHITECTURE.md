@@ -412,6 +412,7 @@ Per-button state includes `owb_bagID`, `owb_slotID`, `owb_itemInfo`, `owb_hasIte
 - `Build()` / `ReleaseAll()`, `UpdateDirtyBags` (bags + bank), `GetAllButtons`, `GetFreeSlotCount`, etc.
 - `bagContainerFrames[bagID]` — parent frames with `SetID(bagID)` for secure behavior on container template buttons.
 - **Bags:** `Ctrl+Right-click` on a bag item while the personal/warband bank is open delegates to `BankController:DepositBagButtonStack`. If "Stack identical items" produced a virtual stack, every underlying physical player-bag slot is queued. Each queued slot is revalidated and paced before `C_Container.UseContainerItem(..., bankType)` deposits into the active bank type.
+- **Search transfer (bags ↔ personal/warband bank):** Info bar icons (`Banker` on bags, `hud-backpack` on bank) call `BankController:TransferSearchToBank` / `TransferSearchFromBank` using the same filters as the bags window (`WH:FilterBySearch` + `WH:FilterByExpansion`). Deposit `selectedBag` scope applies only in **bag** view mode (matches `BagView`); list/category deposit from all player bags. Withdraw scope respects `bankSelectedTab` / `warbandBankSelectedTab` when set (matches bank layout filters). Paced queues share `DEPOSIT_INTERVAL_SEC`. Guild bank excluded (different move API).
 - **Guild bank:** tab/slot cache, `ApplyCacheToButtons`, money-cursor and guild-bank-specific scripts, `ClearCache` on close; fixed slot count per tab (98).
 
 ### CategoryManagerBase

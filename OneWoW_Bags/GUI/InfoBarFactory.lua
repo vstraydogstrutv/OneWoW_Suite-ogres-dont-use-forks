@@ -219,6 +219,67 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         end
     end
 
+    local function UpdateSearchTransferButton(searchBox)
+        if not infoBarFrame or not infoBarFrame.searchTransferBtn or not config.searchTransfer then return end
+
+        local bankController = OneWoW_Bags.BankController
+        local canTransfer = bankController
+            and bankController.CanTransferSearch
+            and bankController:CanTransferSearch(GetRealSearchText(searchBox), config.searchTransfer.direction)
+
+        local btn = infoBarFrame.searchTransferBtn
+        btn.canTransfer = canTransfer
+        btn:SetAlpha(canTransfer and 1 or 0.35)
+        if btn.icon and btn.icon.SetDesaturated then
+            btn.icon:SetDesaturated(not canTransfer)
+        end
+    end
+
+    local function AnchorSearchRowChrome(searchY, leftInset, rightInset, showSearch)
+        if not showSearch then return end
+
+        local helpBtn = infoBarFrame.searchHelpBtn
+        local saveBtn = infoBarFrame.saveSearchBtn
+        local transferBtn = infoBarFrame.searchTransferBtn
+        local searchBox = infoBarFrame.searchBox
+
+        if helpBtn then
+            helpBtn:ClearAllPoints()
+            helpBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
+        end
+
+        local rightAnchor = helpBtn
+        if saveBtn then
+            saveBtn:ClearAllPoints()
+            if rightAnchor then
+                saveBtn:SetPoint("RIGHT", rightAnchor, "LEFT", -3, 0)
+            else
+                saveBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
+            end
+            rightAnchor = saveBtn
+        end
+
+        if transferBtn then
+            transferBtn:ClearAllPoints()
+            if rightAnchor then
+                transferBtn:SetPoint("RIGHT", rightAnchor, "LEFT", -3, 0)
+            else
+                transferBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
+            end
+            rightAnchor = transferBtn
+        end
+
+        if searchBox then
+            searchBox:ClearAllPoints()
+            searchBox:SetPoint("TOPLEFT", infoBarFrame, "TOPLEFT", leftInset, searchY)
+            if rightAnchor then
+                searchBox:SetPoint("TOPRIGHT", rightAnchor, "TOPLEFT", -3, 0)
+            else
+                searchBox:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
+            end
+        end
+    end
+
     local function ShowSavedSearchNamePopup(searchBox)
         local query = GetRealSearchText(searchBox)
         if not query then return end
@@ -540,6 +601,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             placeholderText = L["SEARCH_PLACEHOLDER"],
             onTextChanged = function(text)
                 UpdateSaveSearchButton(infoBarFrame and infoBarFrame.searchBox)
+                UpdateSearchTransferButton(infoBarFrame and infoBarFrame.searchBox)
                 local controller = GetController()
                 if config.onSearchChanged then
                     config.onSearchChanged(text, controller)
@@ -576,29 +638,48 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             infoBarFrame.saveSearchBtn = saveSearchBtn
         end
 
+        local searchTransferBtn
+        local searchTransfer = config.searchTransfer
+        if searchTransfer then
+            searchTransferBtn = OneWoW_GUI:CreateAtlasIconButton(infoBarFrame, {
+                atlas = searchTransfer.atlas,
+                width = 20,
+                height = 20,
+            })
+            searchTransferBtn:SetScript("OnClick", function(myself)
+                if not myself.canTransfer then return end
+                local query = GetRealSearchText(searchBox)
+                if not query or not OneWoW_Bags.BankController then return end
+                if searchTransfer.direction == "toBank" then
+                    OneWoW_Bags.BankController:TransferSearchToBank(query)
+                elseif searchTransfer.direction == "fromBank" then
+                    OneWoW_Bags.BankController:TransferSearchFromBank(query)
+                end
+            end)
+            searchTransferBtn:HookScript("OnEnter", function(myself)
+                GameTooltip:SetOwner(myself, "ANCHOR_TOP")
+                if myself.canTransfer and searchTransfer.tooltipKey then
+                    GameTooltip:SetText(L[searchTransfer.tooltipKey], 1, 1, 1)
+                elseif searchTransfer.disabledTooltipKey
+                    and searchTransfer.direction == "toBank"
+                    and not OneWoW_Bags.bankOpen then
+                    GameTooltip:SetText(L[searchTransfer.disabledTooltipKey], 1, 1, 1)
+                elseif searchTransfer.emptyTooltipKey then
+                    GameTooltip:SetText(L[searchTransfer.emptyTooltipKey], 1, 1, 1)
+                end
+                GameTooltip:Show()
+            end)
+            searchTransferBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+            infoBarFrame.searchTransferBtn = searchTransferBtn
+        end
+
         local bagsHelpBtn
         if OneWoW_GUI.CreateKeywordHelpButton then
             bagsHelpBtn = OneWoW_GUI:CreateKeywordHelpButton(infoBarFrame, { editBox = searchBox, size = 20 })
-            bagsHelpBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
         end
 
-        if saveSearchBtn then
-            local saveAnchor = bagsHelpBtn
-            if saveAnchor then
-                saveSearchBtn:SetPoint("RIGHT", saveAnchor, "LEFT", -3, 0)
-            else
-                saveSearchBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
-            end
-        end
-
-        searchBox:SetPoint("TOPLEFT", infoBarFrame, "TOPLEFT", leftInset, searchY)
-        if saveSearchBtn then
-            searchBox:SetPoint("TOPRIGHT", saveSearchBtn, "TOPLEFT", -3, 0)
-        elseif bagsHelpBtn then
-            searchBox:SetPoint("TOPRIGHT", bagsHelpBtn, "TOPLEFT", -3, 0)
-        else
-            searchBox:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
-        end
+        infoBarFrame.searchHelpBtn = bagsHelpBtn
+        AnchorSearchRowChrome(searchY, leftInset, rightInset, true)
 
         if OneWoW_GUI.AttachSearchTooltip then
             OneWoW_GUI:AttachSearchTooltip(searchBox)
@@ -622,8 +703,8 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             HideSearchHistoryMenu()
         end)
         infoBarFrame.searchBox = searchBox
-        infoBarFrame.searchHelpBtn = bagsHelpBtn
         UpdateSaveSearchButton(searchBox)
+        UpdateSearchTransferButton(searchBox)
 
         bar:UpdateVisibility()
         return infoBarFrame
@@ -660,10 +741,15 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             end
             infoBarFrame.searchBox:SetShown(showSearch)
             UpdateSaveSearchButton(infoBarFrame.searchBox)
+            UpdateSearchTransferButton(infoBarFrame.searchBox)
         end
 
         if infoBarFrame.saveSearchBtn then
             infoBarFrame.saveSearchBtn:SetShown(showSearch)
+        end
+
+        if infoBarFrame.searchTransferBtn then
+            infoBarFrame.searchTransferBtn:SetShown(showSearch)
         end
 
         if infoBarFrame.searchHelpBtn then
@@ -729,31 +815,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             end
         end
 
-        if infoBarFrame.searchHelpBtn and showSearch then
-            infoBarFrame.searchHelpBtn:ClearAllPoints()
-            infoBarFrame.searchHelpBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
-        end
-
-        if infoBarFrame.saveSearchBtn and showSearch then
-            infoBarFrame.saveSearchBtn:ClearAllPoints()
-            if infoBarFrame.searchHelpBtn then
-                infoBarFrame.saveSearchBtn:SetPoint("RIGHT", infoBarFrame.searchHelpBtn, "LEFT", -3, 0)
-            else
-                infoBarFrame.saveSearchBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
-            end
-        end
-
-        if infoBarFrame.searchBox and showSearch then
-            infoBarFrame.searchBox:ClearAllPoints()
-            infoBarFrame.searchBox:SetPoint("TOPLEFT", infoBarFrame, "TOPLEFT", leftInset, searchY)
-            if infoBarFrame.saveSearchBtn then
-                infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame.saveSearchBtn, "TOPLEFT", -3, 0)
-            elseif infoBarFrame.searchHelpBtn then
-                infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame.searchHelpBtn, "TOPLEFT", -3, 0)
-            else
-                infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
-            end
-        end
+        AnchorSearchRowChrome(searchY, leftInset, rightInset, showSearch)
     end
 
     function bar:GetSearchText()

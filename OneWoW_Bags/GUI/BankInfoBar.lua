@@ -9,6 +9,12 @@ OneWoW_Bags.BankInfoBar = OneWoW_Bags.InfoBarFactory:Create({
     showSearchFn = function() return OneWoW_Bags.BankController:Get("showSearchBar") ~= false end,
     searchName = "OneWoW_BankSearch",
     savedSearches = true,
+    searchTransfer = {
+        atlas = "hud-backpack",
+        direction = "fromBank",
+        tooltipKey = "SEARCH_TRANSFER_FROM_BANK",
+        emptyTooltipKey = "SEARCH_TRANSFER_FROM_BANK_EMPTY",
+    },
     viewModes = {
         { mode = "list",     labelKey = "VIEW_LIST" },
         { mode = "category", labelKey = "VIEW_CATEGORY" },

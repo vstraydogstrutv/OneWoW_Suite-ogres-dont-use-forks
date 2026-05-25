@@ -595,6 +595,10 @@ function OneWoW_Bags:OnBankOpened()
         self.GUI:Show()
     end
 
+    if self.InfoBar and self.InfoBar.UpdateVisibility then
+        self.InfoBar:UpdateVisibility()
+    end
+
     self:ScheduleTooltipCatchupRefresh()
 end
 
@@ -614,6 +618,10 @@ function OneWoW_Bags:OnBankClosed()
 
     self.BankGUI:Hide()
     self.BankSet:ReleaseAll()
+
+    if self.InfoBar and self.InfoBar.UpdateVisibility then
+        self.InfoBar:UpdateVisibility()
+    end
 end
 
 function OneWoW_Bags:SuppressGuildBankFrame()

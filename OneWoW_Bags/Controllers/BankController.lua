@@ -1,11 +1,16 @@
 local _, OneWoW_Bags = ...
 
+local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
+if not OneWoW_GUI then return end
+
 local BagTypes = OneWoW_Bags.BagTypes
+local BankTypes = OneWoW_Bags.BankTypes
 
 local C_Bank = C_Bank
 local C_Container = C_Container
 local C_Timer = C_Timer
 local ItemLocation = ItemLocation
+local strtrim = strtrim
 local tinsert, ipairs = tinsert, ipairs
 
 local DEPOSIT_INTERVAL_SEC = 0.12
@@ -197,11 +202,153 @@ function BankController:DepositReagents()
     C_Bank.AutoDepositItemsIntoBank(bankType)
 end
 
-function BankController:QueueBagDeposits(queue, bankType)
+function BankController:NormalizeSearchText(searchText)
+    searchText = strtrim(searchText or "")
+    if searchText == "" then return nil end
+    local L = OneWoW_Bags.L
+    if L and searchText == L["SEARCH_PLACEHOLDER"] then return nil end
+    return searchText
+end
+
+function BankController:CanTransferSearch(searchText, direction)
+    if not self:NormalizeSearchText(searchText) then return false end
+    if direction == "toBank" or direction == "fromBank" then
+        return self.addon.bankOpen == true
+    end
+    return false
+end
+
+function BankController:CancelTransferTickers()
     if self._bagDepositTicker then
         self._bagDepositTicker:Cancel()
         self._bagDepositTicker = nil
     end
+    if self._bankWithdrawTicker then
+        self._bankWithdrawTicker:Cancel()
+        self._bankWithdrawTicker = nil
+    end
+end
+
+local function QueueDepositEntry(queuedSlots, seenSlots, bagID, slotID, bankType)
+    if not bagID or not slotID or not BagTypes:IsPlayerBag(bagID) then return end
+
+    local slotKey = bagID .. ":" .. slotID
+    if seenSlots[slotKey] then return end
+    seenSlots[slotKey] = true
+
+    local info = C_Container.GetContainerItemInfo(bagID, slotID)
+    if not info or info.isLocked or not info.itemID or not info.hyperlink then return end
+
+    local location = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
+    if not location or not location:IsValid() or not C_Bank.IsItemAllowedInBankType(bankType, location) then return end
+
+    tinsert(queuedSlots, {
+        bagID = bagID,
+        slotID = slotID,
+        itemID = info.itemID,
+        hyperlink = info.hyperlink,
+    })
+end
+
+local function QueueWithdrawEntry(queuedSlots, seenSlots, bagID, slotID, isWarband)
+    if not bagID or not slotID then return end
+
+    local inActiveBank = (isWarband and BankTypes:IsWarbandTab(bagID))
+        or (not isWarband and BankTypes:IsPersonalBankTab(bagID))
+    if not inActiveBank then return end
+
+    local slotKey = bagID .. ":" .. slotID
+    if seenSlots[slotKey] then return end
+    seenSlots[slotKey] = true
+
+    local info = C_Container.GetContainerItemInfo(bagID, slotID)
+    if not info or info.isLocked or not info.itemID or not info.hyperlink then return end
+
+    tinsert(queuedSlots, {
+        bagID = bagID,
+        slotID = slotID,
+        itemID = info.itemID,
+        hyperlink = info.hyperlink,
+    })
+end
+
+local function AppendButtonStackToQueue(queuedSlots, seenSlots, button, queueEntryFn, ...)
+    local sourceButtons = button._owb_virtualStackButtons or { button }
+    for _, sourceButton in ipairs(sourceButtons) do
+        queueEntryFn(queuedSlots, seenSlots, sourceButton.owb_bagID, sourceButton.owb_slotID, ...)
+    end
+end
+
+function BankController:CollectMatchingBagSlots(searchText)
+    local normalized = self:NormalizeSearchText(searchText)
+    if not normalized or not self.addon.BagSet then return {} end
+
+    local bankType = self:GetActiveBankType()
+    local buttons = self.addon.BagSet:GetAllButtons()
+    local WH = OneWoW_Bags.WindowHelpers
+    local bagsController = self.addon.BagsController
+    -- Bag view only: selectedBag scopes layout (BagView). List/category show all bags.
+    if bagsController and bagsController:GetViewMode() == "bag" then
+        buttons = WH:FilterByTab(buttons, bagsController:GetSelectedBag(), WH:GetScratchTable("transferBagScope"))
+    end
+    local matched = WH:FilterBySearch(buttons, normalized, WH:GetScratchTable("transferBagSearch"))
+    local expFilter = bagsController and bagsController:GetExpansionFilter() or self.addon.activeExpansionFilter
+    matched = WH:FilterByExpansion(matched, expFilter, WH:GetScratchTable("transferBagExpansion"))
+
+    local queuedSlots = {}
+    local seenSlots = {}
+    for _, button in ipairs(matched) do
+        AppendButtonStackToQueue(queuedSlots, seenSlots, button, QueueDepositEntry, bankType)
+    end
+    return queuedSlots
+end
+
+function BankController:CollectMatchingBankSlots(searchText)
+    local normalized = self:NormalizeSearchText(searchText)
+    if not normalized or not self.addon.BankSet then return {} end
+
+    local isWarband = self:IsWarbandMode()
+    local buttons = self.addon.BankSet:GetAllButtons()
+    local WH = OneWoW_Bags.WindowHelpers
+    buttons = WH:FilterByTab(buttons, self:Get("selectedTab"), WH:GetScratchTable("transferBankScope"))
+    local matched = WH:FilterBySearch(buttons, normalized, WH:GetScratchTable("transferBankSearch"))
+
+    local queuedSlots = {}
+    local seenSlots = {}
+    for _, button in ipairs(matched) do
+        AppendButtonStackToQueue(queuedSlots, seenSlots, button, QueueWithdrawEntry, isWarband)
+    end
+    return queuedSlots
+end
+
+function BankController:TransferSearchToBank(searchText)
+    if OneWoW_GUI:IsAddonRestricted() or not self.addon.bankOpen then return false end
+
+    local bankType = self:GetActiveBankType()
+    if not C_Bank.CanUseBank(bankType) then return false end
+
+    local queue = self:CollectMatchingBagSlots(searchText)
+    if #queue == 0 then return false end
+
+    self:QueueBagDeposits(queue, bankType)
+    return true
+end
+
+function BankController:TransferSearchFromBank(searchText)
+    if OneWoW_GUI:IsAddonRestricted() or not self.addon.bankOpen then return false end
+
+    local bankType = self:GetActiveBankType()
+    if not C_Bank.CanUseBank(bankType) then return false end
+
+    local queue = self:CollectMatchingBankSlots(searchText)
+    if #queue == 0 then return false end
+
+    self:QueueBankWithdrawals(queue, bankType)
+    return true
+end
+
+function BankController:QueueBagDeposits(queue, bankType)
+    self:CancelTransferTickers()
 
     local index = 1
     local function Finish()
@@ -237,38 +384,49 @@ function BankController:QueueBagDeposits(queue, bankType)
     end)
 end
 
+function BankController:QueueBankWithdrawals(queue, bankType)
+    self:CancelTransferTickers()
+
+    local index = 1
+    local function Finish()
+        if self._bankWithdrawTicker then
+            self._bankWithdrawTicker:Cancel()
+            self._bankWithdrawTicker = nil
+        end
+        self.addon:RequestLayoutRefresh("all")
+    end
+
+    self._bankWithdrawTicker = C_Timer.NewTicker(DEPOSIT_INTERVAL_SEC, function()
+        local entry = queue[index]
+        index = index + 1
+
+        if not entry then
+            Finish()
+            return
+        end
+
+        if self.addon.bankOpen and C_Bank.CanUseBank(bankType) then
+            local info = C_Container.GetContainerItemInfo(entry.bagID, entry.slotID)
+            if info and not info.isLocked and info.itemID == entry.itemID and info.hyperlink == entry.hyperlink then
+                C_Container.UseContainerItem(entry.bagID, entry.slotID)
+            end
+        end
+
+        if index > #queue then
+            Finish()
+        end
+    end)
+end
+
 function BankController:DepositBagButtonStack(button)
     if not self.addon.bankOpen or not button or not button.owb_hasItem then return false end
 
     local bankType = self:GetActiveBankType()
     if not C_Bank.CanUseBank(bankType) then return false end
 
-    local sourceButtons = button._owb_virtualStackButtons or { button }
     local queuedSlots = {}
     local seenSlots = {}
-
-    for _, sourceButton in ipairs(sourceButtons) do
-        local bagID = sourceButton and sourceButton.owb_bagID
-        local slotID = sourceButton and sourceButton.owb_slotID
-        if bagID and slotID and BagTypes:IsPlayerBag(bagID) then
-            local slotKey = bagID .. ":" .. slotID
-            if not seenSlots[slotKey] then
-                seenSlots[slotKey] = true
-                local info = C_Container.GetContainerItemInfo(bagID, slotID)
-                if info and not info.isLocked and info.itemID and info.hyperlink then
-                    local location = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
-                    if location and location:IsValid() and C_Bank.IsItemAllowedInBankType(bankType, location) then
-                        tinsert(queuedSlots, {
-                            bagID = bagID,
-                            slotID = slotID,
-                            itemID = info.itemID,
-                            hyperlink = info.hyperlink,
-                        })
-                    end
-                end
-            end
-        end
-    end
+    AppendButtonStackToQueue(queuedSlots, seenSlots, button, QueueDepositEntry, bankType)
 
     if #queuedSlots == 0 then return false end
 

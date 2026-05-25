@@ -67,6 +67,9 @@ Integrations\TSMIntegration.lua
 Integrations\BaganatorImport.lua
 Integrations\Masque.lua
 
+# GUI helpers (before Controllers — BankController uses WindowHelpers at runtime)
+GUI\WindowHelpers.lua
+
 # Controllers
 Controllers\WindowLayoutController.lua
 Controllers\BagsController.lua
@@ -85,7 +88,6 @@ Views\BankTabView.lua
 Views\GuildBankTabView.lua
 
 # GUI
-GUI\WindowHelpers.lua
 GUI\InfoBarFactory.lua
 GUI\InfoBar.lua
 GUI\BagsBar.lua
