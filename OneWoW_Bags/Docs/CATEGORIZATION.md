@@ -66,7 +66,7 @@ Runs when A2/A3 do not return. Items resolved here can reuse **`baseCategoryCach
 
 ### Manual pins (`ResolveManualCategoryName`) — detail
 
-**No PredicateEngine on this path.** Candidates from `customCategoriesV2[*].items` (`tieKey = "c:" .. id`) and `categoryModifications[*].addedItems` (`tieKey = "b:" .. name`). Filtered by `CategoryAppliesTo`, then `pinnedCategoryShowsWhenDisabled` stripping (when false), then `PickBestCandidate`.
+**No PredicateEngine on this path.** Candidates from `customCategoriesV2[*].items` and `categoryModifications[*].addedItems` (candidates carry `tieKey` for API lookups only; assignment ties do not use it). Filtered by `CategoryAppliesTo`, then `pinnedCategoryShowsWhenDisabled` stripping (when false), then `PickBestCandidate`.
 
 ### `#recent` vs Recent overlay
 
@@ -92,14 +92,15 @@ Both participate in the same merged pool as other `SEARCH_CATEGORIES` rows (sort
 | 1 | `ModPriority(db, name)` | **Higher** wins | `categoryModifications[name].priority` or 0. This is the user-facing "Priority" setting (Lowest through Max). |
 | 2 | `isCustom` | Custom wins | When user-facing priorities are equal, a custom category beats a builtin. |
 | 3 | `defaultOrder` | **Lower** wins | From `CATEGORY_DEFINITIONS .priority` via the candidate's `defaultOrder` field; absent = 9999. Only relevant when two builtins tie on user priority. |
-| 4 | `SectionOrderIndexForCategory(g, name)` | **Lower** wins | First section in `sectionOrder` containing the name; unsectioned = `#sectionOrder + 1` |
-| 5 | `searchOrder` | **Lower** wins | From `CATEGORY_DEFINITIONS`; absent = 9999 |
-| 6 | `tieKey` (or `name` if no tieKey) | **Lower** wins | String comparison; custom candidates use `customCategoriesV2` entry ID, builtins use their category name |
+| 4 | `SectionOrderIndexForCategory(g, name)` | **Lower** wins | Index of the first `sectionOrder` entry whose `categorySections[sid].categories` lists the name; unsectioned = `#sectionOrder + 1`. Compares **sections**, not position within a section. |
+| 5 | **List order** (`categoryListOrderMap`) | **Lower** wins | Global rank from `sectionOrder` + each section's `categories[]` in order (Category Manager sidebar). Earlier in the list wins when priorities and section index tie. Rebuilt on `InvalidateCache`. |
+| 6 | `searchOrder` | **Lower** wins | From `CATEGORY_DEFINITIONS`; absent = 9999. Fallback for builtins not yet in any section list. |
+| 7 | Category **name** | Alphabetical | Stable final tie; never uses internal `customCategoriesV2` entry IDs. |
 
 **Where this applies:**
 
-- **Manual pins (phase B1):** Candidates have no `isCustom` or `defaultOrder` fields — tiers 2–3 are skipped (both nil). Tie-breaking: user priority → section order → tieKey (`"c:"` prefix for custom pins, `"b:"` prefix for builtin pins).
-- **Merged pool (phase B6):** Full 6-tier chain. A custom category with the same user-facing priority as a builtin wins (tier 2). A builtin with a higher user-facing priority wins over any custom category (tier 1).
+- **Manual pins (phase B1):** Candidates have no `isCustom` or `defaultOrder` fields — tiers 2–3 are skipped (both nil). Tie-breaking: user priority → section index → list order → `searchOrder` → name.
+- **Merged pool (phase B6):** Full 7-tier chain. A custom category with the same user-facing priority as a builtin wins (tier 2). A builtin with a higher user-facing priority wins over any custom category (tier 1).
 
 ---
 
@@ -111,9 +112,11 @@ Both participate in the same merged pool as other `SEARCH_CATEGORIES` rows (sort
 
 2. **Default order** (`CATEGORY_DEFINITIONS[*].priority`, stored in `CATEGORY_DEFAULT_ORDER`) — an internal numeric value (1–99) controlling where builtin categories appear by default in the header sort order. Exposed as `Categories:GetCategoryDefaultOrder(name)` (unknown names → **50**). Not directly visible to users, but indirectly affects header positioning.
 
-**`searchOrder`** — among matching builtins, **lower** `searchOrder` wins when all higher tiers tie.
+**`searchOrder`** — among matching builtins not placed in a section list, **lower** `searchOrder` wins when all higher tiers tie.
 
-**Section order** (`SectionOrderIndexForCategory`): scans `db.global.sectionOrder` and `categorySections[sid].categories` for the first section containing the category; **lower section index wins** when priorities tie. Categories not in any section get `#sectionOrder + 1`.
+**Section order** (`SectionOrderIndexForCategory`): **lower section index wins** when priorities tie across different sections. Categories not in any section get `#sectionOrder + 1`.
+
+**List order** (`RebuildCategoryListOrderMap`): walks `sectionOrder`, then each section's `categories[]` array in order, assigning a 1-based rank per category name (first occurrence wins). Unlisted names fall back to `displayOrder` (if set), then custom `sortOrder`, then builtin `searchOrder` order, then `categoryOrder`. Drag-reorder in the Category Manager updates `categories[]` and invalidates this map via `InvalidateCategorization`.
 
 ---
 

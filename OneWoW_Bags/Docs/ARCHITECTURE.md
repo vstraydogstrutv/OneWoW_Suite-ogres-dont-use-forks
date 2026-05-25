@@ -298,7 +298,7 @@ CategoryManager:AssignCategories()
 3. **No hyperlink** → `"Other"` (cannot run predicate pool meaningfully).
 4. **Streaming deferral** — if `not C_Item.IsItemDataCachedByID(itemID)`, requests load and returns **`"Other", tentative=true`** so nothing is cached until `GET_ITEM_INFO_RECEIVED` + refresh (sets `OneWoW_Bags._hasPendingTentatives`).
 5. **`baseCategoryCache` hit** — key `PE:GetItemIdentityKey(...) .. "|" .. containerType` — reuse merged-pool result for the same identity in the same container type.
-6. **`PE:BuildProps` + merged candidate pool** — `CollectCustomPredicateCandidates` + all `SEARCH_CATEGORIES` entries; `PickBestCandidate` (priority → custom beats builtin → `defaultOrder` → section order → `searchOrder` → tieKey). Builtin candidates filtered by `disabledCategories` before evaluation; pool then filtered by `CategoryAppliesTo`.
+6. **`PE:BuildProps` + merged candidate pool** — `CollectCustomPredicateCandidates` + all `SEARCH_CATEGORIES` entries; `PickBestCandidate` (priority → custom beats builtin → `defaultOrder` → section index → list order → `searchOrder` → name). Builtin candidates filtered by `disabledCategories` before evaluation; pool then filtered by `CategoryAppliesTo`.
 7. **Inventory slots** — if result is `Weapons` or `Armor` and `enableInventorySlots`, remap to localized equip-slot name when allowed by `CategoryAppliesTo`.
 8. **Disabled fallback** — candidate-pool-derived names only; manual/Junk still return early.
 9. **Tooltip tentative** — if props recorded `_tooltipDataMissing`, return category but **`tentative=true`** so slot cache is not poisoned during cold tooltip/streaming.
@@ -485,7 +485,7 @@ Cache invalidation boundary: `InvalidateCategorization("props")` on `BAG_UPDATE_
 
 **28** builtin rows in `CATEGORY_DEFINITIONS` (including `1W Junk`, `1W Upgrades`, `Recent Items`, crafting split **`Mats`** / **`Reagents`**, `Other`, `Empty`, and search-driven builtins such as `Housing`, `Toys`, `Junk`, etc.). Builtin search categories are collected into `SEARCH_CATEGORIES` sorted by `searchOrder` (ties retain stable relative order from definitions).
 
-Custom predicate categories are mirrored into **`precomputedCustomCands`** when `customCategoriesV2` mutates so per-slot classification avoids repeating filter-mode inference and string lowercasing. During **`ResolveBaseCategory`**, custom predicate hits and builtin **`SEARCH_CATEGORIES`** hits are merged into a **single candidate pool**; tie-breaking: user-facing **priority** (`categoryModifications[].priority`, higher wins) → custom beats builtin at equal priority → `defaultOrder` (lower wins) → section order → `searchOrder` → stable tieKey.
+Custom predicate categories are mirrored into **`precomputedCustomCands`** when `customCategoriesV2` mutates so per-slot classification avoids repeating filter-mode inference and string lowercasing. During **`ResolveBaseCategory`**, custom predicate hits and builtin **`SEARCH_CATEGORIES`** hits are merged into a **single candidate pool**; tie-breaking: user-facing **priority** (higher wins) → custom beats builtin at equal priority → `defaultOrder` (lower wins) → section index → **Category Manager list order** → `searchOrder` → alphabetical name.
 
 ---
 
@@ -705,11 +705,11 @@ The addon folder includes `API/` (`README.md`, `INTEGRATION_GUIDE.md`, `INDEX.md
 
 **Storage (`customCategoriesV2`):** per-row `items` (explicit item IDs, keyed by `tostring(itemID)`), optional `searchExpression` / `filterMode == "search"`, and type / subtype strings vs `C_Item.GetItemClassInfo` / `GetItemSubClassInfo` with `typeMatchMode` where applicable.
 
-**Classification:** explicit `items` pins are resolved only in the **manual** stage of `GetItemCategory` (first). Custom predicate categories (search + type/subtype) and builtin search categories are collected into a merged candidate pool; the winner is picked by user-facing **priority** → custom-wins-ties → `defaultOrder` → section order → `searchOrder` → stable tieKey.
+**Classification:** explicit `items` pins are resolved only in the **manual** stage of `GetItemCategory` (first). Custom predicate categories (search + type/subtype) and builtin search categories are collected into a merged candidate pool; the winner is picked by user-facing **priority** → custom-wins-ties → `defaultOrder` → section index → list order → `searchOrder` → alphabetical name.
 
 **Manual pins (global rule):** at most **one** pin per item ID across all `customCategoriesV2[*].items` and all `categoryModifications[*].addedItems`. `CategoryController:AddItemToCategory` / `AddItemsToCategory` returns `false, owningDisplayName` if the item is already pinned elsewhere; the category manager UI shows `UIErrorsFrame` messages from locale keys `ERR_ITEM_ALREADY_MANUAL_CATEGORY` / `_GENERIC`. Adding to the **same** custom category again is a no-op. `Categories:AddItemToBuiltinCategory` enforces the same rule when called directly.
 
-**Organization:** orphaned categories (fallback), `categorySections` + `sectionOrder`, and `displayOrder` with `"----"`, `"section:id"`, `"section_end"` markers. The **OneWoW Bags** section (`SectionDefaults.SEC_ONEWOW_BAGS`) holds a generated member list (`BuildOnewowMembers`); `CategoryController` and related UI call `SyncOnewowSectionCategories` after changes so unassigned builtins/custom rows stay in that section. Reordering sections (`CategoryController:MoveSectionOrder`) and moving categories within or between sections (`CategoryController:MoveCategoryToSection`) use default `RefreshUI()` so **categorization cache** invalidates when assignment depends on section order.
+**Organization:** orphaned categories (fallback), `categorySections` + `sectionOrder`, and `displayOrder` with `"----"`, `"section:id"`, `"section_end"` markers. The **OneWoW Bags** section (`SectionDefaults.SEC_ONEWOW_BAGS`) holds a generated member list (`BuildOnewowMembers`); `CategoryController` and related UI call `SyncOnewowSectionCategories` after changes so unassigned builtins/custom rows stay in that section. Reordering sections (`CategoryController:MoveSectionOrder`) and moving categories within or between sections (`CategoryController:MoveCategoryToSection`) use default `RefreshUI()` so **categorization cache** and **`categoryListOrderMap`** invalidate when assignment depends on section or list order.
 
 ---
 

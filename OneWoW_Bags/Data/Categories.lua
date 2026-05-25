@@ -93,6 +93,11 @@ local customCategoriesV2 = {}
 -- CollectCustomPredicateCandidates loop can skip a lot of repeat work.
 local precomputedCustomCands = {}
 
+-- Category display name -> 1-based rank from sectionOrder + section.categories.
+-- Rebuilt on InvalidateCache so assignment ties follow Category Manager list order.
+local categoryListOrderMap = {}
+local UNMAPPED_LIST_RANK = 999999
+
 -- C_Item.GetItemClassInfo / GetItemSubClassInfo return localized strings that
 -- are stable for the entire session. Cache the lowercased forms so type-mode
 -- custom categories don't pay the Blizzard API + :lower() cost per slot.
@@ -209,10 +214,77 @@ local function RebuildCustomCandsArray()
     end
 end
 
+local function AssignListRank(map, name, rank)
+    if name and name ~= "" and not map[name] then
+        map[name] = rank
+        return rank + 1
+    end
+    return rank
+end
+
+-- Walk sectionOrder + categories[], then legacy/fallback sources for unlisted names.
+local function RebuildCategoryListOrderMap(g)
+    wipe(categoryListOrderMap)
+    local rank = 1
+
+    if g.sectionOrder and g.categorySections then
+        for _, sid in ipairs(g.sectionOrder) do
+            local sec = g.categorySections[sid]
+            if sec and sec.categories then
+                for _, nm in ipairs(sec.categories) do
+                    rank = AssignListRank(categoryListOrderMap, nm, rank)
+                end
+            end
+        end
+    end
+
+    local displayOrder = g.displayOrder
+    if displayOrder and #displayOrder > 0 then
+        for _, entry in ipairs(displayOrder) do
+            if entry ~= "----" and entry ~= "section_end" and not entry:find("^section:") then
+                rank = AssignListRank(categoryListOrderMap, entry, rank)
+            end
+        end
+    end
+
+    local customRows = {}
+    for _, catData in pairs(customCategoriesV2) do
+        local nm = catData.name
+        if nm and nm ~= "" and not categoryListOrderMap[nm] then
+            tinsert(customRows, { name = nm, sortOrder = catData.sortOrder or 0 })
+        end
+    end
+    sort(customRows, function(a, b)
+        if a.sortOrder ~= b.sortOrder then
+            return a.sortOrder < b.sortOrder
+        end
+        return a.name < b.name
+    end)
+    for _, row in ipairs(customRows) do
+        rank = AssignListRank(categoryListOrderMap, row.name, rank)
+    end
+
+    for _, def in ipairs(SEARCH_CATEGORIES) do
+        rank = AssignListRank(categoryListOrderMap, def.name, rank)
+    end
+
+    local catOrder = g.categoryOrder
+    if catOrder and #catOrder > 0 then
+        for _, nm in ipairs(catOrder) do
+            rank = AssignListRank(categoryListOrderMap, nm, rank)
+        end
+    end
+end
+
+local function CategoryListOrderIndex(catName)
+    return categoryListOrderMap[catName] or UNMAPPED_LIST_RANK
+end
+
 local function InvalidateCache()
     wipe(categoryCache)
     wipe(baseCategoryCache)
     RebuildCustomCandsArray()
+    RebuildCategoryListOrderMap(GetDB().global)
 end
 
 local ALWAYS_APPLY = { ["Other"] = true, ["Empty"] = true }
@@ -271,14 +343,17 @@ local function CandidateBeats(a, b, db, g)
     if sa ~= sb then
         return sa < sb
     end
+    local la = CategoryListOrderIndex(a.name)
+    local lb = CategoryListOrderIndex(b.name)
+    if la ~= lb then
+        return la < lb
+    end
     local oa = a.searchOrder or 9999
     local ob = b.searchOrder or 9999
     if oa ~= ob then
         return oa < ob
     end
-    local ta = a.tieKey or a.name
-    local tb = b.tieKey or b.name
-    return ta < tb
+    return a.name < b.name
 end
 
 local function PickBestCandidate(cands, db, g)
@@ -955,6 +1030,7 @@ function Categories:SetCustomCategories(saved)
         customCategoriesV2 = saved
     end
     RebuildCustomCandsArray()
+    RebuildCategoryListOrderMap(GetDB().global)
 end
 
 --- Return the custom category table for SavedVariables serialization.
