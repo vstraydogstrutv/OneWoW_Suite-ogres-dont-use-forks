@@ -534,35 +534,6 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             infoBarFrame.cleanupBtn = cleanupBtn
         end
 
-        local emptyToggleBtn = CreateFrame("Button", nil, infoBarFrame)
-        emptyToggleBtn:SetSize(22, 22)
-        emptyToggleBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
-        local emptyIcon = emptyToggleBtn:CreateTexture(nil, "ARTWORK")
-        emptyIcon:SetAllPoints()
-        emptyIcon:SetTexture("Interface\\COMMON\\FavoritesIcon")
-        emptyToggleBtn:SetScript("OnClick", function()
-            local controller = GetController()
-            if config.onEmptySlotsToggled then
-                config.onEmptySlotsToggled(controller)
-            elseif controller and controller.ToggleEmptySlots then
-                controller:ToggleEmptySlots()
-            end
-            bar:UpdateViewButtons()
-        end)
-        emptyToggleBtn:SetScript("OnEnter", function(myself)
-            GameTooltip:SetOwner(myself, "ANCHOR_TOP")
-            local controller = GetController()
-            local showing = controller and controller.GetShowEmptySlots and controller:GetShowEmptySlots() or true
-            if showing then
-                GameTooltip:SetText(L["EMPTY_SLOTS_HIDE"], 1, 1, 1)
-            else
-                GameTooltip:SetText(L["EMPTY_SLOTS_SHOW"], 1, 1, 1)
-            end
-            GameTooltip:Show()
-        end)
-        emptyToggleBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        infoBarFrame.emptyToggleBtn = emptyToggleBtn
-
         local searchBox = OneWoW_GUI:CreateEditBox(infoBarFrame, {
             name = config.searchName,
             height = 22,
@@ -609,12 +580,16 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         local bagsHelpBtn
         if OneWoW_GUI.CreateKeywordHelpButton then
             bagsHelpBtn = OneWoW_GUI:CreateKeywordHelpButton(infoBarFrame, { editBox = searchBox, size = 20 })
-            bagsHelpBtn:SetPoint("RIGHT", emptyToggleBtn, "LEFT", -3, 0)
+            bagsHelpBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
         end
 
         if saveSearchBtn then
-            local saveAnchor = bagsHelpBtn or emptyToggleBtn
-            saveSearchBtn:SetPoint("RIGHT", saveAnchor, "LEFT", -3, 0)
+            local saveAnchor = bagsHelpBtn
+            if saveAnchor then
+                saveSearchBtn:SetPoint("RIGHT", saveAnchor, "LEFT", -3, 0)
+            else
+                saveSearchBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
+            end
         end
 
         searchBox:SetPoint("TOPLEFT", infoBarFrame, "TOPLEFT", leftInset, searchY)
@@ -623,7 +598,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         elseif bagsHelpBtn then
             searchBox:SetPoint("TOPRIGHT", bagsHelpBtn, "TOPLEFT", -3, 0)
         else
-            searchBox:SetPoint("TOPRIGHT", emptyToggleBtn, "TOPLEFT", -3, 0)
+            searchBox:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
         end
 
         if OneWoW_GUI.AttachSearchTooltip then
@@ -680,12 +655,6 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
 
         if infoBarFrame.categoriesBtn then
             infoBarFrame.categoriesBtn:SetShown(showHeader)
-        end
-
-        if infoBarFrame.emptyToggleBtn then
-            local showing = controller and controller.GetShowEmptySlots and controller:GetShowEmptySlots() or true
-            infoBarFrame.emptyToggleBtn:SetAlpha(showing and 1.0 or 0.35)
-            infoBarFrame.emptyToggleBtn:SetShown(showSearch and (rawMode == "list" or rawMode == "tab"))
         end
 
         if infoBarFrame.searchBox then
@@ -763,20 +732,18 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             end
         end
 
-        if infoBarFrame.emptyToggleBtn and showSearch then
-            infoBarFrame.emptyToggleBtn:ClearAllPoints()
-            infoBarFrame.emptyToggleBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
-        end
-
         if infoBarFrame.searchHelpBtn and showSearch then
             infoBarFrame.searchHelpBtn:ClearAllPoints()
-            infoBarFrame.searchHelpBtn:SetPoint("RIGHT", infoBarFrame.emptyToggleBtn, "LEFT", -3, 0)
+            infoBarFrame.searchHelpBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
         end
 
         if infoBarFrame.saveSearchBtn and showSearch then
             infoBarFrame.saveSearchBtn:ClearAllPoints()
-            local saveAnchor = infoBarFrame.searchHelpBtn or infoBarFrame.emptyToggleBtn
-            infoBarFrame.saveSearchBtn:SetPoint("RIGHT", saveAnchor, "LEFT", -3, 0)
+            if infoBarFrame.searchHelpBtn then
+                infoBarFrame.saveSearchBtn:SetPoint("RIGHT", infoBarFrame.searchHelpBtn, "LEFT", -3, 0)
+            else
+                infoBarFrame.saveSearchBtn:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
+            end
         end
 
         if infoBarFrame.searchBox and showSearch then
@@ -787,7 +754,7 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
             elseif infoBarFrame.searchHelpBtn then
                 infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame.searchHelpBtn, "TOPLEFT", -3, 0)
             else
-                infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame.emptyToggleBtn, "TOPLEFT", -3, 0)
+                infoBarFrame.searchBox:SetPoint("TOPRIGHT", infoBarFrame, "TOPRIGHT", -rightInset, searchY)
             end
         end
     end

@@ -511,9 +511,11 @@ function BankGUI:RefreshLayout()
             local _, _, _, contentWidth = WH:GetLayoutMetrics(columnsKey, 15)
             local viewMode = OneWoW_Bags.BankController:Get("viewMode")
             local layoutHeight
+            local bankShowEmpty = OneWoW_Bags.BankController:GetShowEmptySlots()
             local categoryViewContext = controller:CreateViewContext({
                 sectionManager = BankCategoryManager,
                 containerType = db.global.bankShowWarband and "warband_bank" or "character_bank",
+                showEmptySlots = bankShowEmpty,
                 sortMode = db.global.itemSort,
                 getCollapsed = function(kind, key)
                     if kind == "category" then
@@ -540,6 +542,7 @@ function BankGUI:RefreshLayout()
             })
             local tabViewContext = controller:CreateViewContext({
                 sectionManager = BankCategoryManager,
+                showEmptySlots = bankShowEmpty,
                 sortMode = db.global.itemSort,
                 getCollapsed = function(kind, key)
                     if kind == "tab" then

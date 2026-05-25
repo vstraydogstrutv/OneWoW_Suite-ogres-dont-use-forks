@@ -34,13 +34,7 @@ end
 
 function GuildBankController:GetShowEmptySlots()
     local db = self.addon:GetDB()
-    return db.global.showEmptySlots
-end
-
-function GuildBankController:ToggleEmptySlots()
-    local db = self.addon:GetDB()
-    db.global.showEmptySlots = not db.global.showEmptySlots
-    self.addon:RequestLayoutRefresh("guild")
+    return db.global.guildBankShowEmptySlots
 end
 
 function GuildBankController:OnSearchChanged(text)

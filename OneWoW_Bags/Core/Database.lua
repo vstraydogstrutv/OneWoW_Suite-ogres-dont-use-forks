@@ -43,6 +43,9 @@ local defaults = {
         selectedBag = nil,
         disabledCategories = {},
         showEmptySlots = true,
+        bankShowEmptySlots = true,
+        warbandBankShowEmptySlots = true,
+        guildBankShowEmptySlots = true,
         mainFramePosition = {},
         bagColumns = 15,
         bankColumns = 15,
@@ -236,7 +239,27 @@ function OneWoW_Bags:InitializeDatabase()
                 end
             end
         end },
+        { version = 18, name = "split_empty_slots_settings", run = function(d)
+            self:MigrateSplitEmptySlotsSettings(d)
+        end },
     })
+end
+
+function OneWoW_Bags:MigrateSplitEmptySlotsSettings(db)
+    local g = db.global
+    local legacy = g.showEmptySlots
+    if legacy == nil then
+        legacy = true
+    end
+    if g.bankShowEmptySlots == nil then
+        g.bankShowEmptySlots = legacy
+    end
+    if g.warbandBankShowEmptySlots == nil then
+        g.warbandBankShowEmptySlots = legacy
+    end
+    if g.guildBankShowEmptySlots == nil then
+        g.guildBankShowEmptySlots = legacy
+    end
 end
 
 function OneWoW_Bags:MigrateSplitWarbandBankSettings(db)

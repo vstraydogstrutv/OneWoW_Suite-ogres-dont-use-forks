@@ -19,7 +19,10 @@ function View:Layout(contentFrame, buttons, width, viewContext)
         OneWoW_Bags:SortButtons(list, db.global.itemSort)
     end
 
-    local showEmpty = db.global.showEmptySlots
+    local showEmpty = viewContext and viewContext.showEmptySlots
+    if showEmpty == nil then
+        showEmpty = db.global.showEmptySlots
+    end
 
     local cols = floor((width + spacing) / (iconSize + spacing))
     cols = max(cols, 1)

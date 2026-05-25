@@ -193,6 +193,7 @@ function GUI:RefreshLayout()
             local viewContext = controller:CreateViewContext({
                 sectionManager = CategoryManager,
                 containerType = "backpack",
+                showEmptySlots = OneWoW_Bags.BagsController:GetShowEmptySlots(),
                 sortMode = db.global.itemSort,
                 getCollapsed = function(kind, key)
                     if kind == "category" then

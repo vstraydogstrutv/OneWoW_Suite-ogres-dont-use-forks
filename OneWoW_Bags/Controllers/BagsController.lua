@@ -67,12 +67,6 @@ function BagsController:GetShowEmptySlots()
     return db.global.showEmptySlots
 end
 
-function BagsController:ToggleEmptySlots()
-    local db = self.addon:GetDB()
-    db.global.showEmptySlots = not db.global.showEmptySlots
-    self.addon:RequestLayoutRefresh("bags")
-end
-
 function BagsController:GetExpansionFilter()
     return self.addon.activeExpansionFilter
 end

@@ -190,6 +190,7 @@ OneWoW_Bags.Locales["enUS"] = {
     ["TOGGLE_OFF"] = "Off",
 
     ["SECTION_PERSONAL_BANK"] = "Personal Bank",
+    ["SECTION_GUILD_BANK"] = "Guild Bank",
     ["SETTING_ENABLE_BANK"] = "Enable Bank UI",
     ["DESC_ENABLE_BANK"] = "Replace the default bank window with the OneWoW Bags interface.",
     ["SETTING_BANK_OVERLAYS"] = "Bank Item Overlays",
@@ -291,6 +292,10 @@ OneWoW_Bags.Locales["enUS"] = {
     ["TAB_BAGS"] = "Bags",
     ["TAB_PERSONAL_BANK"] = "Personal Bank",
     ["TAB_WARBAND_BANK"] = "Warband Bank",
+    ["TAB_GUILD_BANK"] = "Guild Bank",
+
+    ["SETTING_SHOW_EMPTY_SLOTS"] = "Show Empty Slots",
+    ["DESC_SHOW_EMPTY_SLOTS"] = "Show empty inventory slots in List and Tab views. Bag and Category views always show all slots.",
 
     ["SETTING_SHOW_SEARCH_BAR"] = "Show Search Bar",
     ["DESC_SHOW_SEARCH_BAR"] = "Show or hide the search bar on the bags window.",

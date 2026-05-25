@@ -42,7 +42,7 @@ local function CompactGapFromIndex(idx)
     return COMPACT_GAP_STEPS[idx] or 1
 end
 
-local SETTINGS_SECTION_KEYS = { "TAB_GENERAL", "TAB_BAGS", "TAB_PERSONAL_BANK", "TAB_WARBAND_BANK" }
+local SETTINGS_SECTION_KEYS = { "TAB_GENERAL", "TAB_BAGS", "TAB_PERSONAL_BANK", "TAB_WARBAND_BANK", "TAB_GUILD_BANK" }
 local activeSettingsSection = 1
 local settingsSectionDropdownText = nil
 
@@ -679,6 +679,18 @@ local function BuildBagsTab(sc, db)
         end,
     })
 
+    dispY, _, _ = OneWoW_GUI:CreateToggleRow(dispContainer, {
+        yOffset = dispY,
+        label = L["SETTING_SHOW_EMPTY_SLOTS"],
+        description = L["DESC_SHOW_EMPTY_SLOTS"],
+        isEnabled = true,
+        value = db.global.showEmptySlots,
+        onLabel = L["TOGGLE_ON"], offLabel = L["TOGGLE_OFF"],
+        onValueChange = function(newVal)
+            ApplySetting("showEmptySlots", newVal)
+        end,
+    })
+
     dispY = dispY - 6
 
     dispY = BuildSliderRow(dispContainer, L["SETTING_BAG_COLUMNS"], dispY, {
@@ -920,6 +932,7 @@ local MODE_KEYS = {
             categorySpacing   = "bankCategorySpacing",
             compactCategories = "bankCompactCategories",
             compactGap        = "bankCompactGap",
+            showEmptySlots    = "bankShowEmptySlots",
         },
         applier = {
             rarityColor       = "bankRarityColor",
@@ -934,6 +947,7 @@ local MODE_KEYS = {
             categorySpacing   = "bankCategorySpacing",
             compactCategories = "bankCompactCategories",
             compactGap        = "bankCompactGap",
+            showEmptySlots    = "showBankEmptySlots",
         },
     },
     warband = {
@@ -951,6 +965,7 @@ local MODE_KEYS = {
             categorySpacing   = "warbandBankCategorySpacing",
             compactCategories = "warbandBankCompactCategories",
             compactGap        = "warbandBankCompactGap",
+            showEmptySlots    = "warbandBankShowEmptySlots",
         },
         applier = {
             rarityColor       = "warbandBankRarityColor",
@@ -965,6 +980,7 @@ local MODE_KEYS = {
             categorySpacing   = "warbandBankCategorySpacing",
             compactCategories = "warbandBankCompactCategories",
             compactGap        = "warbandBankCompactGap",
+            showEmptySlots    = "showWarbandBankEmptySlots",
         },
     },
 }
@@ -1187,6 +1203,20 @@ local function BuildBankTabFor(mode, sc, db)
     })
     addToggle(catHeadersRefresh, function() return db.global[dbKeys.showCatHeaders] end)
 
+    local emptySlotsRefresh
+    dispY, emptySlotsRefresh = OneWoW_GUI:CreateToggleRow(dispContainer, {
+        yOffset = dispY,
+        label = L["SETTING_SHOW_EMPTY_SLOTS"],
+        description = L["DESC_SHOW_EMPTY_SLOTS"],
+        isEnabled = true,
+        value = db.global[dbKeys.showEmptySlots],
+        onLabel = L["TOGGLE_ON"], offLabel = L["TOGGLE_OFF"],
+        onValueChange = function(newVal)
+            ApplySetting(applierKeys.showEmptySlots, newVal)
+        end,
+    })
+    addToggle(emptySlotsRefresh, function() return db.global[dbKeys.showEmptySlots] end)
+
     dispY = dispY - 6
 
     local colSliderContainer, colSliderLbl
@@ -1270,6 +1300,30 @@ local function BuildBankTabFor(mode, sc, db)
     yOffset = FinalizeContainer(dispContainer, dispY, yOffset)
 
     applyEnabled(db.global.enableBankUI)
+
+    sc:SetHeight(abs(yOffset) + 40)
+end
+
+local function BuildGuildBankTab(sc, db)
+    local yOffset = -15
+
+    yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_GUILD_BANK"], yOffset = yOffset })
+    local dispContainer = BuildContainer(sc, yOffset)
+    local dispY = -10
+
+    dispY, _, _ = OneWoW_GUI:CreateToggleRow(dispContainer, {
+        yOffset = dispY,
+        label = L["SETTING_SHOW_EMPTY_SLOTS"],
+        description = L["DESC_SHOW_EMPTY_SLOTS"],
+        isEnabled = true,
+        value = db.global.guildBankShowEmptySlots,
+        onLabel = L["TOGGLE_ON"], offLabel = L["TOGGLE_OFF"],
+        onValueChange = function(newVal)
+            ApplySetting("showGuildBankEmptySlots", newVal)
+        end,
+    })
+
+    yOffset = FinalizeContainer(dispContainer, dispY, yOffset)
 
     sc:SetHeight(abs(yOffset) + 40)
 end
@@ -1365,6 +1419,7 @@ function Settings:Create()
     BuildBagsTab(tabContents[2].scrollContent, db)
     BuildBankTabFor("personal", tabContents[3].scrollContent, db)
     BuildBankTabFor("warband", tabContents[4].scrollContent, db)
+    BuildGuildBankTab(tabContents[5].scrollContent, db)
 
     SwitchTab(1)
 

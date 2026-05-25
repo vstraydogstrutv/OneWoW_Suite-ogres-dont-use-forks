@@ -138,6 +138,7 @@ function WindowLayoutController:CreateViewContext(config)
     end
 
     context.containerType = config.containerType
+    context.showEmptySlots = config.showEmptySlots
 
     return context
 end

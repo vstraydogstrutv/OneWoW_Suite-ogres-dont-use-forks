@@ -434,7 +434,7 @@ Layout functions (`GetSortedCategoryNames`, `GetSectionedLayout`) live in `Categ
 
 Each view exposes `Layout(...)` and returns total content height.
 
-**ListView** — Grid with optional reagent-bag segment after normal bags. Computes column count from **content width** and icon spacing when not overridden by bag/category views. Honors `showEmptySlots`.
+**ListView** — Grid with optional reagent-bag segment after normal bags. Computes column count from **content width** and icon spacing when not overridden by bag/category views. Honors per-container empty-slot settings via `viewContext.showEmptySlots` (`showEmptySlots` bags, `bankShowEmptySlots`, `warbandBankShowEmptySlots`, `guildBankShowEmptySlots`; List and Tab views only).
 
 **CategoryView** — Thin wrapper: runs `CategoryManager:AssignCategories()` + `:GetItemsByCategory()`, then calls `H.GetSectionedLayout` and `H.LayoutCategoryContent` from the shared pipeline with bag-specific settings.
 
@@ -456,7 +456,7 @@ Each view exposes `Layout(...)` and returns total content height.
 
 - `sortButtons(buttons, overrideSortMode, overrideSubSortMode)` → `addon:SortButtons(..., overrideSortMode or config.sortMode, overrideSubSortMode)`
 - `acquireSection` / `acquireSectionHeader` / `acquireDivider` — delegate to `sectionManager` when present
-- `getCollapsed` / `setCollapsed` / `requestRelayout` / `containerType`
+- `getCollapsed` / `setCollapsed` / `requestRelayout` / `containerType` / `showEmptySlots` (optional; List/Tab layout)
 
 **Collapse `kind` values in use:**
 
@@ -558,7 +558,7 @@ Persisted layout and behavior state lives under `OneWoW_Bags_DB.global`. The def
 
 ### Display — bags
 
-`viewMode`, `bagColumns`, `scale`, `iconSize`, `itemSort`, `compactCategories`, `compactGap`, `categorySpacing`, `showCategoryHeaders`, `showEmptySlots`, `hideScrollBar`, `showBagsBar`, `showMoneyBar`, `showCurrencyTrackerCapHighlight`, `showHeaderBar`, `showSearchBar`, `selectedBag`
+`viewMode`, `bagColumns`, `scale`, `iconSize`, `itemSort`, `compactCategories`, `compactGap`, `categorySpacing`, `showCategoryHeaders`, `showEmptySlots`, `bankShowEmptySlots`, `warbandBankShowEmptySlots`, `guildBankShowEmptySlots`, `hideScrollBar`, `showBagsBar`, `showMoneyBar`, `showCurrencyTrackerCapHighlight`, `showHeaderBar`, `showSearchBar`, `selectedBag`
 
 ### Search
 
@@ -572,7 +572,7 @@ Personal bank: `bankViewMode`, `bankColumns`, `bankCompactCategories`, `bankComp
 
 Warband bank (parallel keys, selected at runtime by `bankShowWarband`): `warbandBankViewMode`, `warbandBankColumns`, `warbandBankCompactCategories`, `warbandBankCompactGap`, `warbandBankCategorySpacing`, `showWarbandBankCategoryHeaders`, `warbandBankHideScrollBar`, `showWarbandBankBagsBar`, `showWarbandBankSearchBar`, `showWarbandBankHeaderBar`, `warbandBankSelectedTab`, `collapsedWarbandBankTabSections`.
 
-Guild bank: `guildBankViewMode`, `guildBankSelectedTab`.
+Guild bank: `guildBankViewMode`, `guildBankSelectedTab`, `guildBankShowEmptySlots`.
 
 Shared: `bankShowWarband` (active mode), `bankFramePosition`, `collapsedBankCategorySections` (categories are global across modes).
 

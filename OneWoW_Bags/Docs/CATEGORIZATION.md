@@ -157,7 +157,7 @@ Both participate in the same merged pool as other `SEARCH_CATEGORIES` rows (sort
 
 **"1W Junk"**, **"1W Upgrades"**, and **"Recent Items"** have no `search`/`searchOrder` in definitions — **Upgrades** and **Recent** are enforced as **slot overlays** in `GetItemCategory`; **Junk** is resolved inside **`ResolveBaseCategory`** before the merged pool.
 
-**"Empty"** appears in definitions and default `displayOrder` for import/ordering. **`GetItemCategory` never returns `"Empty"`** for an item. Empty slots are handled by list/bag views and `showEmptySlots`, not this classifier.
+**"Empty"** appears in definitions and default `displayOrder` for import/ordering. **`GetItemCategory` never returns `"Empty"`** for an item. Empty slots are handled by List/Tab layout and per-container `*ShowEmptySlots` settings, not this classifier.
 
 **"Other"** has no search expression — it is the implicit fallback when nothing else matches.
 

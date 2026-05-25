@@ -128,6 +128,10 @@ SettingsController.appliers = {
         db.global.showSearchBar = value
         self.addon:RequestLayoutRefresh("bags")
     end,
+    showEmptySlots = function(self, db, value)
+        db.global.showEmptySlots = value
+        self.addon:RequestLayoutRefresh("bags")
+    end,
     searchHistoryLimit = function(_, db, value)
         local limit = min(max(floor(value or 0), 0), 10)
         db.global.searchHistoryLimit = limit
@@ -274,6 +278,10 @@ SettingsController.appliers = {
         db.global.showBankCategoryHeaders = value
         self.addon:RequestLayoutRefresh("bank")
     end,
+    showBankEmptySlots = function(self, db, value)
+        db.global.bankShowEmptySlots = value
+        self.addon:RequestLayoutRefresh("bank_related")
+    end,
     bankColumns = function(self, db, value)
         db.global.bankColumns = value
         self:Debounce("bankColumns", 0.15, function()
@@ -358,6 +366,10 @@ SettingsController.appliers = {
             self.addon:RequestLayoutRefresh("bank")
         end
     end,
+    showWarbandBankEmptySlots = function(self, db, value)
+        db.global.warbandBankShowEmptySlots = value
+        self.addon:RequestLayoutRefresh("bank_related")
+    end,
     warbandBankColumns = function(self, db, value)
         db.global.warbandBankColumns = value
         self:Debounce("warbandBankColumns", 0.15, function()
@@ -387,5 +399,9 @@ SettingsController.appliers = {
                 self.addon:RequestLayoutRefresh("bank")
             end
         end)
+    end,
+    showGuildBankEmptySlots = function(self, db, value)
+        db.global.guildBankShowEmptySlots = value
+        self.addon:RequestLayoutRefresh("guild")
     end,
 }

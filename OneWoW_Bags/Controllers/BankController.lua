@@ -29,6 +29,7 @@ local PERSONAL_KEYS = {
     expansionFilter  = "enableBankExpansionFilter",
     selectedTab      = "bankSelectedTab",
     collapsedTabs    = "collapsedBankTabSections",
+    showEmptySlots   = "bankShowEmptySlots",
 }
 
 local WARBAND_KEYS = {
@@ -47,6 +48,7 @@ local WARBAND_KEYS = {
     expansionFilter  = "enableWarbandBankExpansionFilter",
     selectedTab      = "warbandBankSelectedTab",
     collapsedTabs    = "collapsedWarbandBankTabSections",
+    showEmptySlots   = "warbandBankShowEmptySlots",
 }
 
 BankController.PERSONAL_KEYS = PERSONAL_KEYS
@@ -106,14 +108,7 @@ function BankController:SetViewMode(mode)
 end
 
 function BankController:GetShowEmptySlots()
-    local db = self.addon:GetDB()
-    return db.global.showEmptySlots
-end
-
-function BankController:ToggleEmptySlots()
-    local db = self.addon:GetDB()
-    db.global.showEmptySlots = not db.global.showEmptySlots
-    self.addon:RequestLayoutRefresh("bank")
+    return self:Get("showEmptySlots")
 end
 
 function BankController:GetExpansionFilter()

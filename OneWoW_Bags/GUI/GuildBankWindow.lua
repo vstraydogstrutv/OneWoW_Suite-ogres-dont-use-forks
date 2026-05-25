@@ -203,6 +203,7 @@ function GuildBankGUI:RefreshLayout()
             local _, _, _, contentWidth = WH:GetLayoutMetrics("bankColumns", 15)
             local tabViewContext = controller:CreateViewContext({
                 sectionManager = GuildBankCategoryManager,
+                showEmptySlots = OneWoW_Bags.GuildBankController:GetShowEmptySlots(),
                 sortMode = db.global.itemSort,
                 getCollapsed = function(kind, key)
                     if kind == "tab" then
