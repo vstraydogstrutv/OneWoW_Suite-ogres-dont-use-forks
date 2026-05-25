@@ -8,7 +8,7 @@ local PE = OneWoW_GUI.PredicateEngine
 local L = OneWoW_Bags.L
 local Events = OneWoW_Bags.Events
 
-local ipairs, pairs = ipairs, pairs
+local ipairs, pairs, tinsert = ipairs, pairs, tinsert
 local hooksecurefunc = hooksecurefunc
 
 local C_Timer = C_Timer
@@ -270,32 +270,58 @@ function OneWoW_Bags:FlushPendingLayoutRefreshes()
     refreshScheduled = false
     local Profile = self.Profile
     if Profile then Profile:Start("RequestLayoutRefresh.Flush") end
+
+    local guiKeys = {}
     for guiKey in pairs(pendingRefresh) do
-        pendingRefresh[guiKey] = nil
-        local reason = pendingRefreshReason[guiKey]
-        pendingRefreshReason[guiKey] = nil
-        local gui = self[guiKey]
-        local setKey = GUI_TO_SET[guiKey]
-        local backingSet = setKey and self[setKey]
-        local visible = gui and (gui.IsShown == nil or gui:IsShown())
-        local building = backingSet and backingSet._building == true
-        if gui and gui.RefreshLayout and visible and not building then
-            if Profile and reason then
-                Profile:Start(guiKey .. ":RefreshLayout.reason." .. reason)
-            end
-            lastRefreshTime[guiKey] = GetTime()
-            -- Expose the active reason so downstream callers (Categories,
-            -- predicate sweep) can tag their counters by pass. Cleared in
-            -- the finally-style block below so an empty/unknown reason
-            -- falls back to the unsuffixed counters.
-            self._currentRefreshReason = reason
-            gui:RefreshLayout()
-            self._currentRefreshReason = nil
-            if Profile and reason then
-                Profile:Stop(guiKey .. ":RefreshLayout.reason." .. reason)
+        tinsert(guiKeys, guiKey)
+    end
+
+    local needsReschedule = false
+    for _, guiKey in ipairs(guiKeys) do
+        if not pendingRefresh[guiKey] then
+            -- Cleared by an earlier iteration or external path.
+        else
+            local reason = pendingRefreshReason[guiKey]
+            local gui = self[guiKey]
+            local setKey = GUI_TO_SET[guiKey]
+            local backingSet = setKey and self[setKey]
+            local visible = gui and (gui.IsShown == nil or gui:IsShown())
+            local building = backingSet and backingSet._building == true
+
+            if not gui or not gui.RefreshLayout then
+                pendingRefresh[guiKey] = nil
+                pendingRefreshReason[guiKey] = nil
+            elseif visible and not building then
+                pendingRefresh[guiKey] = nil
+                pendingRefreshReason[guiKey] = nil
+                if Profile and reason then
+                    Profile:Start(guiKey .. ":RefreshLayout.reason." .. reason)
+                end
+                lastRefreshTime[guiKey] = GetTime()
+                self._currentRefreshReason = reason
+                gui:RefreshLayout()
+                self._currentRefreshReason = nil
+                if Profile and reason then
+                    Profile:Stop(guiKey .. ":RefreshLayout.reason." .. reason)
+                end
+            else
+                needsReschedule = true
             end
         end
     end
+
+    if needsReschedule then
+        for guiKey in pairs(pendingRefresh) do
+            if pendingRefresh[guiKey] then
+                refreshScheduled = true
+                C_Timer.After(0, function()
+                    self:FlushPendingLayoutRefreshes()
+                end)
+                break
+            end
+        end
+    end
+
     if Profile then Profile:Stop("RequestLayoutRefresh.Flush") end
 end
 
@@ -1387,6 +1413,9 @@ local runtimeEventHandlers = {
     end,
     GET_ITEM_INFO_RECEIVED = function(itemID)
         Events:OnItemInfoReceived(itemID)
+    end,
+    PLAYER_ENTERING_WORLD = function(isLogin, isReload)
+        Events:OnPlayerEnteringWorld(isLogin, isReload)
     end,
     SKILL_LINES_CHANGED = function(...)
         PE:InvalidateKnownProfessions()

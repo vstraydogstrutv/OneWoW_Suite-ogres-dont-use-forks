@@ -50,6 +50,7 @@ function GuildBankGUI:InitMainWindow()
         defaultHeight = Constants.GUI.WINDOW_HEIGHT,
         onHide = function()
             if not isInitialized then return end
+            GuildBankGUI._layoutInProgress = false
             GuildBankGUI:CleanupAllViews()
             GuildBankInfoBar:ClearSearch()
             GuildBankLog:Hide()
@@ -104,6 +105,9 @@ function GuildBankGUI:InitMainWindow()
     })
 
     WH:SetupResizeButton(MainWindow, GuildBankGUI, "guildBankFramePosition")
+    WH:AttachLayoutOnShow(MainWindow, "guild", function()
+        return GuildBankSet.isBuilt
+    end)
     isInitialized = true
 
     if not cleanupEventFrame then
@@ -160,14 +164,7 @@ function GuildBankGUI:RefreshLayout()
     local Profile = OneWoW_Bags.Profile
     Profile:Start("GuildBankGUI:RefreshLayout")
 
-    if GuildBankGUI._layoutInProgress then
-        Profile:Start("GuildBankGUI:RefreshLayout.skipped.reentrant")
-        Profile:Stop("GuildBankGUI:RefreshLayout.skipped.reentrant")
-        Profile:Stop("GuildBankGUI:RefreshLayout")
-        return
-    end
-    GuildBankGUI._layoutInProgress = true
-
+    WH:RunGuardedLayoutRefresh(GuildBankGUI, "guild", function()
     controller:Refresh({
         mainWindow = MainWindow,
         isBuilt = function()
@@ -229,8 +226,8 @@ function GuildBankGUI:RefreshLayout()
             GuildBankBar:UpdateFreeSlots(GuildBankSet:GetFreeSlotCount(), GuildBankSet:GetSlotCount())
         end,
     })
+    end)
 
-    GuildBankGUI._layoutInProgress = false
     Profile:Stop("GuildBankGUI:RefreshLayout")
 end
 
@@ -286,6 +283,7 @@ function GuildBankGUI:IsShown()
 end
 
 function GuildBankGUI:FullReset()
+    GuildBankGUI._layoutInProgress = false
     GuildBankLog:Reset()
     GuildBankSet:ReleaseAll()
     GuildBankInfoBar:Reset()

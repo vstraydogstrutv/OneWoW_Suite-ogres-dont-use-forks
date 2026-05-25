@@ -689,6 +689,18 @@ The addon folder includes `API/` (`README.md`, `INTEGRATION_GUIDE.md`, `INDEX.md
 
 `RequestVisualRefresh` refreshes set visuals then triggers a matching layout refresh for the same target scope.
 
+### Layout refresh hardening (post-load)
+
+Inventory windows share `WindowLayoutController:Refresh`, which runs `cleanup` (hide all item buttons) then view layout (`Show` matching buttons). Failures between those steps produce empty chrome with valid slot counts.
+
+| Mechanism | Location | Behavior |
+|-----------|----------|----------|
+| Guarded layout | `WindowHelpers:RunGuardedLayoutRefresh` | Wraps each GUI `RefreshLayout` body in `pcall`; always clears `_layoutInProgress`. Reentrant calls schedule `RequestLayoutRefresh(..., "reentrant_followup")` instead of returning silently. |
+| Guard reset | `onHide` / `FullReset` on `GUI`, `BankGUI`, `GuildBankGUI` | Clears `_layoutInProgress` so a stuck in-flight layout cannot survive window close. |
+| Coalesced flush | `FlushPendingLayoutRefreshes` | Clears `pendingRefresh` only when a refresh actually runs. Skips (hidden frame or `Set._building`) leave pending set and reschedule flush on the next frame. |
+| Zone enter | `Events:OnPlayerEnteringWorld` | After zone load (not initial login), refreshes each visible built UI (`bags` / `bank` / `guild`) immediately and again after 0.1s. |
+| Frame show | `WindowHelpers:AttachLayoutOnShow` | Hooks main window `OnShow` to request `show_onshow` when the backing set is already built. |
+
 ---
 
 ## Performance Patterns

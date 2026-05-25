@@ -8,6 +8,7 @@ local Events = OneWoW_Bags.Events
 Events.dirtyBags = {}
 Events.RuntimeEvents = {
     "PLAYER_LOGIN",
+    "PLAYER_ENTERING_WORLD",
     "BAG_UPDATE",
     "BAG_UPDATE_DELAYED",
     "ITEM_LOCK_CHANGED",
@@ -117,6 +118,31 @@ local function BuildAllBagDirtySet()
         dirty[bagID] = true
     end
     return dirty
+end
+
+function Events:OnPlayerEnteringWorld(isLogin)
+    if isLogin then return end
+
+    local addon = OneWoW_Bags
+    local function refreshVisible(reason)
+        if addon.GUI and addon.GUI.IsShown and addon.GUI:IsShown()
+            and addon.BagSet and addon.BagSet.isBuilt then
+            addon:RequestLayoutRefresh("bags", reason)
+        end
+        if addon.bankOpen and addon.BankGUI and addon.BankGUI.IsShown and addon.BankGUI:IsShown()
+            and addon.BankSet and addon.BankSet.isBuilt then
+            addon:RequestLayoutRefresh("bank", reason)
+        end
+        if addon.guildBankOpen and addon.GuildBankGUI and addon.GuildBankGUI.IsShown and addon.GuildBankGUI:IsShown()
+            and addon.GuildBankSet and addon.GuildBankSet.isBuilt then
+            addon:RequestLayoutRefresh("guild", reason)
+        end
+    end
+
+    refreshVisible("entering_world")
+    C_Timer.After(0.1, function()
+        refreshVisible("entering_world_delayed")
+    end)
 end
 
 function Events:OnBagUpdate(bagID)

@@ -22,6 +22,36 @@ local ITEM_GRID_H_PADDING = 2
 local SCROLLBAR_RESERVE_WIDTH = 12
 local scratchTables = {}
 
+--- Run a layout refresh body with reentrancy guard and pcall so _layoutInProgress cannot stick.
+---@param owner table GUI module (GUI, BankGUI, GuildBankGUI)
+---@param targetKey "bags"|"bank"|"guild"
+---@param body function
+function WH:RunGuardedLayoutRefresh(owner, targetKey, body)
+    if owner._layoutInProgress then
+        OneWoW_Bags:RequestLayoutRefresh(targetKey, "reentrant_followup")
+        return
+    end
+    owner._layoutInProgress = true
+    local ok, err = pcall(body)
+    owner._layoutInProgress = false
+    if not ok then
+        print("|cffff4444OneWoW_Bags:|r layout refresh failed (" .. tostring(targetKey) .. "):", err)
+    end
+end
+
+--- Request a coalesced layout refresh when a main window becomes visible.
+---@param mainWindow table
+---@param targetKey "bags"|"bank"|"guild"
+---@param isBuiltFn function
+function WH:AttachLayoutOnShow(mainWindow, targetKey, isBuiltFn)
+    if not mainWindow or not isBuiltFn then return end
+    mainWindow:HookScript("OnShow", function()
+        if isBuiltFn() then
+            OneWoW_Bags:RequestLayoutRefresh(targetKey, "show_onshow")
+        end
+    end)
+end
+
 ---@param key string
 ---@return table scratch
 function WH:GetScratchTable(key)

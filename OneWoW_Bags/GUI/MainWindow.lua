@@ -50,6 +50,7 @@ function GUI:InitMainWindow()
         defaultHeight = Constants.GUI.WINDOW_HEIGHT,
         onHide = function()
             if not isInitialized then return end
+            GUI._layoutInProgress = false
             GUI:CleanupAllViews()
             InfoBar:ClearSearch()
             OneWoW_Bags.activeExpansionFilter = nil
@@ -92,6 +93,9 @@ function GUI:InitMainWindow()
     })
 
     WH:SetupResizeButton(MainWindow, GUI, "mainFramePosition")
+    WH:AttachLayoutOnShow(MainWindow, "bags", function()
+        return BagSet.isBuilt
+    end)
     isInitialized = true
 
     if not cleanupEventFrame then
@@ -148,14 +152,7 @@ function GUI:RefreshLayout()
     local Profile = OneWoW_Bags.Profile
     Profile:Start("GUI:RefreshLayout[bags]")
 
-    if GUI._layoutInProgress then
-        Profile:Start("GUI:RefreshLayout[bags].skipped.reentrant")
-        Profile:Stop("GUI:RefreshLayout[bags].skipped.reentrant")
-        Profile:Stop("GUI:RefreshLayout[bags]")
-        return
-    end
-    GUI._layoutInProgress = true
-
+    WH:RunGuardedLayoutRefresh(GUI, "bags", function()
     controller:Refresh({
         mainWindow = MainWindow,
         isBuilt = function()
@@ -238,8 +235,8 @@ function GUI:RefreshLayout()
             BagsBar:RefreshTrackerCounts()
         end,
     })
+    end)
 
-    GUI._layoutInProgress = false
     Profile:Stop("GUI:RefreshLayout[bags]")
 end
 
@@ -294,6 +291,7 @@ function GUI:IsShown()
 end
 
 function GUI:FullReset()
+    GUI._layoutInProgress = false
     Categories:EndRecentExpiryTicker()
     OneWoW_Bags.BagSet:ReleaseAll()
     CategoryManager:ReleaseAllSections()

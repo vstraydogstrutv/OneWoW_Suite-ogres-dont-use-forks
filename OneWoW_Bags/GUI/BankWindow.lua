@@ -136,6 +136,7 @@ function BankGUI:InitMainWindow()
         defaultHeight = Constants.GUI.WINDOW_HEIGHT,
         onHide = function()
             if not isInitialized then return end
+            BankGUI._layoutInProgress = false
             forcedPurchasePromptBankType = nil
             BankGUI:RestoreBlizzardPurchaseButton()
             if purchasePromptFrame then
@@ -196,6 +197,9 @@ function BankGUI:InitMainWindow()
     })
 
     WH:SetupResizeButton(MainWindow, BankGUI, "bankFramePosition")
+    WH:AttachLayoutOnShow(MainWindow, "bank", function()
+        return BankSet.isBuilt
+    end)
     isInitialized = true
 
     if not cleanupEventFrame then
@@ -444,14 +448,7 @@ function BankGUI:RefreshLayout()
     local Profile = OneWoW_Bags.Profile
     Profile:Start("BankGUI:RefreshLayout")
 
-    if BankGUI._layoutInProgress then
-        Profile:Start("BankGUI:RefreshLayout.skipped.reentrant")
-        Profile:Stop("BankGUI:RefreshLayout.skipped.reentrant")
-        Profile:Stop("BankGUI:RefreshLayout")
-        return
-    end
-    BankGUI._layoutInProgress = true
-
+    WH:RunGuardedLayoutRefresh(BankGUI, "bank", function()
     self:SyncBuiltTabState()
 
     controller:Refresh({
@@ -580,8 +577,8 @@ function BankGUI:RefreshLayout()
             BankGUI:RefreshPurchasePrompt(layoutHeight)
         end,
     })
+    end)
 
-    BankGUI._layoutInProgress = false
     Profile:Stop("BankGUI:RefreshLayout")
 end
 
@@ -676,6 +673,7 @@ function BankGUI:IsShown()
 end
 
 function BankGUI:FullReset()
+    BankGUI._layoutInProgress = false
     BankSet:ReleaseAll()
     BankInfoBar:Reset()
     BankBar:Reset()
