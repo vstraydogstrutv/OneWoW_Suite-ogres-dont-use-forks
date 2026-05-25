@@ -329,7 +329,8 @@ Search uses `OneWoW_GUI.PredicateEngine` (tokenizer, AST, evaluation). For full 
 - `#recent` is registered at `Data\Categories.lua` load via `PE:RegisterKeyword` (Bags-only): GUID map + duration only. `#new` / `IsNew` in the engine use `C_NewItems` via `BuildProps` (can lag until `InvalidatePropsCache`); `#recent` does not use that cached flag for classification
 - `#catalyst` / `#catalystupgrade` are registered by the engine itself with call-time `TransmogUpgradeMaster_API` checks (no-op if the addon is absent)
 - `WH:FilterBySearch` expands saved searches, then compiles the expression once per refresh and evaluates per button via `PE:CheckItem`
-- Search history is UI-owned by `InfoBarFactory` and stored in `db.global.searchHistory` up to `db.global.searchHistoryLimit` entries; a limit of `0` disables history.
+- Search history is UI-owned by `InfoBarFactory` on every container search box; stored in `db.global.searchHistory` up to `db.global.searchHistoryLimit` (Settings → General → Search; `0` disables the focus dropdown).
+- Save-search button (`savedSearches = true`) on bags, personal/warband bank, and guild bank info bars; popups register once at `InfoBarFactory` load with query passed via `StaticPopup` data; writes to global `savedSearches`. Manage names in Settings → General → Search (not Bags).
 
 ```
 InfoBar / BankInfoBar / GuildBankInfoBar: search changed
@@ -495,7 +496,7 @@ Three windows share the same structural pattern (shell from `WindowHelpers:Creat
 
 **Guild bank:** `GuildBankLog` is a separate movable panel listening for `GUILDBANKLOG_UPDATE`, toggled from the guild bank bar; it is not a child of the main guild bank scroll content.
 
-**Info bars:** Bags use hand-built `InfoBar.lua`. Bank and guild bank use `InfoBarFactory:Create` with per-window config (controller, view mode list for the dropdown, expansion filter flags, DB keys).
+**Info bars:** All three windows use `InfoBarFactory:Create` via thin config modules (`InfoBar.lua`, `BankInfoBar.lua`, `GuildBankInfoBar.lua`): controller, view mode dropdown, expansion filter (bags/bank), shared search history dropdown, and `savedSearches` save button where enabled.
 
 ### Sorting (`Data\Sorting.lua` → `OneWoW_Bags:SortButtons`)
 

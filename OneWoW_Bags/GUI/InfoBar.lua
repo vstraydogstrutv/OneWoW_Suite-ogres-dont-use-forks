@@ -9,7 +9,6 @@ OneWoW_Bags.InfoBar = OneWoW_Bags.InfoBarFactory:Create({
     controllerKey = "BagsController",
     viewModeDBKey = "viewMode",
     searchName = "OneWoW_BagsSearch",
-    searchHistory = true,
     savedSearches = true,
     showHeaderFn = function(db) return BagsChromeOverride(db, "showHeaderBar") end,
     showSearchFn = function(db) return BagsChromeOverride(db, "showSearchBar") end,

@@ -369,6 +369,26 @@ local function BuildSavedSearchList(container, yOffset)
     return yOffset - 176
 end
 
+local function BuildSearchSettingsSection(sc, db, yOffset)
+    yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_SEARCH"], yOffset = yOffset })
+    local searchContainer = BuildContainer(sc, yOffset)
+    local searchY = -10
+
+    searchY = BuildSliderRow(searchContainer, L["SETTING_SEARCH_HISTORY_LIMIT"], searchY, {
+        description = L["DESC_SEARCH_HISTORY_LIMIT"],
+        minVal = 0, maxVal = 10, step = 1, currentVal = db.global.searchHistoryLimit,
+        onChange = function(val)
+            ApplySetting("searchHistoryLimit", val)
+        end,
+        width = 240, fmt = "%d",
+    })
+
+    searchY = searchY - 6
+    searchY = BuildSavedSearchList(searchContainer, searchY)
+
+    return FinalizeContainer(searchContainer, searchY, yOffset)
+end
+
 local function BuildGeneralTab(sc, db)
     local yOffset = OneWoW_GUI:CreateSettingsPanel(sc, { yOffset = -15, addonName = "OneWoW_Bags" })
     yOffset = yOffset - 10
@@ -530,6 +550,8 @@ local function BuildGeneralTab(sc, db)
     })
 
     yOffset = FinalizeContainer(placeContainer, placeY, yOffset)
+
+    yOffset = BuildSearchSettingsSection(sc, db, yOffset)
 
     sc:SetHeight(abs(yOffset) + 40)
 end
@@ -710,24 +732,6 @@ local function BuildBagsTab(sc, db)
     })
 
     yOffset = FinalizeContainer(dispContainer, dispY, yOffset)
-
-    yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_SEARCH"], yOffset = yOffset })
-    local searchContainer = BuildContainer(sc, yOffset)
-    local searchY = -10
-
-    searchY = BuildSliderRow(searchContainer, L["SETTING_SEARCH_HISTORY_LIMIT"], searchY, {
-        description = L["DESC_SEARCH_HISTORY_LIMIT"],
-        minVal = 0, maxVal = 10, step = 1, currentVal = db.global.searchHistoryLimit,
-        onChange = function(val)
-            ApplySetting("searchHistoryLimit", val)
-        end,
-        width = 240, fmt = "%d",
-    })
-
-    searchY = searchY - 6
-    searchY = BuildSavedSearchList(searchContainer, searchY)
-
-    yOffset = FinalizeContainer(searchContainer, searchY, yOffset)
 
     yOffset = OneWoW_GUI:CreateSection(sc, { title = L["SECTION_CATEGORIES"], yOffset = yOffset })
     local catContainer = BuildContainer(sc, yOffset)

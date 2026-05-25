@@ -8,6 +8,7 @@ OneWoW_Bags.BankInfoBar = OneWoW_Bags.InfoBarFactory:Create({
     showHeaderFn = function() return OneWoW_Bags.BankController:Get("showHeaderBar") ~= false end,
     showSearchFn = function() return OneWoW_Bags.BankController:Get("showSearchBar") ~= false end,
     searchName = "OneWoW_BankSearch",
+    savedSearches = true,
     viewModes = {
         { mode = "list",     labelKey = "VIEW_LIST" },
         { mode = "category", labelKey = "VIEW_CATEGORY" },

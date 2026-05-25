@@ -23,11 +23,92 @@ local StaticPopup_Show = StaticPopup_Show
 
 OneWoW_Bags.InfoBarFactory = {}
 
+local function SaveSearch(name, query)
+    local SS = OneWoW_Bags.SavedSearches
+    if not SS then return end
+
+    local ok, err = SS:Set(name, query)
+    if not ok and err and L[err] then
+        print(L[err])
+    end
+end
+
+local function ShowSavedSearchOverwrite(name, query)
+    StaticPopup_Show("ONEWOW_BAGS_OVERWRITE_SAVED_SEARCH", name, nil, {
+        name = name,
+        query = query,
+    })
+end
+
+local function RegisterSavedSearchPopups()
+    if StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"] then return end
+
+    StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"] = {
+        text = L["SAVED_SEARCH_NAME_PROMPT"],
+        hasEditBox = true,
+        button1 = L["SAVED_SEARCH_SAVE"],
+        button2 = L["POPUP_CANCEL"],
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        OnAccept = function(dialog)
+            local SS = OneWoW_Bags.SavedSearches
+            local query = dialog.data and dialog.data.query
+            if not SS or not query then return end
+
+            local name = dialog.EditBox:GetText()
+            local normalized, err = SS:NormalizeName(name)
+            if not normalized then
+                if err and L[err] then print(L[err]) end
+                C_Timer.After(0, function()
+                    local reopened = StaticPopup_Show("ONEWOW_BAGS_SAVE_SEARCH", nil, nil, dialog.data)
+                    if reopened and reopened.EditBox then
+                        reopened.EditBox:SetText(name or "")
+                        reopened.EditBox:SetFocus()
+                    end
+                end)
+                return
+            end
+
+            local existingKey = SS:FindKey(normalized)
+            if existingKey then
+                ShowSavedSearchOverwrite(existingKey, query)
+                return
+            end
+
+            SaveSearch(normalized, query)
+        end,
+        EditBoxOnEnterPressed = function(editBox)
+            local parent = editBox:GetParent()
+            StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"].OnAccept(parent)
+            parent:Hide()
+        end,
+        EditBoxOnEscapePressed = function(editBox)
+            editBox:GetParent():Hide()
+        end,
+    }
+
+    StaticPopupDialogs["ONEWOW_BAGS_OVERWRITE_SAVED_SEARCH"] = {
+        text = L["SAVED_SEARCH_OVERWRITE_CONFIRM"],
+        button1 = L["SAVED_SEARCH_OVERWRITE"],
+        button2 = L["POPUP_CANCEL"],
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        OnAccept = function(_, data)
+            if data and data.name and data.query then
+                SaveSearch(data.name, data.query)
+            end
+        end,
+    }
+end
+
+RegisterSavedSearchPopups()
+
 function OneWoW_Bags.InfoBarFactory:Create(config)
     local bar = {}
     local infoBarFrame = nil
     local searchHistoryMenu = nil
-    local pendingSavedSearchQuery = nil
 
     local ROW1_H = 28
     local ROW2_H = 28
@@ -59,8 +140,6 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
     end
 
     local function GetSearchHistoryLimit()
-        if config.searchHistory ~= true then return 0 end
-
         local db = OneWoW_Bags:GetDB()
         if not db then return 0 end
 
@@ -140,94 +219,15 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         end
     end
 
-    local function SaveSearch(name, query)
-        local SS = OneWoW_Bags.SavedSearches
-        if not SS then return end
-
-        local ok, err = SS:Set(name, query)
-        if not ok and err and L[err] then
-            print(L[err])
-        end
-    end
-
-    local function ShowSavedSearchOverwrite(name, query)
-        StaticPopup_Show("ONEWOW_BAGS_OVERWRITE_SAVED_SEARCH", name, nil, {
-            name = name,
-            query = query,
-        })
-    end
-
     local function ShowSavedSearchNamePopup(searchBox)
-        pendingSavedSearchQuery = GetRealSearchText(searchBox)
-        if not pendingSavedSearchQuery then return end
+        local query = GetRealSearchText(searchBox)
+        if not query then return end
 
-        local popup = StaticPopup_Show("ONEWOW_BAGS_SAVE_SEARCH")
+        local popup = StaticPopup_Show("ONEWOW_BAGS_SAVE_SEARCH", nil, nil, { query = query })
         if popup and popup.EditBox then
             popup.EditBox:SetText("")
             popup.EditBox:SetFocus()
         end
-    end
-
-    local function RegisterSavedSearchPopups()
-        if StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"] then return end
-
-        StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"] = {
-            text = L["SAVED_SEARCH_NAME_PROMPT"],
-            hasEditBox = true,
-            button1 = L["SAVED_SEARCH_SAVE"],
-            button2 = L["POPUP_CANCEL"],
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-            OnAccept = function(dialog)
-                local SS = OneWoW_Bags.SavedSearches
-                if not SS or not pendingSavedSearchQuery then return end
-
-                local name = dialog.EditBox:GetText()
-                local normalized, err = SS:NormalizeName(name)
-                if not normalized then
-                    if err and L[err] then print(L[err]) end
-                    C_Timer.After(0, function()
-                        local reopened = StaticPopup_Show("ONEWOW_BAGS_SAVE_SEARCH")
-                        if reopened and reopened.EditBox then
-                            reopened.EditBox:SetText(name or "")
-                            reopened.EditBox:SetFocus()
-                        end
-                    end)
-                    return
-                end
-
-                local existingKey = SS:FindKey(normalized)
-                if existingKey then
-                    ShowSavedSearchOverwrite(existingKey, pendingSavedSearchQuery)
-                    return
-                end
-
-                SaveSearch(normalized, pendingSavedSearchQuery)
-            end,
-            EditBoxOnEnterPressed = function(editBox)
-                local parent = editBox:GetParent()
-                StaticPopupDialogs["ONEWOW_BAGS_SAVE_SEARCH"].OnAccept(parent)
-                parent:Hide()
-            end,
-            EditBoxOnEscapePressed = function(editBox)
-                editBox:GetParent():Hide()
-            end,
-        }
-
-        StaticPopupDialogs["ONEWOW_BAGS_OVERWRITE_SAVED_SEARCH"] = {
-            text = L["SAVED_SEARCH_OVERWRITE_CONFIRM"],
-            button1 = L["SAVED_SEARCH_OVERWRITE"],
-            button2 = L["POPUP_CANCEL"],
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-            OnAccept = function(_, data)
-                if data and data.name and data.query then
-                    SaveSearch(data.name, data.query)
-                end
-            end,
-        }
     end
 
     local function IsMouseOverSearchHistory(searchBox)
@@ -554,7 +554,6 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
 
         local saveSearchBtn
         if config.savedSearches then
-            RegisterSavedSearchPopups()
             saveSearchBtn = OneWoW_GUI:CreateAtlasIconButton(infoBarFrame, {
                 atlas = "perks-owned-large",
                 width = 20,
@@ -604,26 +603,24 @@ function OneWoW_Bags.InfoBarFactory:Create(config)
         if OneWoW_GUI.AttachSearchTooltip then
             OneWoW_GUI:AttachSearchTooltip(searchBox)
         end
-        if config.searchHistory then
-            searchBox:HookScript("OnEditFocusGained", function(myself)
-                ShowSearchHistoryMenu(myself)
+        searchBox:HookScript("OnEditFocusGained", function(myself)
+            ShowSearchHistoryMenu(myself)
+        end)
+        searchBox:HookScript("OnEditFocusLost", function(myself)
+            CommitSearchText(myself)
+            C_Timer.After(0.05, function()
+                if not IsMouseOverSearchHistory(myself) then
+                    HideSearchHistoryMenu()
+                end
             end)
-            searchBox:HookScript("OnEditFocusLost", function(myself)
-                CommitSearchText(myself)
-                C_Timer.After(0.05, function()
-                    if not IsMouseOverSearchHistory(myself) then
-                        HideSearchHistoryMenu()
-                    end
-                end)
-            end)
-            searchBox:HookScript("OnEnterPressed", function(myself)
-                CommitSearchText(myself)
-                myself:ClearFocus()
-            end)
-            searchBox:HookScript("OnEscapePressed", function()
-                HideSearchHistoryMenu()
-            end)
-        end
+        end)
+        searchBox:HookScript("OnEnterPressed", function(myself)
+            CommitSearchText(myself)
+            myself:ClearFocus()
+        end)
+        searchBox:HookScript("OnEscapePressed", function()
+            HideSearchHistoryMenu()
+        end)
         infoBarFrame.searchBox = searchBox
         infoBarFrame.searchHelpBtn = bagsHelpBtn
         UpdateSaveSearchButton(searchBox)
