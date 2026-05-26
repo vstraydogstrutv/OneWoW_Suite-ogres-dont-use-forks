@@ -304,5 +304,16 @@ function ns:InitializeDatabase()
                 end
             end
         end },
+        -- v5: NormalizeAllLists now backfills the per-list pinned-window UI
+        -- state introduced for the Notes-parity pinned tracker (opacity,
+        -- collapsed, lockMove, lockResize, hideCompleted) and splits the old
+        -- combined `pinnedLocked` into independent move/resize locks. v4 ran
+        -- before those defaults existed in the normalizer, so re-run it once
+        -- for already-migrated saves. Idempotent — subsequent loads no-op.
+        { version = 5, name = "backfill_pinned_ui_state", run = function()
+            if ns.TrackerData and ns.TrackerData.NormalizeAllLists then
+                ns.TrackerData:NormalizeAllLists()
+            end
+        end },
     })
 end
