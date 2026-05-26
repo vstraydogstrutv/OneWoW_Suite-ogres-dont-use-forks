@@ -23,4 +23,5 @@ README text eol=lf
 *.ogg binary
 *.mp3 binary
 *.ttf binary
+*.otf binary
 *.luac binary

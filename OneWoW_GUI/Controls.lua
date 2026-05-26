@@ -475,8 +475,12 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
                 tinsert(elements, { frame = row, type = "checkbox", height = 26 })
 
             else
+                -- Items may opt into rendering their label in a custom font
+                -- (e.g. font pickers want each row drawn in its own typeface
+                -- as a live preview). Falls back to the global UI font.
+                local rowHeight = item.fontPath and 28 or 26
                 local btn = CreateFrame("Button", "OneWoWGUI_DropItem_" .. uid .. "_" .. elemIdx, scrollChild, "BackdropTemplate")
-                btn:SetSize(scrollChild:GetWidth() or (menu:GetWidth() - 20), 26)
+                btn:SetSize(scrollChild:GetWidth() or (menu:GetWidth() - 20), rowHeight)
                 btn:SetBackdrop(Constants.BACKDROP_SIMPLE)
 
                 if activeValue == item.value then
@@ -486,7 +490,7 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
                 end
 
                 local txt = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-                OneWoW_GUI:SafeSetFont(txt, OneWoW_GUI:GetFont(), 10)
+                OneWoW_GUI:SafeSetFont(txt, item.fontPath or OneWoW_GUI:GetFont(), item.fontSize or 10)
                 txt:SetPoint("LEFT", btn, "LEFT", 8, 0)
                 txt:SetPoint("RIGHT", btn, "RIGHT", -4, 0)
                 txt:SetJustifyH("LEFT")
@@ -517,7 +521,7 @@ function OneWoW_GUI:AttachFilterMenu(dropdown, options)
 
                 btn.filterKey = item.text:lower()
                 btn:Hide()
-                tinsert(elements, { frame = btn, type = "item", height = 28, filterKey = btn.filterKey })
+                tinsert(elements, { frame = btn, type = "item", height = rowHeight + 2, filterKey = btn.filterKey })
             end
         end
 

@@ -313,6 +313,7 @@ OneWoW.Locales["enUS"] = {
     ["TIPS_ITEMTRACKER_EQUIPPED"] = "Equipped",
     ["TIPS_ITEMTRACKER_AUCTION"] = "Auction",
     ["TIPS_ITEMTRACKER_WARBAND"] = "Warband Bank",
+    ["TIPS_ITEMTRACKER_HOLD_SHIFT"] = "<Hold Shift for rank breakdown>",
     ["TIPS_ITEMTRACKER_VENDORS_HEADER"]         = "Sold by Vendors",
     ["TIPS_ITEMTRACKER_INSTANCES_HEADER"]       = "Drops from Instances",
     ["TIPS_ITEMTRACKER_GENERAL_LOOT"]           = "General Loot",

@@ -386,6 +386,15 @@ function OneWoW:InitializeDatabase()
             if cfg.position and outerRename[cfg.position] then
                 cfg.position = outerRename[cfg.position]
             end
+            -- Overlays historically stored fontFamily as a raw LSM name (e.g.
+            -- "Hack"). Other addons store the OneWoW_GUI key ("hack"). Migrate
+            -- so the whole suite uses the same canonical key. LSM-only fonts
+            -- with no hardcoded equivalent (e.g. "Poppins SemiBold") stay as
+            -- their LSM name, which is also their unified key.
+            if cfg.fontFamily then
+                local migrated = OneWoW_GUI:MigrateLSMFontName(cfg.fontFamily)
+                if migrated then cfg.fontFamily = migrated end
+            end
             if cfg.effectColor and cfg.effectColor ~= "none" and not cfg.bgEnabled then
                 cfg.bgEnabled = true
                 cfg.bgStyle = cfg.effectAtlas or "Solid-Circle"

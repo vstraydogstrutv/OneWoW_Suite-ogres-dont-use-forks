@@ -497,15 +497,12 @@ local function ApplyItemLevelToButton(button, item, itemLink, classID, itemLocat
         local container = GetOrCreateContainer(button)
         button.onewow_ilvl = OneWoW_GUI:CreateFS(container, 10)
     end
-    local fontPath = (OneWoW_GUI and OneWoW_GUI.GetFont and OneWoW_GUI:GetFont()) or "Fonts\\FRIZQT__.TTF"
-    local fontName = cfg.fontFamily
-    if fontName then
-        local LSM = LibStub("LibSharedMedia-3.0", true)
-        if LSM then
-            local path = LSM:Fetch("font", fontName)
-            if path then
-                fontPath = path
-            end
+    local fontPath = OneWoW_GUI:GetFont() or "Fonts\\FRIZQT__.TTF"
+    local fontKey = OneWoW_GUI:MigrateLSMFontName(cfg.fontFamily) or cfg.fontFamily
+    if fontKey then
+        local path = OneWoW_GUI:GetFontByKey(fontKey)
+        if path then
+            fontPath = path
         end
     end
     OneWoW_GUI:SafeSetFont(button.onewow_ilvl, fontPath, cfg.fontSize or 10, cfg.fontOutline or "OUTLINE")

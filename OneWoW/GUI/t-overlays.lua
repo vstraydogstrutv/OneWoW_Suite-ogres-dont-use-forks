@@ -725,7 +725,7 @@ local function ShowOverlayDetail(split, feature, selectedRow)
         modeHdr:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
         yOffset = yOffset - modeHdr:GetStringHeight() - 10
 
-        local hasPawn = _G.PawnShouldItemLinkHaveUpgradeArrow ~= nil
+        local hasPawn = PawnShouldItemLinkHaveUpgradeArrow ~= nil
 
         local pawnStatus = OneWoW_GUI:CreateFS(dsc, 12)
         pawnStatus:SetPoint("TOPLEFT", dsc, "TOPLEFT", 12, yOffset)
@@ -1017,7 +1017,7 @@ local function ShowOverlayDetail(split, feature, selectedRow)
         whitelistSummary:SetWordWrap(false)
 
         local function GetAltEntries()
-            local charAPI = _G.OneWoW_AltTracker_Character_API
+            local charAPI = OneWoW_AltTracker_Character_API
             if not charAPI or not charAPI.GetAllCharacters then return {}, nil end
             local currentKey = charAPI.GetCurrentCharacterKey and charAPI.GetCurrentCharacterKey()
             return charAPI.GetAllCharacters() or {}, currentKey
@@ -1329,12 +1329,7 @@ local function ShowOverlayDetail(split, feature, selectedRow)
         fsSlider:SetPoint("TOPLEFT", dsc, "TOPLEFT", 12, yOffset)
         yOffset = yOffset - 36 - 10
 
-        local LSM = LibStub("LibSharedMedia-3.0", true)
-        local fontList = {}
-        if LSM then
-            fontList = LSM:List("font") or {}
-        end
-        table.sort(fontList)
+        local fontList = OneWoW_GUI:GetFontList()
 
         local fontLabel = OneWoW_GUI:CreateFS(dsc, 12)
         fontLabel:SetPoint("TOPLEFT", dsc, "TOP", 20, rightY)
@@ -1342,14 +1337,29 @@ local function ShowOverlayDetail(split, feature, selectedRow)
         fontLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
         rightY = rightY - fontLabel:GetStringHeight() - 6
 
-        local currentFont = reg:GetOverlaySetting(featureId, "fontFamily") or "Friz Quadrata TF"
-        local fontDD, fontDDText = OneWoW_GUI:CreateDropdown(dsc, { width = 240, text = currentFont })
+        -- Legacy values may be raw LSM names ("Hack") for fonts that have a
+        -- hardcoded OneWoW key ("hack"); migrate on read so the dropdown's
+        -- selection highlight matches the merged list.
+        local function ResolveOverlayFontKey()
+            local raw = reg:GetOverlaySetting(featureId, "fontFamily")
+            return OneWoW_GUI:MigrateLSMFontName(raw) or raw or "default"
+        end
+
+        local currentKey = ResolveOverlayFontKey()
+        local currentInfo = OneWoW_GUI:GetFontInfoByKey(currentKey)
+        local currentLabel = currentInfo and currentInfo.label or "WoW Default"
+        local fontDD, fontDDText = OneWoW_GUI:CreateDropdown(dsc, { width = 240, text = currentLabel })
         OneWoW_GUI:AttachFilterMenu(fontDD, {
             searchable = true,
             buildItems = function()
                 local items = {}
-                for _, name in ipairs(fontList) do
-                    table.insert(items, { text = name, value = name })
+                for _, entry in ipairs(fontList) do
+                    tinsert(items, {
+                        text = entry.label,
+                        value = entry.key,
+                        fontPath = entry.file,
+                        fontSize = 13,
+                    })
                 end
                 return items
             end,
@@ -1358,7 +1368,7 @@ local function ShowOverlayDetail(split, feature, selectedRow)
                 reg:SetOverlaySetting(featureId, "fontFamily", value)
                 OneWoW.OverlayEngine:Refresh()
             end,
-            getActiveValue = function() return reg:GetOverlaySetting(featureId, "fontFamily") end,
+            getActiveValue = ResolveOverlayFontKey,
         })
         fontDD:SetPoint("TOPLEFT",  dsc, "TOP",      20,  rightY)
         fontDD:SetPoint("TOPRIGHT", dsc, "TOPRIGHT", -12, rightY)
