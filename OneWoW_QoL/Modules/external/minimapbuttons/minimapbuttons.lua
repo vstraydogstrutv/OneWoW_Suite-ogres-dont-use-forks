@@ -21,8 +21,9 @@ local MinimapButtonsModule = {
 local RawClearAllPoints = UIParent.ClearAllPoints
 local RawSetPoint       = UIParent.SetPoint
 local RawSetScale       = UIParent.SetScale
+local RawSetParent      = UIParent.SetParent
 
-local IS_RETAIL = (_G.WOW_PROJECT_ID == _G.WOW_PROJECT_MAINLINE)
+local IS_RETAIL = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 
 -- ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -33,9 +34,11 @@ local CONTAINER_LEVEL  = 7
 
 local hubButton        = nil
 local containerFrame   = nil
+local hiddenContainer  = nil          -- parent for buttons whose pref is "hide"
 local collectedButtons = {}
 local collectedNames   = {}
 local collectedMap     = {}
+local hiddenButtons    = {}           -- [frame] = true for currently-hidden buttons
 local enhancedRow      = {}
 local searchBox        = nil
 local searchFilter     = ""
@@ -82,7 +85,7 @@ local function ScheduleRelayout()
 end
 
 local function GetSettings()
-    local addon = _G.OneWoW_QoL
+    local addon = OneWoW_QoL
     if not addon or not addon.db then return {} end
     local mods = addon.db.global.modules
     if not mods["minimapbuttons"] then mods["minimapbuttons"] = {} end
@@ -99,20 +102,44 @@ local function GetSettings()
     if s.growDirection   == nil then s.growDirection    = "down"      end
     if s.hideCollected   == nil then s.hideCollected   = true        end
     if s.showTooltips    == nil then s.showTooltips    = true        end
-    if not s.whitelist       then s.whitelist       = {}          end
-    if not s.blacklist       then s.blacklist       = {}          end
-    if not s.mbbWhitelistSeed then
-        s.mbbWhitelistSeed = true
-        if #s.whitelist == 0 then
-            for _, n in ipairs({
-                "ZygorGuidesViewerMapIcon",
-                "TrinketMenu_IconFrame",
-                "CodexBrowserIcon",
-            }) do
-                table.insert(s.whitelist, n)
+
+    -- The old text-input whitelist / blacklist never worked reliably (see the
+    -- bug report that triggered this rewrite). Drop them on first load so
+    -- users don't carry around stale entries.
+    s.whitelist        = nil
+    s.blacklist        = nil
+    s.mbbWhitelistSeed = nil
+
+    -- Unified per-button preference model with three states:
+    --
+    --   "mini" — collected into the OneWoW panel (default for new entries)
+    --   "map"  — left on the minimap (button stays where the addon put it)
+    --   "hide" — hidden entirely (reparented to an offscreen hidden frame)
+    --
+    -- The DB remembers the user's choice across sessions so addons being
+    -- temporarily disabled don't reset their preference.
+    --
+    --   s.buttons[frameName] = {
+    --       pref        = "mini" | "map" | "hide",
+    --       seen        = boolean,
+    --       displayName = string,
+    --   }
+    if not s.buttons then s.buttons = {} end
+
+    -- One-shot schema upgrade. v1 was the binary "show" / "hide" pair shipped
+    -- briefly between this and the previous rewrite; map it onto the ternary
+    -- "mini" / "map" / "hide" so "hide" doesn't silently change meaning.
+    if (s.buttonsSchema or 1) < 2 then
+        for _, info in pairs(s.buttons) do
+            if info.pref == "show" then
+                info.pref = "mini"
+            elseif info.pref == "hide" then
+                info.pref = "map"
             end
         end
+        s.buttonsSchema = 2
     end
+
     return s
 end
 
@@ -143,15 +170,81 @@ local function ShowDisableReloadDialog()
     StaticPopup_Show("ONEWOW_MMBTNS_RELOAD")
 end
 
-local function IsBlacklisted(frameName)
-    if not frameName then return false end
-    local lower = frameName:lower()
-    local s = GetSettings()
-    for _, name in ipairs(s.blacklist) do
-        if name and name:lower() == lower then return true end
+-- ─── Per-button preference model ────────────────────────────────────────────
+
+-- Derive a friendly UI label from a raw frame name. LibDBIcon frames follow
+-- "LibDBIcon10_<Addon>" so the addon name shows up cleanly in the settings
+-- list. Anything else falls back to the raw frame name.
+local function MakeDisplayName(frameName, hint)
+    if type(hint) == "string" and hint ~= "" and not hint:find("^LibDBIcon10_") then
+        return hint
     end
-    return false
+    if type(frameName) ~= "string" then return tostring(frameName or "?") end
+    local addonName = frameName:match("^LibDBIcon10_(.+)$")
+    if addonName then return addonName end
+    return frameName
 end
+
+local VALID_PREFS = { mini = true, map = true, hide = true }
+
+local function RegisterDetectedButton(frameName, hint)
+    if not frameName or frameName == "" then return end
+    if BLIZZARD_SKIP[frameName] or frameName == OWN_BUTTON_NAME then return end
+    local s = GetSettings()
+    local info = s.buttons[frameName]
+    if not info then
+        info = { pref = "mini", seen = true, displayName = MakeDisplayName(frameName, hint) }
+        s.buttons[frameName] = info
+    else
+        info.seen = true
+        if not VALID_PREFS[info.pref] then info.pref = "mini" end
+        -- Refresh displayName if it was previously missing or if the new hint
+        -- is more user-friendly than what we had.
+        local better = MakeDisplayName(frameName, hint)
+        if not info.displayName or info.displayName == "" or info.displayName == frameName then
+            info.displayName = better
+        end
+    end
+end
+
+local function GetButtonPref(frameName)
+    if not frameName then return "mini" end
+    local s = GetSettings()
+    local info = s.buttons[frameName]
+    if info and VALID_PREFS[info.pref] then return info.pref end
+    return "mini"
+end
+
+local function SetButtonPref(frameName, pref)
+    if not frameName or not VALID_PREFS[pref] then return end
+    local s = GetSettings()
+    local info = s.buttons[frameName]
+    if not info then
+        info = { pref = pref, seen = false, displayName = MakeDisplayName(frameName) }
+        s.buttons[frameName] = info
+    else
+        info.pref = pref
+    end
+end
+
+local function RemoveKnownButton(frameName)
+    if not frameName then return end
+    local s = GetSettings()
+    s.buttons[frameName] = nil
+end
+
+local function ResetAllSeenFlags()
+    local s = GetSettings()
+    for _, info in pairs(s.buttons) do
+        info.seen = false
+    end
+end
+
+MinimapButtonsModule.MakeDisplayName       = MakeDisplayName
+MinimapButtonsModule.RegisterDetectedButton = RegisterDetectedButton
+MinimapButtonsModule.GetButtonPref          = GetButtonPref
+MinimapButtonsModule.SetButtonPref          = SetButtonPref
+MinimapButtonsModule.RemoveKnownButton      = RemoveKnownButton
 
 local function GetCurrentIcon()
     if OneWoW_GUI and OneWoW_GUI.GetBrandIcon then
@@ -227,13 +320,6 @@ local function isMinimapButton(frame)
     return nameMatchesButtonPattern(frameName)
 end
 
-local function isButtonCollected(frame)
-    if not frame or not frame.GetName then return false end
-    local n = frame:GetName()
-    if not n then return false end
-    return collectedNames[n] == true
-end
-
 local function updateLayoutIfVisibilityChanged(frame)
     if not frame or not frame._OneWoWMBBCollected then return end
     -- During LayoutContainer we Hide() every collected button; hooksecurefunc would
@@ -261,7 +347,7 @@ local function SyncLibDBIconRadiusToMinimapShape()
     local lib = LibStub and LibStub("LibDBIcon-1.0", true)
     if not lib or not lib.SetButtonRadius then return end
     local shape = "ROUND"
-    if _G.GetMinimapShape then
+    if GetMinimapShape then
         shape = GetMinimapShape() or "ROUND"
     end
     if type(shape) == "string" and strupper(shape) == "SQUARE" then
@@ -298,22 +384,6 @@ local function RefreshAllLibDBIcons()
     for _, n in ipairs(list) do
         pcall(lib.Show, lib, n)
     end
-end
-
-local function getButtonByName(buttonName)
-    local parent = _G
-    for frameName in buttonName:gmatch("[^%.]+") do
-        parent = parent[frameName]
-        if type(parent) ~= "table" then return nil end
-    end
-    return parent
-end
-
-local function shouldCollectMinimapScan(frame)
-    if isButtonCollected(frame) or not isValidFrame(frame) or IsBlacklisted(frame:GetName() or "") then
-        return false
-    end
-    return isMinimapButton(frame)
 end
 
 -- ─── Button Collection (MBB-style: reparent, raw scale, hooksecurefunc Show/Hide)
@@ -410,23 +480,191 @@ local function UncollectButton(frame)
 
     -- Drop layout anchors from the collector grid; otherwise icons stay where the panel was.
     RawClearAllPoints(frame)
-    frame:SetParent(_G.Minimap)
+    frame:SetParent(Minimap)
     if frame.Show then frame:Show() end
     LibDBIconNotifyRestored(frame)
 end
 
-local function ScanMinimapChildren()
+-- Locate frame for `frameName` regardless of whether we're already holding
+-- it. Walks our own collected/hidden tables first (fastest), then falls back
+-- to LibDBIcon, LibMapButton, Minimap children, and finally _G.
+local function FindButtonFrame(frameName)
+    if not frameName then return nil end
+
+    for _, btn in ipairs(collectedButtons) do
+        if btn and btn.GetName and btn:GetName() == frameName then
+            return btn
+        end
+    end
+    for btn in pairs(hiddenButtons) do
+        if btn and btn.GetName and btn:GetName() == frameName then
+            return btn
+        end
+    end
+
+    local lib = LibStub and LibStub("LibDBIcon-1.0", true)
+    if lib and lib.GetButtonList then
+        local list = lib:GetButtonList()
+        if list then
+            for _, n in ipairs(list) do
+                if type(n) == "string" then
+                    local btn = lib.GetMinimapButton and lib:GetMinimapButton(n)
+                    if btn and btn.GetName and btn:GetName() == frameName then
+                        return btn
+                    end
+                end
+            end
+        end
+    end
+
+    local libMap = LibStub and LibStub("LibMapButton-1.1", true)
+    if libMap and libMap.buttons then
+        for _, btn in pairs(libMap.buttons) do
+            if btn and btn.GetName and btn:GetName() == frameName then
+                return btn
+            end
+        end
+    end
+
+    local parents = { Minimap, MinimapBackdrop, MinimapCluster }
+    for _, parent in ipairs(parents) do
+        if parent and parent.GetChildren then
+            for _, child in ipairs({ parent:GetChildren() }) do
+                if child and child.GetName and child:GetName() == frameName then
+                    return child
+                end
+            end
+        end
+    end
+
+    local g = _G[frameName]
+    if type(g) == "table" and g.GetObjectType then
+        return g
+    end
+    return nil
+end
+
+local function UncollectByName(frameName)
+    for i = #collectedButtons, 1, -1 do
+        local btn = collectedButtons[i]
+        if btn and btn.GetName and btn:GetName() == frameName then
+            tremove(collectedButtons, i)
+            UncollectButton(btn)
+            return btn
+        end
+    end
+    return nil
+end
+
+-- Hidden buttons live as children of an offscreen, permanently :Hide()-ed
+-- frame. Children of a hidden parent never render even if their own :Show()
+-- has been called, so we don't need to fight the owning addon every frame.
+local function EnsureHiddenContainer()
+    if hiddenContainer then return hiddenContainer end
+    hiddenContainer = CreateFrame("Frame", "OneWoW_QoL_MMBtnHidden", UIParent)
+    hiddenContainer:SetSize(1, 1)
+    hiddenContainer:Hide()
+    return hiddenContainer
+end
+
+local function HideButton(frame)
+    if not frame or hiddenButtons[frame] then return end
+    EnsureHiddenContainer()
+
+    -- Stash originals so we can put them back when the user switches pref.
+    -- _OneWoWMBBOrigShow is unused right now (the hidden parent is enough)
+    -- but kept as a marker for future swap-back logic.
+    frame._OneWoWMBBHidden = true
+
+    -- The addon may still call SetParent on its own button; noop it so we
+    -- don't lose the hidden parent. Restored in UnhideButton.
+    frame.SetParent = noop
+    frame.ClearAllPoints = noop
+    frame.SetPoint = noop
+
+    RawClearAllPoints(frame)
+    RawSetParent(frame, hiddenContainer)
+    if frame.Hide then frame:Hide() end
+
+    hiddenButtons[frame] = true
+end
+
+local function UnhideButton(frame)
+    if not frame or not hiddenButtons[frame] then return end
+
+    frame.SetParent = nil
+    frame.ClearAllPoints = nil
+    frame.SetPoint = nil
+    frame._OneWoWMBBHidden = nil
+
+    RawClearAllPoints(frame)
+    frame:SetParent(Minimap)
+    if frame.Show then frame:Show() end
+
+    hiddenButtons[frame] = nil
+    LibDBIconNotifyRestored(frame)
+end
+
+-- Move a single button to the state implied by `pref`. Idempotent — calling
+-- twice with the same pref is a no-op. Caller is responsible for triggering
+-- LayoutContainer / UpdateBadge afterwards if it's batching multiple updates.
+local function ApplyPrefImmediate(frameName, pref)
+    if not VALID_PREFS[pref] then return end
+    local frame = FindButtonFrame(frameName)
+    if not frame then return end
+
+    local isCollected = collectedNames[frameName] == true
+    local isHidden    = hiddenButtons[frame] == true
+
+    if pref == "mini" then
+        if isHidden then UnhideButton(frame) end
+        if not isCollected and containerFrame and GetSettings().hideCollected then
+            CollectButton(frame)
+        end
+    elseif pref == "map" then
+        if isCollected then UncollectByName(frameName) end
+        if isHidden then UnhideButton(frame) end
+    elseif pref == "hide" then
+        if isCollected then UncollectByName(frameName) end
+        if not isHidden then HideButton(frame) end
+    end
+end
+
+-- Discovery + collection are decoupled: ConsiderButton always registers the
+-- button (so the settings UI can list it even when the collector is off),
+-- then delegates the "where should this live?" decision to ApplyPrefImmediate
+-- so the same logic is shared between scans and direct UI clicks.
+local function ConsiderButton(frame, hint)
+    if not frame or not frame.GetName then return end
+    local frameName = frame:GetName()
+    if not frameName
+        or BLIZZARD_SKIP[frameName]
+        or frameName == OWN_BUTTON_NAME then
+        return
+    end
+    RegisterDetectedButton(frameName, hint)
+
     if not containerFrame or not GetSettings().hideCollected then return end
-    for _, child in ipairs({ _G.Minimap:GetChildren() }) do
-        if (child:IsObjectType("Button") or child:IsObjectType("Frame"))
-            and shouldCollectMinimapScan(child) then
-            CollectButton(child)
+    ApplyPrefImmediate(frameName, GetButtonPref(frameName))
+end
+
+-- Some addons parent their button to MinimapBackdrop or MinimapCluster instead
+-- of Minimap directly; walk all three so they're picked up.
+local function ScanMinimapChildren()
+    local parents = { Minimap, MinimapBackdrop, MinimapCluster }
+    for _, parent in ipairs(parents) do
+        if parent and parent.GetChildren then
+            for _, child in ipairs({ parent:GetChildren() }) do
+                if (child:IsObjectType("Button") or child:IsObjectType("Frame"))
+                    and isValidFrame(child) and isMinimapButton(child) then
+                    ConsiderButton(child)
+                end
+            end
         end
     end
 end
 
 local function ScanLibDBIcon()
-    if not containerFrame or not GetSettings().hideCollected then return end
     local libDBIcon = LibStub and LibStub("LibDBIcon-1.0", true)
     if not libDBIcon then return end
 
@@ -435,49 +673,39 @@ local function ScanLibDBIcon()
     for _, name in ipairs(list) do
         if type(name) == "string" then
             local btn = libDBIcon:GetMinimapButton(name)
-            if btn and btn.GetName then
-                local frameName = btn:GetName()
-                if frameName and not collectedNames[frameName]
-                   and not BLIZZARD_SKIP[frameName]
-                   and not IsBlacklisted(frameName)
-                   and frameName ~= OWN_BUTTON_NAME then
-                    CollectButton(btn)
-                end
-            end
+            ConsiderButton(btn, name)
         end
     end
 end
 
 local function ScanLibMapButton()
-    if not containerFrame or not GetSettings().hideCollected then return end
     local libMap = LibStub and LibStub("LibMapButton-1.1", true)
     if not libMap or not libMap.buttons then return end
     for _, btn in pairs(libMap.buttons) do
-        if btn and btn.GetName then
-            local frameName = btn:GetName()
-            if frameName and not collectedNames[frameName]
-                and not BLIZZARD_SKIP[frameName]
-                and not IsBlacklisted(frameName)
-                and frameName ~= OWN_BUTTON_NAME then
-                CollectButton(btn)
-            end
-        end
+        ConsiderButton(btn)
     end
 end
 
-local function ScanWhitelist()
-    if not containerFrame or not GetSettings().hideCollected then return end
-    local s = GetSettings()
-    for _, path in ipairs(s.whitelist) do
-        if path and path ~= "" then
-            local frame = getButtonByName(path)
-            if frame and isValidFrame(frame) and not isButtonCollected(frame) then
-                local fn = frame:GetName()
-                if fn and not IsBlacklisted(fn) then
-                    CollectButton(frame)
-                end
-            end
-        end
+-- Lightweight discovery-only pass: refreshes seen flags and the s.buttons
+-- map without touching collection state. Used by the settings UI before
+-- listing rows so "Enabled/Disabled" status is always current.
+function MinimapButtonsModule:DiscoverButtons()
+    ResetAllSeenFlags()
+    ScanLibDBIcon()
+    ScanLibMapButton()
+    ScanMinimapChildren()
+
+    -- Buttons we're already holding (collected into the panel or stashed in
+    -- the hidden container) are no longer children of Minimap, so the scans
+    -- above can't see them. Mark them seen explicitly — by definition the
+    -- owning addon is loaded if we still have the frame reference.
+    for _, btn in ipairs(collectedButtons) do
+        local n = btn and btn.GetName and btn:GetName()
+        if n then RegisterDetectedButton(n) end
+    end
+    for btn in pairs(hiddenButtons) do
+        local n = btn and btn.GetName and btn:GetName()
+        if n then RegisterDetectedButton(n) end
     end
 end
 
@@ -485,6 +713,38 @@ local function SortCollected()
     table.sort(collectedButtons, function(a, b)
         return (a:GetName() or "") < (b:GetName() or "")
     end)
+end
+
+-- Returns a sorted array of { name, displayName, pref, seen } for the UI.
+function MinimapButtonsModule:GetKnownButtons()
+    local s = GetSettings()
+    local out = {}
+    for name, info in pairs(s.buttons) do
+        out[#out + 1] = {
+            name        = name,
+            displayName = info.displayName or MakeDisplayName(name),
+            pref        = info.pref or "show",
+            seen        = info.seen == true,
+        }
+    end
+    table.sort(out, function(a, b)
+        local ad = (a.displayName or ""):lower()
+        local bd = (b.displayName or ""):lower()
+        if ad == bd then return (a.name or "") < (b.name or "") end
+        return ad < bd
+    end)
+    return out
+end
+
+-- Called by the UI when the user picks Mini / Map / Hide on a row. Applies
+-- the change immediately via the shared ApplyPrefImmediate helper so the
+-- click-driven path goes through exactly the same state machine as scans.
+function MinimapButtonsModule:ApplyButtonPref(frameName, pref)
+    if not frameName or not VALID_PREFS[pref] then return end
+    SetButtonPref(frameName, pref)
+    ApplyPrefImmediate(frameName, pref)
+    self:LayoutContainer()
+    self:UpdateBadge()
 end
 
 function MinimapButtonsModule:CollectAll()
@@ -501,6 +761,15 @@ function MinimapButtonsModule:CollectAll()
         wipe(collectedButtons)
         wipe(collectedNames)
         wipe(collectedMap)
+        -- "Don't hide anything" also implies "stop hiding any buttons you
+        -- were holding offscreen" — restore them to the minimap.
+        local hiddenCopy = {}
+        for btn in pairs(hiddenButtons) do
+            hiddenCopy[#hiddenCopy + 1] = btn
+        end
+        for _, btn in ipairs(hiddenCopy) do
+            UnhideButton(btn)
+        end
         RefreshAllLibDBIcons()
         C_Timer.After(0, function()
             SyncLibDBIconRadiusToMinimapShape()
@@ -511,10 +780,28 @@ function MinimapButtonsModule:CollectAll()
         return
     end
 
-    ScanLibDBIcon()
-    ScanLibMapButton()
-    ScanWhitelist()
-    ScanMinimapChildren()
+    -- First refresh discovery so seen flags are current. ConsiderButton calls
+    -- ApplyPrefImmediate for every discovered button, so this single pass
+    -- collects / leaves-on-map / hides each button per its stored pref.
+    self:DiscoverButtons()
+
+    -- Reconcile any buttons we're still holding that no longer have a
+    -- matching pref (e.g. user toggled MAP or HIDE on a collected button
+    -- when the settings panel was closed and the discovery scan can't undo
+    -- that on its own).
+    for i = #collectedButtons, 1, -1 do
+        local btn = collectedButtons[i]
+        local n = btn and btn.GetName and btn:GetName()
+        if n then
+            local pref = GetButtonPref(n)
+            if pref ~= "mini" then
+                tremove(collectedButtons, i)
+                UncollectButton(btn)
+                if pref == "hide" then HideButton(btn) end
+            end
+        end
+    end
+
     SortCollected()
     self:LayoutContainer()
     self:UpdateBadge()
@@ -537,8 +824,8 @@ local OW_COMPANION_ICONS = {
 }
 
 local function GetCompanionAction(compName)
-    if not _G.OneWoW then return nil end
-    local companions = _G.OneWoW._loadedComponents
+    if not OneWoW then return nil end
+    local companions = OneWoW._loadedComponents
     if not companions then return nil end
     for _, comp in ipairs(companions) do
         if comp.name == compName then
@@ -547,8 +834,8 @@ local function GetCompanionAction(compName)
             -- mis-resolve "/1w" on some clients, leaving the Core tile dead).
             if comp.name == "Core" or comp.name == "GUI" then
                 return function()
-                    if _G.OneWoW and _G.OneWoW.GUI then
-                        _G.OneWoW.GUI:Toggle()
+                    if OneWoW and OneWoW.GUI then
+                        OneWoW.GUI:Toggle()
                     end
                 end
             end
@@ -585,9 +872,9 @@ local function BuildEnhancedRow()
     end
     wipe(enhancedRow)
 
-    if not _G.OneWoW or not _G.OneWoW._loadedComponents then return end
+    if not OneWoW or not OneWoW._loadedComponents then return end
 
-    for _, comp in ipairs(_G.OneWoW._loadedComponents) do
+    for _, comp in ipairs(OneWoW._loadedComponents) do
         local icon = OW_COMPANION_ICONS[comp.name] or "Interface\\ICONS\\INV_Misc_QuestionMark"
         local action = GetCompanionAction(comp.name)
 
@@ -618,9 +905,9 @@ local function BuildEnhancedRow()
 
         if action then
             btn:SetScript("OnClick", function() action() end)
-        elseif _G.OneWoW and _G.OneWoW.GUI then
+        elseif OneWoW and OneWoW.GUI then
             btn:SetScript("OnClick", function()
-                _G.OneWoW.GUI:Toggle()
+                OneWoW.GUI:Toggle()
             end)
         end
 
@@ -1065,6 +1352,16 @@ function MinimapButtonsModule:OnDisable()
     wipe(collectedButtons)
     wipe(collectedNames)
     wipe(collectedMap)
+
+    -- Disabling the feature must release every button we were hiding —
+    -- otherwise icons stay invisible until the user notices and re-enables.
+    local hiddenCopy = {}
+    for btn in pairs(hiddenButtons) do
+        hiddenCopy[#hiddenCopy + 1] = btn
+    end
+    for _, btn in ipairs(hiddenCopy) do
+        UnhideButton(btn)
+    end
 
     RefreshAllLibDBIcons()
     C_Timer.After(0, function()

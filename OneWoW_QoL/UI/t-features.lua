@@ -19,7 +19,7 @@ local modDetailsDialog  = nil
 local modDetailsContent = nil
 
 local function QoLUiFavorites()
-    local db = _G.OneWoW_QoL and _G.OneWoW_QoL.db and _G.OneWoW_QoL.db.global
+    local db = OneWoW_QoL and OneWoW_QoL.db and OneWoW_QoL.db.global
     if not db then return nil end
     db.uiFavorites = db.uiFavorites or { features = {}, toggles = {} }
     db.uiFavorites.features = db.uiFavorites.features or {}
@@ -268,10 +268,10 @@ local function ShowModuleDetail(split, module)
         isEnabled = true,
         onValueChange = function(newVal)
             ns.ModuleRegistry:SetEnabled(module.id, newVal)
-            if module.id == "playmounts" and _G.OneWoW and _G.OneWoW.SettingsFeatureRegistry then
-                _G.OneWoW.SettingsFeatureRegistry:SetEnabled("tooltips", "playermounts", newVal)
-                if _G.OneWoW.GUI and _G.OneWoW.GUI.RefreshTooltipsFeatureDot then
-                    _G.OneWoW.GUI:RefreshTooltipsFeatureDot("playermounts", newVal)
+            if module.id == "playmounts" and OneWoW and OneWoW.SettingsFeatureRegistry then
+                OneWoW.SettingsFeatureRegistry:SetEnabled("tooltips", "playermounts", newVal)
+                if OneWoW.GUI and OneWoW.GUI.RefreshTooltipsFeatureDot then
+                    OneWoW.GUI:RefreshTooltipsFeatureDot("playermounts", newVal)
                 end
             end
             isEnabled = newVal
@@ -586,37 +586,56 @@ end
 function ns.UI.SelectFeature(moduleId)
     if not moduleId then return end
 
-    if ns.oneWoWHubActive and _G.OneWoW and _G.OneWoW.GUI then
-        _G.OneWoW.GUI:Show("qol")
+    if ns.oneWoWHubActive and OneWoW and OneWoW.GUI then
+        OneWoW.GUI:Show("qol")
+        -- Show("qol") only switches to the QoL module — it lands on whatever
+        -- sub-tab was last viewed (Toggles, Settings, etc.). Force the
+        -- features sub-tab so per-module detail panels are visible.
+        if OneWoW.GUI.SelectSubTab then
+            OneWoW.GUI:SelectSubTab("qol", "features")
+        end
     elseif ns.UI and ns.UI.Show then
         -- Use Show("features") so the window opens/stays open on the features tab
         -- (Toggle() would close the window if it was already visible)
         ns.UI:Show("features")
     end
 
-    C_Timer.After(0.15, function()
+    -- Retry-aware navigation: CreateFeaturesTab sets _featuresSplit
+    -- immediately, but BuildFeaturesList populates featureRows on a 0.1s
+    -- timer, so a fixed delay can race on the first open. Poll briefly until
+    -- the row is available, then highlight it.
+    local detailShown = false
+    local attempts = 0
+    local function trySelect()
+        attempts = attempts + 1
         local split = ns.UI._featuresSplit
-        if not split then return end
+        if not split then
+            if attempts < 20 then C_Timer.After(0.05, trySelect) end
+            return
+        end
         local module = ns.ModuleRegistry:GetById(moduleId)
         if not module then return end
-        selectedModuleId = module.id
 
-        -- Deactivate whatever row was selected before
-        if selectedRow then selectedRow:SetActive(false) end
-        selectedRow = nil
+        if not detailShown then
+            selectedModuleId = module.id
+            if selectedRow then selectedRow:SetActive(false) end
+            selectedRow = nil
+            ShowModuleDetail(split, module)
+            detailShown = true
 
-        ShowModuleDetail(split, module)
+            if split.rightStatusText then
+                local isEnabled = ns.ModuleRegistry:IsEnabled(module.id)
+                local modName = ns.L[module.title] or module.title
+                split.rightStatusText:SetText(modName .. (isEnabled and " (" .. L["FEATURES_ENABLED"] .. ")" or " (" .. L["FEATURES_DISABLED"] .. ")"))
+            end
+        end
 
-        -- Highlight the correct row in the left-panel list
         if split.featureRows and split.featureRows[moduleId] then
             selectedRow = split.featureRows[moduleId]
             selectedRow:SetActive(true)
+        elseif attempts < 20 then
+            C_Timer.After(0.05, trySelect)
         end
-
-        if split.rightStatusText then
-            local isEnabled = ns.ModuleRegistry:IsEnabled(module.id)
-            local modName = ns.L[module.title] or module.title
-            split.rightStatusText:SetText(modName .. (isEnabled and " (" .. L["FEATURES_ENABLED"] .. ")" or " (" .. L["FEATURES_DISABLED"] .. ")"))
-        end
-    end)
+    end
+    C_Timer.After(0.05, trySelect)
 end

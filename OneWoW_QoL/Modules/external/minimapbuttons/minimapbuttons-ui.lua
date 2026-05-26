@@ -8,124 +8,208 @@ local function GetSettings()
     return ns.MinimapButtonsModule.GetSettings()
 end
 
--- ─── String list management (whitelist / blacklist) ─────────────────────────
+-- ─── Detected minimap icons (per-button Mini / Map / Hide) ─────────────────
 
-local function MakeStringListEditor(parent, listKey, yOffset, refreshFn)
+-- Build one row for a single detected (or previously-detected) minimap icon:
+--
+--   [X]  Outfitter             Enabled : Mini    [Mini][Map][Hide]
+--
+-- The X drops the entry from the DB (useful for stale addons that were
+-- uninstalled). The three toggleable buttons set the user's preference; the
+-- module's ApplyButtonPref moves the button between the collector panel
+-- (Mini), the minimap (Map), or an offscreen hidden frame (Hide).
+local ROW_PADDING_X   = 12
+local ICON_ROW_HEIGHT = 26
+local ICON_ROW_GAP    = 4
+-- The "Collector" label is the widest of the three, so minWidth covers it
+-- (CreateFitTextButton grows further to fit any localized text).
+local TOGGLE_BTN_W    = 70
+local TOGGLE_BTN_H    = 20
+
+local function LabelForPref(L, pref)
+    if pref == "mini" then return L["MMBTNS_ICONS_MINI_STATE"] or "Collector" end
+    if pref == "map"  then return L["MMBTNS_ICONS_MAP_STATE"]  or "Map"       end
+    if pref == "hide" then return L["MMBTNS_ICONS_HIDE_STATE"] or "Hide"      end
+    return tostring(pref)
+end
+
+local function BuildIconRow(parent, info, yOffset, refreshFn)
     local L = ns.L
-    local s = GetSettings()
-    local list = s[listKey] or {}
+    local capturedName = info.name
 
-    local headerKey = listKey == "whitelist" and "MMBTNS_WHITELIST_HEADER" or "MMBTNS_BLACKLIST_HEADER"
-    local descKey   = listKey == "whitelist" and "MMBTNS_WHITELIST_DESC"   or "MMBTNS_BLACKLIST_DESC"
-    local addKey    = listKey == "whitelist" and "MMBTNS_WHITELIST_ADD"    or "MMBTNS_BLACKLIST_ADD"
-    local phKey     = listKey == "whitelist" and "MMBTNS_WHITELIST_PLACEHOLDER" or "MMBTNS_BLACKLIST_PLACEHOLDER"
+    local row = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    row:SetHeight(ICON_ROW_HEIGHT)
+    row:SetPoint("TOPLEFT",  parent, "TOPLEFT",   ROW_PADDING_X, yOffset)
+    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -ROW_PADDING_X, yOffset)
+    row:SetBackdrop(BACKDROP_INNER_NO_INSETS)
+    row:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+    row:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+
+    -- Removal is only allowed for stale entries (addon currently disabled /
+    -- unloaded). Enabled rows keep the X visible for alignment but greyed out
+    -- and non-clickable, so the user can't accidentally drop a row they're
+    -- actively using.
+    local removeBtn = CreateFrame("Button", nil, row)
+    removeBtn:SetSize(14, 14)
+    removeBtn:SetPoint("LEFT", row, "LEFT", 6, 0)
+    removeBtn:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
+    if info.seen then
+        removeBtn:EnableMouse(false)
+        local tex = removeBtn:GetNormalTexture()
+        if tex then tex:SetVertexColor(0.4, 0.4, 0.4, 0.6) end
+        removeBtn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L["MMBTNS_ICONS_REMOVE_LOCKED_TT"]
+                or "This addon is currently loaded. Hide its icon if you don't want it collected; you can only remove the entry once the addon is disabled.",
+                1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        removeBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    else
+        removeBtn:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Highlight")
+        removeBtn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["MMBTNS_ICONS_REMOVE_TT"] or "Remove this entry from the list")
+            GameTooltip:Show()
+        end)
+        removeBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        removeBtn:SetScript("OnClick", function()
+            ns.MinimapButtonsModule.RemoveKnownButton(capturedName)
+            if refreshFn then refreshFn() end
+        end)
+    end
+
+    local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    label:SetPoint("LEFT", removeBtn, "RIGHT", 8, 0)
+    label:SetJustifyH("LEFT")
+    label:SetText(info.displayName or capturedName)
+    label:SetTextColor(OneWoW_GUI:GetThemeColor(info.seen and "TEXT_PRIMARY" or "TEXT_MUTED"))
+
+    -- Right-to-left: Hide, Map, Mini, then the status text.
+    local hideBtn = OneWoW_GUI:CreateFitTextButton(row, {
+        text       = L["MMBTNS_ICONS_HIDE"] or "Hide",
+        height     = TOGGLE_BTN_H,
+        minWidth   = TOGGLE_BTN_W,
+        toggleable = true,
+    })
+    hideBtn:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+
+    local mapBtn = OneWoW_GUI:CreateFitTextButton(row, {
+        text       = L["MMBTNS_ICONS_MAP"] or "Map",
+        height     = TOGGLE_BTN_H,
+        minWidth   = TOGGLE_BTN_W,
+        toggleable = true,
+    })
+    mapBtn:SetPoint("RIGHT", hideBtn, "LEFT", -3, 0)
+
+    local miniBtn = OneWoW_GUI:CreateFitTextButton(row, {
+        text       = L["MMBTNS_ICONS_MINI"] or "Collector",
+        height     = TOGGLE_BTN_H,
+        minWidth   = TOGGLE_BTN_W,
+        toggleable = true,
+    })
+    miniBtn:SetPoint("RIGHT", mapBtn, "LEFT", -3, 0)
+
+    local statusText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    statusText:SetPoint("RIGHT", miniBtn, "LEFT", -10, 0)
+    statusText:SetJustifyH("RIGHT")
+    -- Stop the label from running into the status text on narrow detail panels.
+    label:SetPoint("RIGHT", statusText, "LEFT", -8, 0)
+
+    local function refresh(pref)
+        miniBtn:SetActive(pref == "mini")
+        mapBtn:SetActive(pref == "map")
+        hideBtn:SetActive(pref == "hide")
+
+        local seenLbl = info.seen
+            and (L["MMBTNS_ICONS_ENABLED"]  or "Enabled")
+            or  (L["MMBTNS_ICONS_DISABLED"] or "Disabled")
+        statusText:SetText(seenLbl .. " : " .. LabelForPref(L, pref))
+
+        local color = info.seen and "TEXT_FEATURES_ENABLED" or "TEXT_FEATURES_DISABLED"
+        statusText:SetTextColor(OneWoW_GUI:GetThemeColor(color))
+    end
+
+    miniBtn:SetScript("OnClick", function()
+        ns.MinimapButtonsModule:ApplyButtonPref(capturedName, "mini")
+        refresh("mini")
+    end)
+    mapBtn:SetScript("OnClick", function()
+        ns.MinimapButtonsModule:ApplyButtonPref(capturedName, "map")
+        refresh("map")
+    end)
+    hideBtn:SetScript("OnClick", function()
+        ns.MinimapButtonsModule:ApplyButtonPref(capturedName, "hide")
+        refresh("hide")
+    end)
+
+    refresh(info.pref or "mini")
+
+    return yOffset - ICON_ROW_HEIGHT - ICON_ROW_GAP
+end
+
+local function BuildMinimapIconsSection(parent, yOffset, refreshFn)
+    local L = ns.L
 
     local sectionLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    sectionLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, yOffset)
-    sectionLabel:SetText(L[headerKey] or listKey)
+    sectionLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", ROW_PADDING_X, yOffset)
+    sectionLabel:SetText(L["MMBTNS_ICONS_HEADER"] or "Detected Minimap Icons")
     sectionLabel:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_SECONDARY"))
     yOffset = yOffset - sectionLabel:GetStringHeight() - 4
 
     local desc = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    desc:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, yOffset)
-    desc:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -12, yOffset)
+    desc:SetPoint("TOPLEFT",  parent, "TOPLEFT",   ROW_PADDING_X, yOffset)
+    desc:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -ROW_PADDING_X, yOffset)
     desc:SetJustifyH("LEFT")
     desc:SetWordWrap(true)
     desc:SetSpacing(2)
-    desc:SetText(L[descKey] or "")
+    desc:SetText(L["MMBTNS_ICONS_DESC"]
+        or "Each detected minimap icon is listed here. Pick where it should live: Collector (inside the OneWoW panel), Map (back on the minimap), or Hide (out of sight entirely). The X removes a stale entry for an addon you've uninstalled.")
     desc:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
-    yOffset = yOffset - desc:GetStringHeight() - 8
 
-    local inputBox = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
-    inputBox:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, yOffset)
-    inputBox:SetSize(180, 22)
-    inputBox:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-    inputBox:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-    inputBox:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-    inputBox:SetFontObject(GameFontHighlight)
-    inputBox:SetTextInsets(4, 4, 0, 0)
-    inputBox:SetAutoFocus(false)
-    inputBox:SetMaxLetters(80)
-    inputBox:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
-    inputBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    inputBox:SetScript("OnEditFocusGained", function(self)
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
-    end)
-    inputBox:SetScript("OnEditFocusLost", function(self)
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-    end)
+    -- Re-scan every time the settings panel is rebuilt so the Enabled /
+    -- Disabled status reflects the current addon state, not whatever was
+    -- cached at module load time.
+    ns.MinimapButtonsModule:DiscoverButtons()
 
-    local ph = inputBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    ph:SetPoint("LEFT", 6, 0)
-    ph:SetText(L[phKey] or "Frame name...")
-    inputBox:SetScript("OnTextChanged", function(self)
-        ph:SetShown((self:GetText() or "") == "")
-    end)
+    local buttons = ns.MinimapButtonsModule:GetKnownButtons()
 
-    local addBtn = OneWoW_GUI:CreateFitTextButton(parent, { text = L[addKey] or "Add", height = 24 })
-    addBtn:SetPoint("LEFT", inputBox, "RIGHT", 6, 0)
-    addBtn:SetScript("OnClick", function()
-        local name = strtrim(inputBox:GetText() or "")
-        if name ~= "" then
-            table.insert(s[listKey], name)
-            inputBox:SetText("")
-            ns.MinimapButtonsModule:Refresh()
-            if refreshFn then refreshFn() end
+    -- IMPORTANT: never anchor the next element with yOffset arithmetic off a
+    -- wrapped FontString — GetStringHeight() can return the unwrapped (single
+    -- line) value if the parent's width hasn't propagated at build time,
+    -- which makes the rows render on top of the description. Anchor the rows
+    -- container to desc:BOTTOMLEFT/RIGHT instead so layout follows whatever
+    -- the engine actually paints.
+    local rowsContainer = CreateFrame("Frame", nil, parent)
+    rowsContainer:SetPoint("TOPLEFT",  desc, "BOTTOMLEFT",  0, -10)
+    rowsContainer:SetPoint("TOPRIGHT", desc, "BOTTOMRIGHT", 0, -10)
+
+    if #buttons == 0 then
+        local empty = rowsContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        empty:SetPoint("TOPLEFT",  rowsContainer, "TOPLEFT",  0, 0)
+        empty:SetPoint("TOPRIGHT", rowsContainer, "TOPRIGHT", 0, 0)
+        empty:SetJustifyH("CENTER")
+        empty:SetWordWrap(true)
+        empty:SetText(L["MMBTNS_ICONS_EMPTY"]
+            or "No minimap icons detected yet. Open the collector to trigger a scan, then re-open Settings.")
+        empty:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
+        rowsContainer:SetHeight((empty:GetStringHeight() or 14) + 8)
+    else
+        local localY = 0
+        for _, info in ipairs(buttons) do
+            localY = BuildIconRow(rowsContainer, info, localY, refreshFn)
         end
-    end)
-    yOffset = yOffset - 30
-
-    local listFrame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    listFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, yOffset)
-    listFrame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -12, yOffset)
-    listFrame:SetBackdrop(BACKDROP_INNER_NO_INSETS)
-    listFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_TERTIARY"))
-    listFrame:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-
-    local rowOff = -5
-    local hasItems = false
-
-    for i, name in ipairs(list) do
-        hasItems = true
-        local row = CreateFrame("Frame", nil, listFrame)
-        row:SetHeight(20)
-        row:SetPoint("TOPLEFT",  listFrame, "TOPLEFT",  10, rowOff)
-        row:SetPoint("TOPRIGHT", listFrame, "TOPRIGHT", -10, rowOff)
-
-        local nameText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameText:SetPoint("LEFT",  row, "LEFT",  0, 0)
-        nameText:SetPoint("RIGHT", row, "RIGHT", -20, 0)
-        nameText:SetJustifyH("LEFT")
-        nameText:SetText(name)
-        nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
-
-        local removeBtn = CreateFrame("Button", nil, row)
-        removeBtn:SetSize(16, 16)
-        removeBtn:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-        removeBtn:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
-        removeBtn:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Highlight")
-        local idx = i
-        removeBtn:SetScript("OnClick", function()
-            table.remove(s[listKey], idx)
-            ns.MinimapButtonsModule:Refresh()
-            if refreshFn then refreshFn() end
-        end)
-
-        rowOff = rowOff - 22
+        rowsContainer:SetHeight(math.abs(localY) + 4)
     end
 
-    local frameHeight = hasItems and (math.abs(rowOff) + 8) or 28
-    listFrame:SetHeight(frameHeight)
-
-    if not hasItems then
-        local emptyText = listFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        emptyText:SetPoint("CENTER")
-        emptyText:SetText("---")
-        emptyText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
-    end
-
-    yOffset = yOffset - frameHeight - 8
-    return yOffset
+    -- For the outer yOffset accounting we still need *some* estimate of the
+    -- description's rendered height. GetStringHeight may under-report on
+    -- first build; pad generously so the scroll area is never shorter than
+    -- the content. The rows themselves are positioned correctly regardless
+    -- because rowsContainer is anchored relative to desc, not via this math.
+    local descH = desc:GetStringHeight() or 14
+    if descH < 28 then descH = 28 end
+    return yOffset - descH - 10 - rowsContainer:GetHeight() - 4
 end
 
 -- ─── Helpers ────────────────────────────────────────────────────────────────
@@ -431,17 +515,11 @@ local function BuildContent(container, isEnabled)
     cy = cy - SLIDER_HEIGHT + 4
 
     -- ═══════════════════════════════════════════════════════════════════════
-    -- Whitelist / Blacklist Section
+    -- Detected Minimap Icons Section
     -- ═══════════════════════════════════════════════════════════════════════
-    cy = OneWoW_GUI:CreateSection(container, { title = L["MMBTNS_LISTS_HEADER"] or "Whitelist / Blacklist", yOffset = cy })
+    cy = OneWoW_GUI:CreateSection(container, { title = L["MMBTNS_ICONS_HEADER"] or "Minimap Icons", yOffset = cy })
 
-    cy = MakeStringListEditor(container, "whitelist", cy, function()
-        ns.MinimapButtonsModule._refreshCustomDetail()
-    end)
-
-    cy = cy - 8
-
-    cy = MakeStringListEditor(container, "blacklist", cy, function()
+    cy = BuildMinimapIconsSection(container, cy, function()
         ns.MinimapButtonsModule._refreshCustomDetail()
     end)
 
