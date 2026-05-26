@@ -278,5 +278,31 @@ function ns:InitializeDatabase()
             d.global._migratedFromNotes      = nil
             d.global.guidesRoutinesCleanedUp = nil
         end },
+        -- v4: Self-heal pass for lists that slipped through the pre-tightened
+        -- ImportList validator. Foreign-schema strings (other addons, hand-rolled
+        -- formats) used to be accepted on any value with a `title` field, which
+        -- left lists in the DB with missing `listType` and `sections[*].steps`.
+        -- A nil `listType` crashed `GetSortedLists`' sort comparator, which in
+        -- turn wiped the entire list panel and broke detail rendering.
+        --
+        -- TD:NormalizeAllLists fixes those entries in place: missing/invalid
+        -- `listType` becomes "todo", missing `sections`/`steps` become empty
+        -- tables, and the lists become safe to sort and render — empty
+        -- placeholders the user can delete from the UI.
+        { version = 4, name = "normalize_imported_lists", run = function()
+            if ns.TrackerData and ns.TrackerData.NormalizeAllLists then
+                local normalized, broken, titles = ns.TrackerData:NormalizeAllLists()
+                if normalized > 0 then
+                    print(CHAT_PREFIX .. " Repaired " .. normalized
+                        .. " malformed tracker list(s) from older imports.")
+                end
+                if broken > 0 and titles then
+                    print(CHAT_PREFIX .. " The following list(s) came in with no usable steps and are now empty placeholders you can delete from the UI:")
+                    for _, t in ipairs(titles) do
+                        print("  - " .. t)
+                    end
+                end
+            end
+        end },
     })
 end

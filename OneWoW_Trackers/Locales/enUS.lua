@@ -54,6 +54,13 @@ ns.RegisterLocale("enUS", {
     ["TRACKER_EDIT"]                    = "Edit",
     ["TRACKER_PIN"]                     = "Pin",
     ["TRACKER_UNPIN"]                   = "Unpin",
+
+    ["TRACKER_PIN_OPACITY"]                  = "Opacity",
+    ["TRACKER_PIN_LOCK_MOVE"]                = "Lock Move",
+    ["TRACKER_PIN_LOCK_RESIZE"]              = "Lock Resize",
+    ["TRACKER_PIN_HIDE_COMPLETED"]           = "Hide completed",
+    ["TRACKER_PIN_HIDE_COMPLETED_DESC"]      = "Hide completed steps and any section with nothing left to do.",
+    ["TRACKER_PIN_TITLE_COLLAPSE_HINT"]      = "Double-click or Shift+click to collapse or expand",
     ["TRACKER_EXPORT"]                  = "Export",
     ["TRACKER_DUPLICATE"]               = "Duplicate",
     ["TRACKER_FAV"]                     = "Favorite",
