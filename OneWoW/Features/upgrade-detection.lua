@@ -107,19 +107,19 @@ end
 
 function UpgradeDetection:CheckPawnUpgrade(itemLink)
     if not self.hasPawn or not itemLink then return nil end
-    if not _G.PawnShouldItemLinkHaveUpgradeArrow then return nil end
+    if not PawnShouldItemLinkHaveUpgradeArrow then return nil end
     local cfg = GetDB()
     local enforceReqLevel = not cfg or cfg.pawnEnforceReqLevel ~= false
-    local ok, result = pcall(_G.PawnShouldItemLinkHaveUpgradeArrow, itemLink, enforceReqLevel)
+    local ok, result = pcall(PawnShouldItemLinkHaveUpgradeArrow, itemLink, enforceReqLevel)
     if ok then return result end
     return nil
 end
 
 function UpgradeDetection:GetBestPawnScore(itemLink)
     if not self.hasPawn or not itemLink then return nil, nil end
-    if not _G.PawnGetItemData then return nil, nil end
+    if not PawnGetItemData then return nil, nil end
 
-    local ok, itemData = pcall(_G.PawnGetItemData, itemLink)
+    local ok, itemData = pcall(PawnGetItemData, itemLink)
     if not ok or not itemData or not itemData.Values then return nil, nil end
 
     local bestScore = 0
@@ -142,11 +142,11 @@ function UpgradeDetection:GetBestPawnScore(itemLink)
 end
 
 function UpgradeDetection:HookPawnTooltips()
-    if not _G.PawnAddValuesToTooltip then return end
+    if not PawnAddValuesToTooltip then return end
     if self.pawnTooltipHooked then return end
 
-    local originalFn = _G.PawnAddValuesToTooltip
-    _G.PawnAddValuesToTooltip = function(tooltip, itemValues, upgradeInfo, bestItemFor, secondBestItemFor, needsEnhancements, onlyFirstValue)
+    local originalFn = PawnAddValuesToTooltip
+    PawnAddValuesToTooltip = function(tooltip, itemValues, upgradeInfo, bestItemFor, secondBestItemFor, needsEnhancements, onlyFirstValue)
         local mode = GetMode()
         if mode == "PAWN" or mode == "PAWN>ILVL" then
             return
@@ -157,57 +157,19 @@ function UpgradeDetection:HookPawnTooltips()
     self.pawnTooltipHooked = true
 end
 
+-- Boolean "is this an upgrade?" used by the #upgrade predicate keyword and the
+-- "1W Upgrades" bag overlay/category. Delegates to GetItemComparison so the
+-- keyword, overlay, and tooltip "Gear Comparison" line all agree on the same
+-- answer. In particular this avoids the divergence between Pawn's arrow
+-- function (which compares against Pawn's best-known item across bag/bank)
+-- and the direct best-score-vs-equipped comparison shown in the tooltip.
 function UpgradeDetection:CheckItemUpgrade(itemLink, itemLocation)
     if not itemLink then return false end
+    if GetMode() == "OFF" then return false end
 
-    local mode = GetMode()
-    if mode == "OFF" then return false end
-
-    local _, _, _, equipLoc, _, classID = C_Item.GetItemInfoInstant(itemLink)
-    if not equipLoc or equipLoc == "" or equipLoc == "INVTYPE_NON_EQUIP" then return false end
-    if classID ~= Enum.ItemClass.Armor and classID ~= Enum.ItemClass.Weapon then return false end
-
-    if mode == "PAWN" then
-        local pawnResult = self:CheckPawnUpgrade(itemLink)
-        if pawnResult ~= nil then return pawnResult == true end
-        return false
-    end
-
-    if mode == "PAWN>ILVL" then
-        local pawnResult = self:CheckPawnUpgrade(itemLink)
-        if pawnResult == true then return true end
-    end
-
-    if not CanPlayerUseItem(itemLink) then return false end
-
-    local ilvl
-    if itemLocation and C_Item.DoesItemExist(itemLocation) then
-        ilvl = C_Item.GetCurrentItemLevel(itemLocation)
-    end
-    if not ilvl or ilvl == 0 then
-        ilvl = C_Item.GetDetailedItemLevelInfo(itemLink)
-    end
-    if not ilvl or ilvl == 0 then return false end
-
-    local slots = EQUIPLOC_TO_SLOTS[equipLoc]
-    if not slots then return false end
-
-    for _, slotIndex in ipairs(slots) do
-        local equippedLink = GetInventoryItemLink("player", slotIndex)
-        if equippedLink then
-            local equippedIlvl = C_Item.GetDetailedItemLevelInfo(equippedLink)
-            if equippedIlvl and ilvl > equippedIlvl then
-                return true
-            end
-        else
-            if slotIndex == 17 and HasTwoHanderEquipped() then
-                -- skip
-            else
-                return true
-            end
-        end
-    end
-    return false
+    local comparison = self:GetItemComparison(itemLink, itemLocation)
+    if not comparison then return false end
+    return comparison.isUpgrade == true
 end
 
 function UpgradeDetection:CheckItemUpgradeDetailed(itemLink, itemLocation)
@@ -467,7 +429,7 @@ function UpgradeDetection:GetAltsWhoNeedItem(itemID, itemLink)
         upgrades[#upgrades + 1] = selfResult
     end
 
-    local charAPI = _G.OneWoW_AltTracker_Character_API
+    local charAPI = OneWoW_AltTracker_Character_API
     if not charAPI or not charAPI.GetAllCharacters then return upgrades end
 
     local currentKey = charAPI.GetCurrentCharacterKey and charAPI.GetCurrentCharacterKey()
@@ -497,7 +459,7 @@ function UpgradeDetection:GetAltsWhoNeedItem(itemID, itemLink)
 end
 
 function UpgradeDetection:Initialize()
-    self.hasPawn = _G.PawnShouldItemLinkHaveUpgradeArrow ~= nil
+    self.hasPawn = PawnShouldItemLinkHaveUpgradeArrow ~= nil
 
     PE:RegisterKeyword("upgrade", function(p)
         if not p.hyperlink then return false end
