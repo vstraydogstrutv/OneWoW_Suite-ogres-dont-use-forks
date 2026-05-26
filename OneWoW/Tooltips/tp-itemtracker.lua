@@ -6,16 +6,13 @@ local JOURNAL_EXPANSIONS = {
     "Shadowlands", "Dragonflight", "TheWarWithin", "Midnight",
 }
 
-local function GetTrackerData(itemID)
-    local storage = _G.OneWoW_AltTracker_Storage
-    if storage and storage.ItemIndex then
-        return storage.ItemIndex:GetTooltipData(itemID)
-    end
-    return nil
+local function GetItemIndex()
+    local storage = OneWoW_AltTracker_Storage
+    return storage and storage.ItemIndex or nil
 end
 
 local function GetVendorData(itemID)
-    local api = _G.OneWoW_CatalogData_Vendors_API
+    local api = OneWoW_CatalogData_Vendors_API
     if api and api.GetVendorsByItem then
         return api.GetVendorsByItem(itemID)
     end
@@ -62,11 +59,16 @@ end
 
 OneWoW.GetClassColor = GetClassColor
 
-local function AggregateLocations(locations, cfg)
-    local chars   = {}
-    local warband = 0
-    local guilds  = {}
-
+-- Aggregate a flat family-location list into one row per (owner, location[, rank])
+-- bucket. Owner is the character (by charKey), the warband, or a guild bank.
+--
+-- When `groupByRank` is true, each rank becomes its own row (Shift breakdown).
+-- When false, all ranks for a given (owner, location) collapse into one row
+-- whose count is the sum across the whole item family.
+--
+-- Honors cfg.showBags / showBank / showEquipped / showAuctions / showWarbandBank /
+-- showGuildBanks toggles. Entries whose locationType is filtered out are dropped.
+local function AggregateFamilyRows(locations, cfg, L, groupByRank)
     local showBags     = cfg == nil or cfg.showBags        ~= false
     local showBank     = cfg == nil or cfg.showBank        ~= false
     local showEquipped = cfg == nil or cfg.showEquipped    ~= false
@@ -74,57 +76,151 @@ local function AggregateLocations(locations, cfg)
     local showWarband  = cfg == nil or cfg.showWarbandBank ~= false
     local showGuilds   = cfg == nil or cfg.showGuildBanks  ~= false
 
+    local locLabels = {
+        bags     = L["TIPS_ITEMTRACKER_BAGS"],
+        bank     = L["TIPS_ITEMTRACKER_BANK"],
+        equipped = L["TIPS_ITEMTRACKER_EQUIPPED"],
+        auction  = L["TIPS_ITEMTRACKER_AUCTION"],
+        warband  = L["TIPS_ITEMTRACKER_BANK"],
+        guild    = L["TIPS_ITEMTRACKER_BANK"],
+    }
+
+    local buckets = {}
+    local order   = {}
+
+    local function bucket(key, ownerName, ownerKind, class, locationType, rank)
+        local b = buckets[key]
+        if not b then
+            b = {
+                ownerName    = ownerName,
+                ownerKind    = ownerKind,    -- "char" | "warband" | "guild"
+                class        = class,
+                locationType = locationType,
+                rank         = rank,
+                count        = 0,
+            }
+            buckets[key] = b
+            table.insert(order, key)
+        end
+        return b
+    end
+
     for _, loc in ipairs(locations) do
-        if loc.locationType == "warband" then
-            if showWarband then
-                warband = warband + (loc.count or 0)
+        local locType = loc.locationType
+        local allowed =
+            (locType == "bags"     and showBags)     or
+            (locType == "bank"     and showBank)     or
+            (locType == "equipped" and showEquipped) or
+            (locType == "auction"  and showAuctions) or
+            (locType == "warband"  and showWarband)  or
+            (locType == "guild"    and showGuilds)
+
+        if allowed then
+            -- In ranked mode, drop entries that have no decoded rank (we don't
+            -- want bogus "R?" rows). In total mode, all family entries count.
+            local rankSlot
+            if groupByRank then
+                if not loc.rank then
+                    allowed = false
+                else
+                    rankSlot = loc.rank
+                end
             end
-        elseif loc.locationType == "guild" then
-            if showGuilds then
-                local gn = loc.guildName or "?"
-                guilds[gn] = (guilds[gn] or 0) + (loc.count or 0)
-            end
-        elseif loc.charKey then
-            if not chars[loc.charKey] then
-                chars[loc.charKey] = {
-                    name     = loc.name,
-                    realm    = loc.realm,
-                    class    = loc.class,
-                    bags     = 0,
-                    bank     = 0,
-                    equipped = 0,
-                    auctions = 0,
-                }
-            end
-            local cd = chars[loc.charKey]
-            if     loc.locationType == "bags"     and showBags     then cd.bags     = cd.bags     + (loc.count or 0)
-            elseif loc.locationType == "bank"     and showBank     then cd.bank     = cd.bank     + (loc.count or 0)
-            elseif loc.locationType == "equipped" and showEquipped then cd.equipped = cd.equipped + 1
-            elseif loc.locationType == "auction"  and showAuctions then cd.auctions = cd.auctions + (loc.count or 0)
+
+            if allowed then
+                if locType == "warband" then
+                    local key = "WARBAND|" .. (rankSlot or "_")
+                    local b = bucket(key, L["TIPS_ITEMTRACKER_WARBAND"], "warband", nil, locType, rankSlot)
+                    b.count = b.count + (loc.count or 0)
+                elseif locType == "guild" then
+                    local gn = loc.guildName or "?"
+                    local key = "GUILD|" .. gn .. "|" .. (rankSlot or "_")
+                    local b = bucket(key, gn, "guild", nil, locType, rankSlot)
+                    b.count = b.count + (loc.count or 0)
+                elseif loc.charKey then
+                    local key = loc.charKey .. "|" .. locType .. "|" .. (rankSlot or "_")
+                    local b = bucket(key, loc.name or loc.charKey, "char", loc.class, locType, rankSlot)
+                    b.count = b.count + (loc.count or 0)
+                end
             end
         end
     end
 
-    local sorted = {}
-    for charKey, cd in pairs(chars) do
-        local total = cd.bags + cd.bank + cd.equipped + cd.auctions
-        table.insert(sorted, { charKey = charKey, data = cd, total = total })
-    end
-    table.sort(sorted, function(a, b)
-        if a.total == b.total then return (a.data.name or "") < (b.data.name or "") end
-        return a.total > b.total
+    -- Display order: chars first (alpha), then warband, then guilds.
+    -- Within an owner: location asc, then rank asc.
+    table.sort(order, function(a, b)
+        local ea, eb = buckets[a], buckets[b]
+        local kindOrder = { char = 1, warband = 2, guild = 3 }
+        local ka, kb = kindOrder[ea.ownerKind] or 9, kindOrder[eb.ownerKind] or 9
+        if ka ~= kb then return ka < kb end
+        if (ea.ownerName or "") ~= (eb.ownerName or "") then
+            return (ea.ownerName or "") < (eb.ownerName or "")
+        end
+        if (ea.locationType or "") ~= (eb.locationType or "") then
+            return (ea.locationType or "") < (eb.locationType or "")
+        end
+        return (ea.rank or 0) < (eb.rank or 0)
     end)
 
-    return sorted, warband, guilds
+    local rows  = {}
+    local total = 0
+    for _, key in ipairs(order) do
+        local b = buckets[key]
+        total = total + b.count
+        table.insert(rows, {
+            ownerName    = b.ownerName,
+            ownerKind    = b.ownerKind,
+            class        = b.class,
+            locationType = b.locationType,
+            label        = locLabels[b.locationType] or b.locationType,
+            rank         = b.rank,
+            count        = b.count,
+        })
+    end
+
+    return rows, total
 end
 
-local function FormatLocationText(cd, L)
-    local parts = {}
-    if cd.bags     > 0 then table.insert(parts, L["TIPS_ITEMTRACKER_BAGS"]    .. ": " .. cd.bags)     end
-    if cd.bank     > 0 then table.insert(parts, L["TIPS_ITEMTRACKER_BANK"]    .. ": " .. cd.bank)     end
-    if cd.equipped > 0 then table.insert(parts, L["TIPS_ITEMTRACKER_EQUIPPED"])                        end
-    if cd.auctions > 0 then table.insert(parts, L["TIPS_ITEMTRACKER_AUCTION"] .. ": " .. cd.auctions) end
-    return table.concat(parts, ", ")
+-- Render one tracker row to a tooltip line of the shape:
+--   "  OwnerName       Loc xN"      (groupByRank = false)
+--   "  OwnerName       Loc R# xN"   (groupByRank = true)
+-- Warband / guild owners get the matching atlas icon prefixed.
+local function FormatTrackerRow(row, colorByClass)
+    local right = row.label
+    if row.rank then
+        right = right .. "  R" .. row.rank
+    end
+    right = right .. " x" .. row.count
+
+    if row.ownerKind == "char" then
+        local r, g, b = 0.9, 0.9, 0.9
+        if colorByClass and row.class then r, g, b = GetClassColor(row.class) end
+        return {
+            type  = "double",
+            left  = "  " .. row.ownerName,
+            right = right,
+            lr = r,   lg = g,   lb = b,
+            rr = 1.0, rg = 1.0, rb = 1.0,
+        }
+    elseif row.ownerKind == "warband" then
+        local icon = CreateAtlasMarkup("warband-icon", 16, 16)
+        return {
+            type  = "double",
+            left  = "  " .. icon .. " " .. row.ownerName,
+            right = right,
+            lr = 0.7, lg = 0.7, lb = 0.7,
+            rr = 1.0, rg = 1.0, rb = 1.0,
+        }
+    elseif row.ownerKind == "guild" then
+        local icon = CreateAtlasMarkup("communities-icon-guild", 16, 16)
+        return {
+            type  = "double",
+            left  = "  " .. icon .. " " .. row.ownerName,
+            right = right,
+            lr = 0.7, lg = 0.7, lb = 0.7,
+            rr = 1.0, rg = 1.0, rb = 1.0,
+        }
+    end
 end
 
 local function ItemTrackerProvider(tooltip, context)
@@ -143,75 +239,71 @@ local function ItemTrackerProvider(tooltip, context)
 
     local lines = {}
 
-    local data = GetTrackerData(context.itemID)
-    if data then
-        local sortedChars, warbandCount, guilds = AggregateLocations(data.locations, cfg)
+    -- The "item family" = hovered itemID + all sibling rank itemIDs of the same
+    -- crafted item. Tooltip behavior is identical regardless of which rank is
+    -- hovered; Shift switches between family-totals and per-rank breakdown.
+    local idx        = GetItemIndex()
+    local familyLocs = idx and idx:GetFamilyLocations(context.itemID) or nil
 
-        local trackerRows = {}
-
-        if showAlts then
-            local shown = 0
-            for _, entry in ipairs(sortedChars) do
-                if shown >= maxChars then
-                    table.insert(trackerRows, { type = "text", text = "  ...", r = 0.7, g = 0.7, b = 0.7 })
-                    break
-                end
-                local cd           = entry.data
-                local locationText = FormatLocationText(cd, L)
-                if locationText ~= "" then
-                    local r, g, b = 0.9, 0.9, 0.9
-                    if colorByClass and cd.class then
-                        r, g, b = GetClassColor(cd.class)
-                    end
-                    table.insert(trackerRows, {
-                        type  = "double",
-                        left  = "  " .. (cd.name or entry.charKey),
-                        right = locationText,
-                        lr = r,   lg = g,   lb = b,
-                        rr = 1.0, rg = 1.0, rb = 1.0,
-                    })
-                    shown = shown + 1
-                end
-            end
+    if familyLocs then
+        -- Count distinct decoded ranks across the family. The Shift breakdown
+        -- only makes sense when ≥ 2 ranks exist; otherwise the hint is hidden.
+        local rankSet = {}
+        for _, loc in ipairs(familyLocs) do
+            if loc.rank then rankSet[loc.rank] = true end
         end
+        local distinctRanks = 0
+        for _ in pairs(rankSet) do distinctRanks = distinctRanks + 1 end
+        local hasMultipleRanks = distinctRanks > 1
+        local shiftExpand      = hasMultipleRanks and IsShiftKeyDown()
 
-        if warbandCount > 0 then
-            local icon = CreateAtlasMarkup("warband-icon", 16, 16)
-            table.insert(trackerRows, {
-                type  = "double",
-                left  = "  " .. icon .. " " .. L["TIPS_ITEMTRACKER_WARBAND"],
-                right = L["TIPS_ITEMTRACKER_BANK"] .. ": " .. warbandCount,
-                lr = 0.7, lg = 0.7, lb = 0.7,
-                rr = 1.0, rg = 1.0, rb = 1.0,
-            })
-        end
+        local rows, total = AggregateFamilyRows(familyLocs, cfg, L, shiftExpand)
 
-        for guildName, count in pairs(guilds) do
-            local icon = CreateAtlasMarkup("communities-icon-guild", 16, 16)
-            table.insert(trackerRows, {
-                type  = "double",
-                left  = "  " .. icon .. " " .. guildName,
-                right = L["TIPS_ITEMTRACKER_BANK"] .. ": " .. count,
-                lr = 0.7, lg = 0.7, lb = 0.7,
-                rr = 1.0, rg = 1.0, rb = 1.0,
-            })
-        end
-
-        if #trackerRows > 0 then
+        if rows and #rows > 0 then
             table.insert(lines, {
                 type  = "double",
                 left  = "  " .. L["TIPS_ITEMTRACKER_HEADER"],
-                right = string.format(L["TIPS_ITEMTRACKER_TOTAL"], data.totalCount),
+                right = string.format(L["TIPS_ITEMTRACKER_TOTAL"], total),
                 lr = 0.4, lg = 0.8, lb = 1.0,
                 rr = 1.0, rg = 1.0, rb = 1.0,
             })
-            for _, row in ipairs(trackerRows) do
-                table.insert(lines, row)
+
+            local shownChars     = {}
+            local shownCharCount = 0
+            local capped         = false
+            for _, row in ipairs(rows) do
+                if row.ownerKind == "char" then
+                    if showAlts then
+                        if not shownChars[row.ownerName] then
+                            if shownCharCount >= maxChars then
+                                capped = true
+                                break
+                            end
+                            shownChars[row.ownerName] = true
+                            shownCharCount = shownCharCount + 1
+                        end
+                        table.insert(lines, FormatTrackerRow(row, colorByClass))
+                    end
+                else
+                    table.insert(lines, FormatTrackerRow(row, colorByClass))
+                end
+            end
+
+            if capped then
+                table.insert(lines, { type = "text", text = "  ...", r = 0.7, g = 0.7, b = 0.7 })
+            end
+
+            if hasMultipleRanks and not shiftExpand then
+                table.insert(lines, {
+                    type = "text",
+                    text = "  " .. L["TIPS_ITEMTRACKER_HOLD_SHIFT"],
+                    r = 0.5, g = 0.5, b = 0.5,
+                })
             end
         end
     end
 
-    if showVendors and _G.OneWoW_CatalogData_Vendors_API then
+    if showVendors and OneWoW_CatalogData_Vendors_API then
         local vendors = GetVendorData(context.itemID)
         if vendors and #vendors > 0 then
             table.insert(lines, {
@@ -253,7 +345,7 @@ local function ItemTrackerProvider(tooltip, context)
         end
     end
 
-    if showInstances and _G.OneWoW_CatalogData_Journal then
+    if showInstances and OneWoW_CatalogData_Journal then
         local instEntries = GetInstanceData(context.itemID)
         if instEntries and #instEntries > 0 then
             table.insert(lines, {
@@ -292,3 +384,21 @@ OneWoW.TooltipEngine:RegisterProvider({
     tooltipTypes = {"item"},
     callback     = ItemTrackerProvider,
 })
+
+-- Re-run the tooltip data pipeline whenever Shift state changes while a
+-- tooltip is up. RefreshData() re-fires every TooltipDataProcessor postcall,
+-- including ours, so the provider can rebuild its lines with the new shift
+-- state and produce the compact / expanded view.
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("MODIFIER_STATE_CHANGED")
+    f:SetScript("OnEvent", function(_, _, key)
+        if key ~= "LSHIFT" and key ~= "RSHIFT" then return end
+        if GameTooltip and GameTooltip:IsShown() and GameTooltip.RefreshData then
+            GameTooltip:RefreshData()
+        end
+        if ItemRefTooltip and ItemRefTooltip:IsShown() and ItemRefTooltip.RefreshData then
+            ItemRefTooltip:RefreshData()
+        end
+    end)
+end
