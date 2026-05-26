@@ -42,6 +42,9 @@ L["MMSKIN_ZONE_CLOCK_INSIDE_DESC"]  = "Anchor the zone name and clock on the ins
 L["MMSKIN_ZONE_CLOCK_DRAG"]         = "Drag zone & clock (hold Shift)"
 L["MMSKIN_ZONE_CLOCK_DRAG_DESC"]    = "You must hold Shift while dragging the zone name or clock to move them on screen. Positions are saved. Release Shift for normal clicks (clock still opens the time manager)."
 
+L["MMSKIN_ZONE_CLOCK_ANCHOR_MM"]      = "Anchor zone & clock to minimap"
+L["MMSKIN_ZONE_CLOCK_ANCHOR_MM_DESC"] = "While dragging is enabled, anchor the zone name and clock to the minimap so they ride along when the minimap is moved. If you stack them on top of each other, they move as one."
+
 L["MMSKIN_WHEEL_ZOOM"]              = "Mouse Wheel Zoom"
 L["MMSKIN_WHEEL_ZOOM_DESC"]         = "Zoom the minimap in and out using the mouse wheel."
 L["MMSKIN_AUTO_ZOOM"]               = "Auto Zoom Out"
@@ -83,6 +86,9 @@ L["MMSKIN_BORDER_RED"]              = "Red"
 L["MMSKIN_BORDER_GREEN"]            = "Green"
 L["MMSKIN_BORDER_BLUE"]             = "Blue"
 L["MMSKIN_USE_THEME_COLOR"]         = "Use Theme Color"
+
+L["MMSKIN_ZONE_BG"]                 = "Zone Background"
+L["MMSKIN_CLOCK_BG"]                = "Clock Background"
 
 L["MMSKIN_AUTO_ZOOM_DELAY"]         = "Auto Zoom Delay"
 L["MMSKIN_SHOW_ZOOM_BTNS"]          = "Show Zoom Buttons"

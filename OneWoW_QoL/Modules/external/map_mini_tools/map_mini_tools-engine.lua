@@ -14,8 +14,8 @@ local MINIMAP_CLUSTER = MinimapCluster
 
 local hiddenFrame
 local borderFrame
-local zoneFrame, zoneFontStr
-local clockFrame, clockFontStr
+local zoneFrame, zoneFontStr, zoneBgTex
+local clockFrame, clockFontStr, clockBgTex
 local clickOverlay
 local eventFrame
 local skinTooltip
@@ -32,7 +32,7 @@ local minimapLayoutHooked = false
 -- ─── Settings ───────────────────────────────────────────────────────────────
 
 local function GetSettings()
-    local mods = _G.OneWoW_QoL.db.global.modules
+    local mods = OneWoW_QoL.db.global.modules
     if not mods.map_mini_tools then mods.map_mini_tools = {} end
     local s = mods.map_mini_tools
     if s.scale           == nil then s.scale           = 1.0        end
@@ -54,6 +54,10 @@ local function GetSettings()
     if s.clockFont       == nil then s.clockFont       = "global"   end
     if s.clockFontSize   == nil then s.clockFontSize   = 12         end
     if s.clockAlign      == nil then s.clockAlign      = "CENTER"   end
+    if s.zoneBg          == nil then s.zoneBg          = false      end
+    if s.clockBg         == nil then s.clockBg         = false      end
+    if not s.zoneBgColor  then s.zoneBgColor  = { 0, 0, 0, 0.6 } end
+    if not s.clockBgColor then s.clockBgColor = { 0, 0, 0, 0.6 } end
     -- iconPositions[id] = { cx =, cy = } offsets from Minimap CENTER/CENTER; set while Debug Icons is on
     if not s.iconPositions then s.iconPositions = {} end
     -- zoneTextPos / clockPos = { point, relName, relPoint, x, y } relName: Minimap | MinimapCluster | UIParent
@@ -226,7 +230,7 @@ local function NotifyLibDBIconShapeChanged()
     local lib = LibStub("LibDBIcon-1.0", true)
     if not lib then return end
     local shape = "ROUND"
-    if _G.GetMinimapShape then
+    if GetMinimapShape then
         shape = GetMinimapShape() or "ROUND"
     end
     if type(shape) == "string" and strupper(shape) == "SQUARE" then
@@ -253,7 +257,7 @@ local function ApplySquareMask()
     MINIMAP:SetQuestBlobRingScalar(0)
     MINIMAP:SetQuestBlobRingAlpha(0)
 
-    _G.GetMinimapShape = function() return "SQUARE" end
+    GetMinimapShape = function() return "SQUARE" end
 
     if HybridMinimap and HybridMinimap.CircleMask then
         HybridMinimap.MapCanvas:SetUseMaskTexture(false)
@@ -398,6 +402,70 @@ local function ClampFrameToTextOnScreen(frame, fontString)
     frame:SetPoint(p, rel, rp, (x or 0) + dx, (y or 0) + dy)
 end
 
+-- ─── Text Backgrounds (zone / clock) ────────────────────────────────────────
+
+-- Sized from the rendered text bounds and anchored on the same edge as the
+-- FontString's justification, so the background only covers the visible
+-- glyphs — not the wide hit-frame in CENTER mode where the FontString spans
+-- the whole strip.
+local function ApplyTextBackground(frame, fontStr, tex, enabled, color, justifyH, padX, padY)
+    if not frame or not fontStr then return tex end
+    if not tex then
+        tex = frame:CreateTexture(nil, "BACKGROUND", nil, -1)
+    end
+    if not enabled then
+        tex:Hide()
+        return tex
+    end
+    padX = padX or 4
+    padY = padY or 2
+    local tw = fontStr.GetUnboundedStringWidth and fontStr:GetUnboundedStringWidth()
+        or fontStr:GetStringWidth()
+    local th = fontStr:GetStringHeight()
+    if tw <= 0 or th <= 0 then
+        tex:Hide()
+        return tex
+    end
+    tex:ClearAllPoints()
+    if justifyH == "LEFT" then
+        tex:SetPoint("LEFT", fontStr, "LEFT", -padX, 0)
+    elseif justifyH == "RIGHT" then
+        tex:SetPoint("RIGHT", fontStr, "RIGHT", padX, 0)
+    else
+        tex:SetPoint("CENTER", fontStr, "CENTER", 0, 0)
+    end
+    tex:SetSize(tw + padX * 2, th + padY * 2)
+    local r = (color and color[1]) or 0
+    local g = (color and color[2]) or 0
+    local b = (color and color[3]) or 0
+    local a = (color and color[4]) or 1
+    tex:SetColorTexture(r, g, b, a)
+    tex:Show()
+    return tex
+end
+
+local function NormalizeAlign(a)
+    if a == "LEFT" or a == "RIGHT" then return a end
+    return "CENTER"
+end
+
+local function ApplyZoneBackground()
+    if not zoneFrame or not zoneFontStr then return end
+    local s = GetSettings()
+    zoneBgTex = ApplyTextBackground(zoneFrame, zoneFontStr, zoneBgTex,
+        s.zoneBg, s.zoneBgColor, NormalizeAlign(s.zoneAlign), 6, 2)
+end
+
+local function ApplyClockBackground()
+    if not clockFrame or not clockFontStr then return end
+    local s = GetSettings()
+    clockBgTex = ApplyTextBackground(clockFrame, clockFontStr, clockBgTex,
+        s.clockBg, s.clockBgColor, NormalizeAlign(s.clockAlign), 4, 2)
+end
+
+M.RefreshZoneBackground  = ApplyZoneBackground
+M.RefreshClockBackground = ApplyClockBackground
+
 -- ─── Zone Text ──────────────────────────────────────────────────────────────
 
 local PVP_COLORS = {
@@ -424,6 +492,7 @@ local function UpdateZoneDisplay()
     if zoneFrame then
         ApplyHitInsetsForText(zoneFrame, zoneFontStr, 6, 2)
     end
+    ApplyZoneBackground()
 end
 
 local function GetZoneAlign()
@@ -470,6 +539,7 @@ local function ApplyZoneFont()
         end
         ApplyHitInsetsForText(zoneFrame, zoneFontStr, 6, 2)
     end
+    ApplyZoneBackground()
 end
 
 M.RefreshZoneFont = ApplyZoneFont
@@ -504,6 +574,19 @@ local function SaveFrameLayoutPos(frame, key)
     GetSettings()[key] = { p, relName, rp, x, y }
 end
 
+-- Re-anchor a freshly dragged frame back to MINIMAP using a CENTER/CENTER
+-- offset. After StartMoving/StopMovingOrSizing the frame's first anchor is
+-- typically resolved against UIParent; this restores a Minimap-relative
+-- anchor so the frame rides the minimap when zoneClockAnchorMinimap is on.
+local function ReanchorToMinimap(frame)
+    if not frame or not MINIMAP then return end
+    local fx, fy = frame:GetCenter()
+    local mx, my = MINIMAP:GetCenter()
+    if not fx or not mx then return end
+    frame:ClearAllPoints()
+    frame:SetPoint("CENTER", MINIMAP, "CENTER", fx - mx, fy - my)
+end
+
 local function HookZoneClockDragScripts()
     if zoneFrame and not zoneFrame._oneWoWDragHooked then
         zoneFrame._oneWoWDragHooked = true
@@ -520,6 +603,9 @@ local function HookZoneClockDragScripts()
             if self._oneWoWDragging then
                 self:StopMovingOrSizing()
                 self._oneWoWDragging = nil
+                if GetToggle("zoneClockAnchorMinimap") then
+                    ReanchorToMinimap(self)
+                end
                 ClampFrameToTextOnScreen(self, zoneFontStr)
                 SaveFrameLayoutPos(self, "zoneTextPos")
             end
@@ -547,6 +633,9 @@ local function HookZoneClockDragScripts()
             if self._oneWoWDragging then
                 self:StopMovingOrSizing()
                 self._oneWoWDragging = nil
+                if GetToggle("zoneClockAnchorMinimap") then
+                    ReanchorToMinimap(self)
+                end
                 ClampFrameToTextOnScreen(self, clockFontStr)
                 SaveFrameLayoutPos(self, "clockPos")
                 return
@@ -583,7 +672,11 @@ local function ApplyZoneTextLayout()
     if not zoneFrame then return end
     local point, relPoint, x, y = GetZoneAnchor()
     if GetToggle("zoneClockDraggable") then
-        zoneFrame:SetParent(UIParent)
+        if GetToggle("zoneClockAnchorMinimap") then
+            zoneFrame:SetParent(MINIMAP)
+        else
+            zoneFrame:SetParent(UIParent)
+        end
         -- Match the minimap stack so zone text stays above the minimap but not above unrelated UI.
         zoneFrame:SetFrameStrata(MINIMAP:GetFrameStrata() or "LOW")
         zoneFrame:SetFrameLevel((MINIMAP:GetFrameLevel() or 2) + 5)
@@ -638,7 +731,11 @@ local function ApplyClockLayout()
     if not clockFrame then return end
     local point, relPoint, x, y = GetClockAnchor()
     if GetToggle("zoneClockDraggable") then
-        clockFrame:SetParent(UIParent)
+        if GetToggle("zoneClockAnchorMinimap") then
+            clockFrame:SetParent(MINIMAP)
+        else
+            clockFrame:SetParent(UIParent)
+        end
         clockFrame:SetFrameStrata(MINIMAP:GetFrameStrata() or "LOW")
         clockFrame:SetFrameLevel((MINIMAP:GetFrameLevel() or 2) + 5)
         clockFrame:SetMovable(true)
@@ -788,6 +885,7 @@ local function UpdateClockDisplay()
         clockFontStr:SetFormattedText(TIMEMANAGER_TICKER_12HOUR, hour, minute)
     end
     FitClockFrameToText()
+    ApplyClockBackground()
 end
 
 local function StartClockUpdates()
@@ -847,6 +945,7 @@ local function ApplyClockFont()
     if clockFrame then
         UpdateClockDisplay()
     end
+    ApplyClockBackground()
 end
 
 M.RefreshClockFont = ApplyClockFont
@@ -1968,7 +2067,8 @@ function M:OnToggle(toggleId, value)
         ShowZoneText()
     elseif toggleId == "showClock" then
         ShowClock()
-    elseif toggleId == "zoneClockInside" or toggleId == "zoneClockDraggable" then
+    elseif toggleId == "zoneClockInside" or toggleId == "zoneClockDraggable"
+        or toggleId == "zoneClockAnchorMinimap" then
         ShowZoneText()
         ShowClock()
     elseif toggleId == "mouseWheelZoom" then

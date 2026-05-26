@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 local M = ns.MapMiniToolsModule
 
 local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
@@ -249,21 +249,102 @@ local function BuildContent(container)
     local zoneClockInsideCB = InlineCB("zoneClockInside", "MMSKIN_ZONE_CLOCK_INSIDE")
     local zoneClockDragCB   = InlineCB("zoneClockDraggable", "MMSKIN_ZONE_CLOCK_DRAG")
 
-    -- These two controls only affect the zone/clock frames. If neither text is
-    -- shown, they have nothing to act on, so disable them until the user enables
-    -- at least one of the text toggles below.
+    -- Indented sub-toggle: only meaningful when draggable is on.
+    local anchorMmCB = OneWoW_GUI:CreateCheckbox(container, {
+        label   = L["MMSKIN_ZONE_CLOCK_ANCHOR_MM"],
+        checked = ns.ModuleRegistry:GetToggleValue("map_mini_tools", "zoneClockAnchorMinimap"),
+        onClick = function(self)
+            ns.ModuleRegistry:SetToggleValue("map_mini_tools", "zoneClockAnchorMinimap", self:GetChecked())
+        end,
+    })
+    anchorMmCB:SetPoint("TOPLEFT", container, "TOPLEFT", INDENT_LABEL, cy)
+    track(anchorMmCB)
+    cy = cy - ROW_HEIGHT
+
+    -- These three controls only affect the zone/clock frames. If neither text
+    -- is shown, they have nothing to act on, so disable them until the user
+    -- enables at least one of the text toggles below.
     local zoneOrClockOn = ns.ModuleRegistry:GetToggleValue("map_mini_tools", "showZoneText")
         or ns.ModuleRegistry:GetToggleValue("map_mini_tools", "showClock")
     if not zoneOrClockOn then
         DisableWidget(zoneClockInsideCB)
         DisableWidget(zoneClockDragCB)
+        DisableWidget(anchorMmCB)
+    end
+
+    -- Anchor-to-minimap only takes effect while draggable is on.
+    if not ns.ModuleRegistry:GetToggleValue("map_mini_tools", "zoneClockDraggable") then
+        DisableWidget(anchorMmCB)
+    end
+
+    -- Coalesce rapid bursts (Blizzard's color picker fires its swatchFunc /
+    -- opacityFunc continuously while the user drags) into one refresh per
+    -- ~50ms window so we never push more than ~20 redraws per second.
+    local function Debounce(fn, delay)
+        local pending = false
+        return function()
+            if pending then return end
+            pending = true
+            C_Timer.After(delay or 0.05, function()
+                pending = false
+                if fn then fn() end
+            end)
+        end
+    end
+
+    -- Background block: enable checkbox + RGBA color swatch on one row.
+    -- enableKey/colorKey live on s (the saved settings table); refreshFn is
+    -- the engine's immediate refresh — wrapped here in a debounce because
+    -- the color picker fires its callbacks continuously while dragging.
+    local function BuildBackgroundBlock(enableKey, colorKey, labelKey, refreshFn)
+        local debouncedRefresh = Debounce(refreshFn, 0.05)
+        local function applyAndRefresh()
+            if refreshFn and ns.ModuleRegistry:IsEnabled("map_mini_tools") then
+                debouncedRefresh()
+            end
+        end
+
+        local bgCB = OneWoW_GUI:CreateCheckbox(container, {
+            label   = L[labelKey],
+            checked = s[enableKey],
+            onClick = function(self)
+                s[enableKey] = self:GetChecked()
+                applyAndRefresh()
+            end,
+        })
+        bgCB:SetPoint("TOPLEFT", container, "TOPLEFT", INDENT_LABEL, cy)
+        track(bgCB)
+
+        local swatch = OneWoW_GUI:CreateColorSwatch(container, {
+            size       = 22,
+            hasOpacity = true,
+            getColor   = function()
+                local c = s[colorKey]
+                return c[1] or 0, c[2] or 0, c[3] or 0
+            end,
+            onColorChanged = function(r, g, b)
+                local c = s[colorKey]
+                c[1], c[2], c[3] = r, g, b
+                applyAndRefresh()
+            end,
+            getOpacity = function()
+                return s[colorKey][4] or 1
+            end,
+            onOpacityChanged = function(a)
+                s[colorKey][4] = a
+                applyAndRefresh()
+            end,
+        })
+        swatch:SetPoint("LEFT", bgCB, "RIGHT", 200, 0)
+        track(swatch)
+
+        cy = cy - ROW_HEIGHT
     end
 
     -- Zone Text toggle + sub-settings
     InlineCB("showZoneText", "MMSKIN_ZONE_TEXT")
     if ns.ModuleRegistry:GetToggleValue("map_mini_tools", "showZoneText") then
-        local zoneFontLabel
-        zoneFontLabel, cy = AddLabelIndented(container, cy, L["MMSKIN_ZONE_FONT_LABEL"])
+        _, cy = AddLabelIndented(container, cy, L["MMSKIN_ZONE_FONT_LABEL"])
 
         local zoneFontDrop, zoneFontText = OneWoW_GUI:CreateDropdown(container, {
             width = 200, height = 22,
@@ -324,19 +405,21 @@ local function BuildContent(container)
                 s.zoneAlign = value
                 zoneAlignText:SetText(text)
                 if ns.ModuleRegistry:IsEnabled("map_mini_tools") then
-                    if M.RefreshZoneFont   then M.RefreshZoneFont()   end
-                    if M.RefreshZoneLayout then M.RefreshZoneLayout() end
+                    if M.RefreshZoneFont       then M.RefreshZoneFont()       end
+                    if M.RefreshZoneLayout     then M.RefreshZoneLayout()     end
+                    if M.RefreshZoneBackground then M.RefreshZoneBackground() end
                 end
             end,
         })
         cy = cy - 4
+
+        BuildBackgroundBlock("zoneBg", "zoneBgColor", "MMSKIN_ZONE_BG", M.RefreshZoneBackground)
     end
 
     -- Clock toggle + sub-settings
     InlineCB("showClock", "MMSKIN_CLOCK")
     if ns.ModuleRegistry:GetToggleValue("map_mini_tools", "showClock") then
-        local clockFontLabel
-        clockFontLabel, cy = AddLabelIndented(container, cy, L["MMSKIN_CLOCK_FONT_LABEL"])
+        _, cy = AddLabelIndented(container, cy, L["MMSKIN_CLOCK_FONT_LABEL"])
 
         local clockFontDrop, clockFontText = OneWoW_GUI:CreateDropdown(container, {
             width = 200, height = 22,
@@ -408,11 +491,15 @@ local function BuildContent(container)
                 s.clockAlign = value
                 clockAlignText:SetText(text)
                 if ns.ModuleRegistry:IsEnabled("map_mini_tools") then
-                    if M.RefreshClockFont   then M.RefreshClockFont()   end
-                    if M.RefreshClockLayout then M.RefreshClockLayout() end
+                    if M.RefreshClockFont       then M.RefreshClockFont()       end
+                    if M.RefreshClockLayout     then M.RefreshClockLayout()     end
+                    if M.RefreshClockBackground then M.RefreshClockBackground() end
                 end
             end,
         })
+        cy = cy - 4
+
+        BuildBackgroundBlock("clockBg", "clockBgColor", "MMSKIN_CLOCK_BG", M.RefreshClockBackground)
     end
 
     -- ═══════════════════════════════════════════════════════════════════════
@@ -606,7 +693,7 @@ end
 
 -- ─── CreateCustomDetail ─────────────────────────────────────────────────────
 
-function M:CreateCustomDetail(detailScrollChild, yOffset, isEnabled, registerRefresh)
+function M:CreateCustomDetail(detailScrollChild, yOffset, _, registerRefresh)
     if detailScrollChild._mmskinContainer then
         OneWoW_GUI:ClearFrame(detailScrollChild._mmskinContainer)
     end

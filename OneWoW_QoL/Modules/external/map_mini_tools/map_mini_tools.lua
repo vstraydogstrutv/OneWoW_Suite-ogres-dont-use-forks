@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 local MapMiniToolsModule = {
     id             = "map_mini_tools",
@@ -24,6 +24,7 @@ local MapMiniToolsModule = {
         { id = "classClockColor", label = "MMSKIN_CLASS_CLOCK_COLOR", description = "MMSKIN_CLASS_CLOCK_COLOR_DESC", default = false, group = "MMSKIN_GROUP_INFO", detailOnly = true },
         { id = "zoneClockInside", label = "MMSKIN_ZONE_CLOCK_INSIDE", description = "MMSKIN_ZONE_CLOCK_INSIDE_DESC", default = false, group = "MMSKIN_GROUP_INFO", detailOnly = true },
         { id = "zoneClockDraggable", label = "MMSKIN_ZONE_CLOCK_DRAG", description = "MMSKIN_ZONE_CLOCK_DRAG_DESC", default = false, group = "MMSKIN_GROUP_INFO", detailOnly = true },
+        { id = "zoneClockAnchorMinimap", label = "MMSKIN_ZONE_CLOCK_ANCHOR_MM", description = "MMSKIN_ZONE_CLOCK_ANCHOR_MM_DESC", default = false, group = "MMSKIN_GROUP_INFO", detailOnly = true },
 
         { id = "mouseWheelZoom", label = "MMSKIN_WHEEL_ZOOM",   description = "MMSKIN_WHEEL_ZOOM_DESC",   default = true,  group = "MMSKIN_GROUP_ZOOM" },
         { id = "autoZoomOut",    label = "MMSKIN_AUTO_ZOOM",    description = "MMSKIN_AUTO_ZOOM_DESC",    default = true,  group = "MMSKIN_GROUP_ZOOM",   detailOnly = true },

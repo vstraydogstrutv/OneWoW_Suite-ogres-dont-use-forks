@@ -36,6 +36,8 @@ L_enUS["MMSKIN_ZONE_CLOCK_INSIDE_DESC"]                      = "지역 이름과
 
 L_enUS["MMSKIN_ZONE_CLOCK_DRAG"]                             = "지역 이름·시계 끌기(Shift)"
 L_enUS["MMSKIN_ZONE_CLOCK_DRAG_DESC"]                        = "지역 이름이나 시계를 움직이려면 Shift를 누른 채로 드래그해야 합니다. 위치는 저장됩니다. Shift를 떼면 일반 클릭으로 동작합니다(시계는 여전히 시간 관리 창을 엽니다)."
+L_enUS["MMSKIN_ZONE_CLOCK_ANCHOR_MM"]                        = "지역 이름·시계를 미니맵에 고정"
+L_enUS["MMSKIN_ZONE_CLOCK_ANCHOR_MM_DESC"]                   = "끌기가 켜져 있을 때 지역 이름과 시계를 미니맵에 고정해 미니맵과 함께 움직이게 합니다. 둘을 겹쳐 두면 한 덩어리로 함께 이동합니다."
 L_enUS["MMSKIN_WHEEL_ZOOM"]                                  = "마우스 휠 확대/축소"
 L_enUS["MMSKIN_WHEEL_ZOOM_DESC"]                             = "마우스 휠로 미니맵을 확대·축소합니다."
 L_enUS["MMSKIN_AUTO_ZOOM"]                                   = "자동 축소"
@@ -75,6 +77,9 @@ L_enUS["MMSKIN_BORDER_RED"]                                  = "빨강"
 L_enUS["MMSKIN_BORDER_GREEN"]                                = "초록"
 L_enUS["MMSKIN_BORDER_BLUE"]                                 = "파랑"
 L_enUS["MMSKIN_USE_THEME_COLOR"]                             = "테마 색 사용"
+
+L_enUS["MMSKIN_ZONE_BG"]                                     = "지역 이름 배경"
+L_enUS["MMSKIN_CLOCK_BG"]                                    = "시계 배경"
 
 L_enUS["MMSKIN_AUTO_ZOOM_DELAY"]                             = "자동 축소 지연"
 L_enUS["MMSKIN_SHOW_ZOOM_BTNS"]                              = "확대 단추 표시"
