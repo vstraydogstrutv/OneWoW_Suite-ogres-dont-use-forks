@@ -46,6 +46,7 @@ Modules\alttracker\actionbars-compat.lua
 
 # UI Framework and Main Frame
 UI\Framework.lua
+UI\MailDetail.lua
 UI\MainFrame.lua
 
 # Tab UI Files

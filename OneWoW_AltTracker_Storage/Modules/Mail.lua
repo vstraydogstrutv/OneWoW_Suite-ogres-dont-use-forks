@@ -8,6 +8,66 @@ local private = {
     rescanContext = {},
 }
 
+local SECONDS_PER_DAY = 86400
+
+-- Compute live seconds-until-expiry for a stored mail entry. Returns nil if the
+-- entry is missing the data needed to compute it (e.g. a legacy/incomplete row).
+local function ComputeRemainingSeconds(mail)
+    if not mail then return nil end
+    local daysLeft = mail.daysLeft
+    local collectedAt = mail.collectedAt
+    if not daysLeft or not collectedAt then return nil end
+    return (daysLeft * SECONDS_PER_DAY) - (time() - collectedAt)
+end
+
+-- Build a summary of a stored mailbox: number of non-expired entries, soonest
+-- expiry in seconds, and flags. Entries with computed expiry already in the
+-- past are excluded; the caller is expected to call PruneExpired for the
+-- persistent cleanup pass.
+local function SummarizeMails(mailbox)
+    local summary = {
+        count = 0,
+        oldestExpirySeconds = nil,
+        hasUnread = false,
+        hasCOD = false,
+        hasReturned = false,
+        hasAttachment = false,
+    }
+    if not mailbox or not mailbox.mails then return summary end
+
+    for _, mail in pairs(mailbox.mails) do
+        local remaining = ComputeRemainingSeconds(mail)
+        if not remaining or remaining > 0 then
+            summary.count = summary.count + 1
+            if remaining and (not summary.oldestExpirySeconds or remaining < summary.oldestExpirySeconds) then
+                summary.oldestExpirySeconds = remaining
+            end
+            if mail.wasRead == false then summary.hasUnread = true end
+            if mail.CODAmount and mail.CODAmount > 0 then summary.hasCOD = true end
+            if mail.wasReturned then summary.hasReturned = true end
+            if mail.hasItem then summary.hasAttachment = true end
+        end
+    end
+
+    return summary
+end
+
+-- Drop entries whose computed expiry has already passed. Returns true if any
+-- entries were removed. Safe to call repeatedly; on incomplete entries (no
+-- collectedAt / daysLeft) it leaves the entry alone.
+local function PruneExpired(mailbox)
+    if not mailbox or not mailbox.mails then return false end
+    local removed = false
+    for mailID, mail in pairs(mailbox.mails) do
+        local remaining = ComputeRemainingSeconds(mail)
+        if remaining and remaining <= 0 then
+            mailbox.mails[mailID] = nil
+            removed = true
+        end
+    end
+    return removed
+end
+
 function Module:Initialize()
     if self.initialized then return end
     self.initialized = true
@@ -63,7 +123,7 @@ function private.RescanHandler()
 end
 
 function private.RecordMail(index)
-    local AccountingAddon = _G.OneWoW_AltTracker_Accounting
+    local AccountingAddon = OneWoW_AltTracker_Accounting
     if not AccountingAddon or not AccountingAddon.Transactions or not OneWoW_AltTracker_Accounting_DB then
         return false
     end
@@ -93,20 +153,55 @@ function private.RecordMail(index)
     return true
 end
 
--- Lightweight flag refresh that works away from the mailbox.
--- Uses Blizzard's HasNewMail() API (the same signal that drives the
--- minimap envelope), so it is accurate whether or not MailFrame is open.
+-- Public summary accessor used by both Storage and AltTracker UI. Reads only
+-- persisted state, so it's safe to call for any character key (current or alt).
+function Module:GetSummary(mailbox)
+    return SummarizeMails(mailbox)
+end
+
+-- Drops already-expired entries from the stored mailbox and refreshes the
+-- derived flags. Called from the lightweight flag refresh path so the count
+-- displayed in the UI never includes mail that the server has already deleted.
+function Module:RefreshDerived(mailbox)
+    if not mailbox then return end
+    PruneExpired(mailbox)
+    local summary = SummarizeMails(mailbox)
+    mailbox.numMails = summary.count
+    mailbox.hasAnyMail = summary.count > 0
+end
+
+-- Lightweight refresh that works away from the mailbox. We do NOT trust
+-- HasNewMail() as the authoritative signal for "this character has mail" --
+-- it only reflects the minimap envelope, which the user clears just by looking
+-- at the mailbox. Instead we derive "has mail" from the stored mail table
+-- (filtered to drop already-expired entries), and OR in HasNewMail() as a
+-- supplemental hint so a freshly arrived mail on the current character lights
+-- up the icon even before we've had a chance to scan the inbox.
 function Module:UpdateHasNewMailFlag(charKey, charData)
     if not charKey or not charData then return false end
 
     charData.mail = charData.mail or { mails = {}, numMails = 0 }
+    local mailbox = charData.mail
 
-    local has = false
+    PruneExpired(mailbox)
+    local summary = SummarizeMails(mailbox)
+
+    mailbox.numMails = summary.count
+    mailbox.hasAnyMail = summary.count > 0
+
+    local hasNew = false
     if type(HasNewMail) == "function" then
-        has = HasNewMail() == true
+        hasNew = HasNewMail() == true
+    end
+    mailbox.hasNewMail = hasNew
+
+    -- Server-side "new mail arrived" on the current character: light up the
+    -- icon even if we haven't scanned the inbox yet to confirm. The next
+    -- MAIL_SHOW will populate the actual list.
+    if hasNew then
+        mailbox.hasAnyMail = true
     end
 
-    charData.mail.hasNewMail = has
     charData.mailLastUpdate = time()
     return true
 end
@@ -115,10 +210,8 @@ function Module:CollectData(charKey, charData)
     if not charKey or not charData then return false end
 
     -- If the mailbox UI isn't actually open, GetInboxNumItems() / GetInboxHeaderInfo()
-    -- return 0/nil. Wiping charData.mail in that case would destroy known mail state
-    -- AND force hasNewMail to false even when the character really has mail waiting
-    -- (which is exactly what UPDATE_PENDING_MAIL is telling us). Instead, just refresh
-    -- the hasNewMail flag from HasNewMail() and preserve the existing mails table.
+    -- return 0/nil. Wiping charData.mail in that case would destroy known mail state.
+    -- Instead refresh the derived flags from existing data plus HasNewMail().
     local mailboxOpen = MailFrame and MailFrame:IsShown()
     if not mailboxOpen then
         return self:UpdateHasNewMailFlag(charKey, charData)
@@ -127,7 +220,6 @@ function Module:CollectData(charKey, charData)
     local existingMail = charData.mail or {mails = {}, numMails = 0}
     local mailbox = {mails = {}, numMails = 0}
     local numItems = GetInboxNumItems()
-    mailbox.numMails = numItems
 
     for mailID = 1, math.min(numItems, 20) do
         local packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, hasItem,
@@ -177,17 +269,14 @@ function Module:CollectData(charKey, charData)
         end
     end
 
+    -- Beyond index 20, GetInboxHeaderInfo returns nil. Carry forward any
+    -- prior entries that are still not yet expired so we don't lose data
+    -- about mails the player has but hasn't scrolled to.
     if numItems >= 20 then
         for oldMailID, oldMail in pairs(existingMail.mails or {}) do
             if not mailbox.mails[oldMailID] then
-                local expired = false
-                if oldMail.collectedAt and oldMail.daysLeft then
-                    local expireTime = oldMail.collectedAt + (oldMail.daysLeft * 86400)
-                    if time() > expireTime then
-                        expired = true
-                    end
-                end
-                if not expired then
+                local remaining = ComputeRemainingSeconds(oldMail)
+                if not remaining or remaining > 0 then
                     mailbox.mails[oldMailID] = oldMail
                     mailbox.mails[oldMailID].isAwaitingCollection = true
                 end
@@ -195,20 +284,20 @@ function Module:CollectData(charKey, charData)
         end
     end
 
-    mailbox.hasNewMail = false
-    for _, mail in pairs(mailbox.mails) do
-        if not mail.wasRead or mail.isAwaitingCollection then
-            mailbox.hasNewMail = true
-            break
-        end
-    end
+    PruneExpired(mailbox)
 
-    -- HasNewMail() is the canonical signal (it's what drives the minimap envelope).
-    -- OR it in so we never miss a "yes, new mail" state even if the wasRead heuristic
-    -- disagrees (e.g. mail past index 20 that we didn't iterate).
+    local summary = SummarizeMails(mailbox)
+    mailbox.numMails = summary.count
+    mailbox.hasAnyMail = summary.count > 0
+
+    -- Retain hasNewMail for compatibility with anything that still reads it.
+    -- It reflects "is there unread mail" rather than "is there mail" -- the
+    -- UI now uses hasAnyMail for the persistent icon state.
+    local hasUnread = summary.hasUnread
     if type(HasNewMail) == "function" and HasNewMail() == true then
-        mailbox.hasNewMail = true
+        hasUnread = true
     end
+    mailbox.hasNewMail = hasUnread
 
     charData.mail = mailbox
     charData.mailLastUpdate = time()
