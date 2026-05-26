@@ -265,3 +265,37 @@ function VendorData:GetLocationCount(vendor)
     for _ in pairs(vendor.locations) do count = count + 1 end
     return count
 end
+
+function VendorData:GetCategory(npcID)
+    local vendor = self:GetVendor(npcID)
+    return vendor and vendor.category
+end
+
+-- Sets (or clears, when categoryKey is nil/empty) the user-assigned category
+-- for a vendor. If the vendor exists only in the static index, a minimal
+-- record is materialized so the category can be persisted; the static items
+-- are carried over so subsequent reads still see them.
+function VendorData:SetCategory(npcID, categoryKey)
+    if not npcID then return false end
+    local db = ns:GetDB()
+    if not db.vendors then db.vendors = {} end
+
+    local vendor = db.vendors[npcID]
+    if not vendor then
+        BuildStaticIndex()
+        local staticItems = staticIndex and staticIndex[npcID]
+        vendor = {
+            npcID = npcID,
+            name  = db.nameCache and db.nameCache[npcID],
+            items = staticItems or {},
+        }
+        db.vendors[npcID] = vendor
+    end
+
+    if not categoryKey or categoryKey == "" then
+        vendor.category = nil
+    else
+        vendor.category = categoryKey
+    end
+    return true
+end

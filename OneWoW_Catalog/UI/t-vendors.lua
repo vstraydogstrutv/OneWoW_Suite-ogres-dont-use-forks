@@ -20,6 +20,7 @@ local searchText = ""
 local zoneFilter = nil
 local currentZoneOnly = false
 local currencyFilter = nil
+local categoryFilter = nil
 local dataAddon = nil
 local RefreshVendorList
 
@@ -185,6 +186,16 @@ local function VendorMatchesZoneFilter(vendor, filterZone)
     return false
 end
 
+local UNCATEGORIZED_KEY = "__none__"
+
+local function VendorMatchesCategoryFilter(vendor, filterKey)
+    if not filterKey then return true end
+    if filterKey == UNCATEGORIZED_KEY then
+        return not vendor.category or vendor.category == ""
+    end
+    return vendor.category == filterKey
+end
+
 local function VendorMatchesItemSearch(vendor, term, addon)
     if not vendor or not vendor.items or not term or term == "" then return false end
     if not addon or not addon.DataLoader then return false end
@@ -213,20 +224,30 @@ local function ClearVendorList()
     wipe(vendorListButtons)
 end
 
+-- List card layout (3 rows, dynamic heights):
+--   Row 1: vendor name (favorite star sits on the right side of this row)
+--   Row 2: zone (full width)
+--   Row 3: category label (left) | item count (right)
+-- Row heights come from FontString:GetStringHeight() after SetText so the card
+-- scales correctly when the user runs a larger font size offset.
 local function CreateVendorListEntry(parent, vendor, yOffset, panels, onClick)
+    local TOP_PAD, BOTTOM_PAD, ROW_GAP = 6, 6, 2
+    local SIDE_PAD = 8
+    local FAV_RESERVE = 32
+
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
     btn:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, yOffset)
     btn:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, yOffset)
-    btn:SetHeight(52)
     btn:SetBackdrop(BACKDROP_SIMPLE)
     btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
     btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
 
     local nameText = OneWoW_GUI:CreateFS(btn, 12)
-    nameText:SetPoint("TOPLEFT", btn, "TOPLEFT", 8, -6)
-    nameText:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -32, -6)
+    nameText:SetPoint("TOPLEFT", btn, "TOPLEFT", SIDE_PAD, -TOP_PAD)
+    nameText:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -FAV_RESERVE, -TOP_PAD)
     nameText:SetJustifyH("LEFT")
-    if vendor.name then
+    nameText:SetWordWrap(false)
+    if vendor.name and vendor.name ~= "" then
         nameText:SetText(vendor.name)
         nameText:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
     else
@@ -234,34 +255,52 @@ local function CreateVendorListEntry(parent, vendor, yOffset, panels, onClick)
         nameText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
     end
 
-    local location = nil
+    local primaryLoc
     if vendor.locations then
         for _, loc in pairs(vendor.locations) do
-            location = loc
+            primaryLoc = loc
             break
         end
     end
 
-    local infoText = OneWoW_GUI:CreateFS(btn, 10)
-    infoText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -2)
-    infoText:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -32, 0)
-    infoText:SetJustifyH("LEFT")
+    local zoneText = OneWoW_GUI:CreateFS(btn, 11)
+    zoneText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -ROW_GAP)
+    zoneText:SetPoint("RIGHT", btn, "RIGHT", -SIDE_PAD, 0)
+    zoneText:SetJustifyH("LEFT")
+    zoneText:SetWordWrap(false)
+    zoneText:SetText(primaryLoc and primaryLoc.zone or L["VENDORS_UNKNOWN_LOCATION"])
+    zoneText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
 
-    local zone = location and location.zone or L["VENDORS_UNKNOWN_LOCATION"]
     local itemCount = 0
     if vendor.items then
         for _ in pairs(vendor.items) do itemCount = itemCount + 1 end
     end
-    infoText:SetText(zone .. "  |  " .. itemCount .. " " .. L["VENDORS_ITEMS_SHORT"])
-    infoText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
 
-    local scanText = OneWoW_GUI:CreateFS(btn, 10)
-    scanText:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 8, 5)
-    scanText:SetJustifyH("LEFT")
-    if vendor.lastScanned then
-        scanText:SetText(FormatTimestamp(vendor.lastScanned))
+    local countText = OneWoW_GUI:CreateFS(btn, 11)
+    countText:SetPoint("TOPRIGHT", zoneText, "BOTTOMRIGHT", 0, -ROW_GAP)
+    countText:SetJustifyH("RIGHT")
+    countText:SetWordWrap(false)
+    countText:SetText(itemCount .. " " .. L["VENDORS_ITEMS_SHORT"])
+    countText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+
+    local categoryText = OneWoW_GUI:CreateFS(btn, 11)
+    categoryText:SetPoint("TOPLEFT", zoneText, "BOTTOMLEFT", 0, -ROW_GAP)
+    categoryText:SetPoint("RIGHT", countText, "LEFT", -8, 0)
+    categoryText:SetJustifyH("LEFT")
+    categoryText:SetWordWrap(false)
+    if vendor.category then
+        categoryText:SetText(ns.VendorCategories:GetLabel(vendor.category))
+        categoryText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_ACCENT"))
+    else
+        categoryText:SetText(L["VENDORS_CATEGORY_NONE"])
+        categoryText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
     end
-    scanText:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
+
+    local rowH1 = nameText:GetStringHeight()
+    local rowH2 = zoneText:GetStringHeight()
+    local rowH3 = math.max(categoryText:GetStringHeight(), countText:GetStringHeight())
+    local cardH = TOP_PAD + rowH1 + ROW_GAP + rowH2 + ROW_GAP + rowH3 + BOTTOM_PAD
+    btn:SetHeight(cardH)
 
     if ns.Favorites and vendor.npcID then
         local favBtn = OneWoW_GUI:CreateFavoriteToggleButton(btn, {
@@ -277,17 +316,17 @@ local function CreateVendorListEntry(parent, vendor, yOffset, panels, onClick)
         favBtn:SetPoint("TOPRIGHT", btn, "TOPRIGHT", -6, -4)
     end
 
-    btn:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-        self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
+    btn:SetScript("OnEnter", function(myself)
+        myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+        myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
     end)
-    btn:SetScript("OnLeave", function(self)
+    btn:SetScript("OnLeave", function(myself)
         if selectedVendor and selectedVendor.npcID == vendor.npcID then
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
-            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
         else
-            self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-            self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+            myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
         end
     end)
     btn:SetScript("OnClick", function()
@@ -295,7 +334,18 @@ local function CreateVendorListEntry(parent, vendor, yOffset, panels, onClick)
     end)
 
     btn.vendor = vendor
-    return btn
+    return btn, cardH
+end
+
+-- Detail panel layout uses font-height-driven spacing so larger user font
+-- offsets don't cause overlap. Every row advances yOffset by the actual
+-- rendered height of its content + ROW_GAP; rows that mix text and a fixed
+-- widget (location + Pin button, type label + dropdown) advance by the
+-- larger of the two.
+local DETAIL_ROW_GAP = 4
+
+local function StepRow(yOffset, height, gap)
+    return yOffset - height - (gap or DETAIL_ROW_GAP)
 end
 
 local function ShowVendorDetail(panels, vendor)
@@ -316,7 +366,7 @@ local function ShowVendorDetail(panels, vendor)
     nameHeader:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, yOffset)
     nameHeader:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, yOffset)
     nameHeader:SetJustifyH("LEFT")
-    if vendor.name then
+    if vendor.name and vendor.name ~= "" then
         nameHeader:SetText(vendor.name)
         nameHeader:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
     else
@@ -324,7 +374,7 @@ local function ShowVendorDetail(panels, vendor)
         nameHeader:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
     end
     tinsert(detailElements, nameHeader)
-    yOffset = yOffset - 22
+    yOffset = StepRow(yOffset, nameHeader:GetStringHeight(), 6)
 
     local infoLine = OneWoW_GUI:CreateFS(parent, 12)
     infoLine:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, yOffset)
@@ -341,12 +391,50 @@ local function ShowVendorDetail(panels, vendor)
     infoLine:SetText(tconcat(infoParts, "  |  "))
     infoLine:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
     tinsert(detailElements, infoLine)
-    yOffset = yOffset - 18
+    yOffset = StepRow(yOffset, infoLine:GetStringHeight())
+
+    -- Type setter row: label + dropdown.
+    local typeLabel = OneWoW_GUI:CreateFS(parent, 12)
+    typeLabel:SetText(L["VENDORS_CATEGORY_LABEL"] .. ":")
+    typeLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
+    typeLabel:SetJustifyH("LEFT")
+    tinsert(detailElements, typeLabel)
+
+    local DROPDOWN_H = 24
+    local typeDropdown, typeDropdownText = OneWoW_GUI:CreateDropdown(parent, {
+        width  = 220,
+        height = DROPDOWN_H,
+        text   = vendor.category and ns.VendorCategories:GetLabel(vendor.category)
+                                  or L["VENDORS_CATEGORY_NONE"],
+    })
+    typeDropdown:SetPoint("TOPLEFT", parent, "TOPLEFT",
+        10 + typeLabel:GetStringWidth() + 8, yOffset)
+    typeLabel:SetPoint("RIGHT", typeDropdown, "LEFT", -6, 0)
+    tinsert(detailElements, typeDropdown)
+
+    OneWoW_GUI:AttachFilterMenu(typeDropdown, {
+        searchable    = false,
+        getActiveValue = function() return vendor.category end,
+        buildItems = function()
+            local items = { { value = nil, text = L["VENDORS_CATEGORY_NONE"] } }
+            for _, key in ipairs(ns.VendorCategories.ORDER) do
+                tinsert(items, { value = key, text = ns.VendorCategories:GetLabel(key) })
+            end
+            return items
+        end,
+        onSelect = function(key, text)
+            if addon and addon.VendorData then
+                addon.VendorData:SetCategory(vendor.npcID, key)
+            end
+            vendor.category = key
+            typeDropdownText:SetText(text)
+            RefreshVendorList(panels)
+        end,
+    })
+
+    yOffset = StepRow(yOffset, math.max(typeLabel:GetStringHeight(), DROPDOWN_H), 6)
 
     if vendor.locations then
-        local locCount = 0
-        for _ in pairs(vendor.locations) do locCount = locCount + 1 end
-
         for mapID, loc in pairs(vendor.locations) do
             local locLine = OneWoW_GUI:CreateFS(parent, 12)
             locLine:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, yOffset)
@@ -360,7 +448,8 @@ local function ShowVendorDetail(panels, vendor)
             locLine:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_SECONDARY"))
             tinsert(detailElements, locLine)
 
-            local wpBtn = OneWoW_GUI:CreateFitTextButton(parent, { text = L["VENDORS_WAYPOINT"], height = 16, minWidth = 50 })
+            local WP_H = 18
+            local wpBtn = OneWoW_GUI:CreateFitTextButton(parent, { text = L["VENDORS_WAYPOINT"], height = WP_H, minWidth = 50 })
             wpBtn:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, yOffset)
             tinsert(detailElements, wpBtn)
 
@@ -371,7 +460,7 @@ local function ShowVendorDetail(panels, vendor)
                 end
             end)
 
-            yOffset = yOffset - 18
+            yOffset = StepRow(yOffset, math.max(locLine:GetStringHeight(), WP_H))
         end
     end
 
@@ -384,6 +473,7 @@ local function ShowVendorDetail(panels, vendor)
     scanInfo:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, yOffset)
     scanInfo:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, yOffset)
     scanInfo:SetJustifyH("LEFT")
+    scanInfo:SetWordWrap(true)
     local scanParts = {}
     if vendor.firstSeen then
         tinsert(scanParts, L["VENDORS_FIRST_SEEN"] .. ": " .. FormatTimestamp(vendor.firstSeen))
@@ -397,7 +487,7 @@ local function ShowVendorDetail(panels, vendor)
     scanInfo:SetText(tconcat(scanParts, "  |  "))
     scanInfo:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_MUTED"))
     tinsert(detailElements, scanInfo)
-    yOffset = yOffset - 20
+    yOffset = StepRow(yOffset, scanInfo:GetStringHeight(), 6)
 
     local itemsHeader = OneWoW_GUI:CreateFS(parent, 12)
     itemsHeader:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, yOffset)
@@ -409,10 +499,10 @@ local function ShowVendorDetail(panels, vendor)
     itemsHeader:SetText(L["VENDORS_ITEM_COUNT"] .. ": " .. itemCount)
     itemsHeader:SetTextColor(OneWoW_GUI:GetThemeColor("ACCENT_PRIMARY"))
     tinsert(detailElements, itemsHeader)
-    yOffset = yOffset - 22
+    yOffset = StepRow(yOffset, itemsHeader:GetStringHeight(), 6)
 
     if panels.rightStatusText then
-        panels.rightStatusText:SetText((vendor.name or ("NPC #" .. (vendor.npcID or "?"))) .. " - " .. itemCount .. " " .. L["VENDORS_ITEMS_SHORT"])
+        panels.rightStatusText:SetText(((vendor.name and vendor.name ~= "") and vendor.name or ("NPC #" .. (vendor.npcID or "?"))) .. " - " .. itemCount .. " " .. L["VENDORS_ITEMS_SHORT"])
     end
 
     if vendor.items then
@@ -424,6 +514,9 @@ local function ShowVendorDetail(panels, vendor)
             return (a.data.cost or 0) > (b.data.cost or 0)
         end)
 
+        local ICON_SIZE = 26
+        local ITEM_PAD  = 4
+
         for _, entry in ipairs(sortedItems) do
             local itemID = entry.id
             local itemData = entry.data
@@ -431,14 +524,13 @@ local function ShowVendorDetail(panels, vendor)
             local itemRow = CreateFrame("Frame", nil, parent, "BackdropTemplate")
             itemRow:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, yOffset)
             itemRow:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, yOffset)
-            itemRow:SetHeight(32)
             itemRow:SetBackdrop(BACKDROP_SIMPLE)
             itemRow:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
             itemRow:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
             tinsert(detailElements, itemRow)
 
             local iconFrame = CreateFrame("Frame", nil, itemRow, "BackdropTemplate")
-            iconFrame:SetSize(26, 26)
+            iconFrame:SetSize(ICON_SIZE, ICON_SIZE)
             iconFrame:SetPoint("LEFT", itemRow, "LEFT", 6, 0)
             iconFrame:SetBackdrop(BACKDROP_EDGE)
             iconFrame:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_PRIMARY"))
@@ -496,21 +588,24 @@ local function ShowVendorDetail(panels, vendor)
                 end
             end
 
+            local rowH = math.max(ICON_SIZE, itemName:GetStringHeight(), costText:GetStringHeight()) + ITEM_PAD * 2
+            itemRow:SetHeight(rowH)
+
             itemRow:EnableMouse(true)
-            itemRow:SetScript("OnEnter", function(self)
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
-                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            itemRow:SetScript("OnEnter", function(myself)
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_HOVER"))
+                myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_FOCUS"))
+                GameTooltip:SetOwner(myself, "ANCHOR_RIGHT")
                 GameTooltip:SetItemByID(itemID)
                 GameTooltip:Show()
             end)
-            itemRow:SetScript("OnLeave", function(self)
-                self:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-                self:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+            itemRow:SetScript("OnLeave", function(myself)
+                myself:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+                myself:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
                 GameTooltip:Hide()
             end)
 
-            yOffset = yOffset - 34
+            yOffset = yOffset - rowH - 2
         end
     end
 
@@ -563,8 +658,9 @@ function RefreshVendorList(panels)
         end
 
         local passesCurrency = VendorMatchesCurrencyFilter(vendor, currencyFilter)
+        local passesCategory = VendorMatchesCategoryFilter(vendor, categoryFilter)
 
-        if passesZone and passesSearch and passesCurrency then
+        if passesZone and passesSearch and passesCurrency and passesCategory then
             tinsert(filtered, vendor)
         end
     end
@@ -588,7 +684,7 @@ function RefreshVendorList(panels)
     end
 
     local totalFiltered = #filtered
-    local hasActiveFilter = activeZoneFilter or (searchText ~= "") or currencyFilter
+    local hasActiveFilter = activeZoneFilter or (searchText ~= "") or currencyFilter or categoryFilter
     local displayLimit = nil
     if not hasActiveFilter then
         displayLimit = 50
@@ -613,9 +709,10 @@ function RefreshVendorList(panels)
     panels.emptyList:Hide()
 
     local yOffset = -4
+    local CARD_GAP = 2
     for i = 1, displayCount do
         local vendor = filtered[i]
-        local btn = CreateVendorListEntry(panels.listScrollChild, vendor, yOffset, panels, function(v)
+        local btn, cardH = CreateVendorListEntry(panels.listScrollChild, vendor, yOffset, panels, function(v)
             for _, b in ipairs(vendorListButtons) do
                 if b.vendor and b.vendor.npcID == v.npcID then
                     b:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
@@ -628,7 +725,7 @@ function RefreshVendorList(panels)
             ShowVendorDetail(panels, v)
         end)
         tinsert(vendorListButtons, btn)
-        yOffset = yOffset - 54
+        yOffset = yOffset - cardH - CARD_GAP
     end
 
     panels.listScrollChild:SetHeight(math.abs(yOffset) + 10)
@@ -707,12 +804,39 @@ function ns.UI.CreateVendorsTab(parent)
         end,
     })
 
+    local categoryDropdown, categoryDropdownText = OneWoW_GUI:CreateDropdown(headerBar, {
+        width = 180,
+        height = 26,
+        text = L["VENDORS_CATEGORY_ALL"],
+    })
+    categoryDropdown:SetPoint("RIGHT", zoneDropdown, "LEFT", -10, 0)
+
+    OneWoW_GUI:AttachFilterMenu(categoryDropdown, {
+        searchable    = false,
+        getActiveValue = function() return categoryFilter end,
+        buildItems = function()
+            local items = {
+                { value = nil, text = L["VENDORS_CATEGORY_ALL"] },
+                { value = UNCATEGORIZED_KEY, text = L["VENDORS_CATEGORY_NONE"] },
+            }
+            for _, key in ipairs(ns.VendorCategories.ORDER) do
+                tinsert(items, { value = key, text = ns.VendorCategories:GetLabel(key) })
+            end
+            return items
+        end,
+        onSelect = function(key, text)
+            categoryFilter = key
+            categoryDropdownText:SetText(text)
+            RefreshVendorList(panels)
+        end,
+    })
+
     local currencyDropdown, currencyDropdownText = OneWoW_GUI:CreateDropdown(headerBar, {
         width = 200,
         height = 26,
         text = L["VENDORS_CURRENCY_ALL"],
     })
-    currencyDropdown:SetPoint("RIGHT", zoneDropdown, "LEFT", -10, 0)
+    currencyDropdown:SetPoint("RIGHT", categoryDropdown, "LEFT", -10, 0)
 
     OneWoW_GUI:AttachFilterMenu(currencyDropdown, {
         searchable = true,
@@ -763,10 +887,12 @@ function ns.UI.CreateVendorsTab(parent)
         zoneFilter = nil
         currentZoneOnly = false
         currencyFilter = nil
+        categoryFilter = nil
         searchBox:SetText(searchBox.placeholderText)
         searchBox:ClearFocus()
         zoneDropdownText:SetText(L["VENDORS_ZONE_ALL"])
         currencyDropdownText:SetText(L["VENDORS_CURRENCY_ALL"])
+        categoryDropdownText:SetText(L["VENDORS_CATEGORY_ALL"])
         chkBox:SetChecked(false)
         RefreshVendorList(panels)
     end)
