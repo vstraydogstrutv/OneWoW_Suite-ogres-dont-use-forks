@@ -22,6 +22,7 @@ local currentZoneOnly = false
 local currencyFilter = nil
 local categoryFilter = nil
 local dataAddon = nil
+local pendingFocusNpcID = nil
 local RefreshVendorList
 
 local function FormatCost(itemData)
@@ -66,6 +67,42 @@ end
 local function FormatTimestamp(timestamp)
     if not timestamp then return "" end
     return date("%Y-%m-%d %H:%M", timestamp)
+end
+
+local function HighlightVendorListEntry(npcID)
+    for _, btn in ipairs(vendorListButtons) do
+        if btn.vendor and btn.vendor.npcID == npcID then
+            btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
+            btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
+        else
+            btn:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
+            btn:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
+        end
+    end
+end
+
+local function ClearVendorFilters(panels)
+    searchText = ""
+    zoneFilter = nil
+    currentZoneOnly = false
+    currencyFilter = nil
+    categoryFilter = nil
+    if not panels then return end
+    if panels.searchBox then
+        panels.searchBox:SetText("")
+    end
+    if panels.zoneDropdownText then
+        panels.zoneDropdownText:SetText(L["VENDORS_ZONE_ALL"])
+    end
+    if panels.currencyDropdownText then
+        panels.currencyDropdownText:SetText(L["VENDORS_CURRENCY_ALL"])
+    end
+    if panels.categoryDropdownText then
+        panels.categoryDropdownText:SetText(L["VENDORS_CATEGORY_ALL"])
+    end
+    if panels.zoneCurrentCheckbox then
+        panels.zoneCurrentCheckbox:SetChecked(false)
+    end
 end
 
 local function GetDataAddon()
@@ -413,11 +450,12 @@ local function ShowVendorDetail(panels, vendor)
     tinsert(detailElements, typeDropdown)
 
     OneWoW_GUI:AttachFilterMenu(typeDropdown, {
-        searchable    = false,
+        searchable    = true,
+        maxVisible    = 12,
         getActiveValue = function() return vendor.category end,
         buildItems = function()
             local items = { { value = nil, text = L["VENDORS_CATEGORY_NONE"] } }
-            for _, key in ipairs(ns.VendorCategories.ORDER) do
+            for _, key in ipairs(ns.VendorCategories:GetSortedKeys()) do
                 tinsert(items, { value = key, text = ns.VendorCategories:GetLabel(key) })
             end
             return items
@@ -686,7 +724,7 @@ function RefreshVendorList(panels)
     local totalFiltered = #filtered
     local hasActiveFilter = activeZoneFilter or (searchText ~= "") or currencyFilter or categoryFilter
     local displayLimit = nil
-    if not hasActiveFilter then
+    if not hasActiveFilter and not pendingFocusNpcID then
         displayLimit = 50
     end
     local displayCount = displayLimit and math.min(totalFiltered, displayLimit) or totalFiltered
@@ -708,20 +746,36 @@ function RefreshVendorList(panels)
 
     panels.emptyList:Hide()
 
+    local displayVendors = {}
+    if pendingFocusNpcID then
+        local focusVendor
+        for _, v in ipairs(filtered) do
+            if v.npcID == pendingFocusNpcID then
+                focusVendor = v
+                break
+            end
+        end
+        if focusVendor then
+            tinsert(displayVendors, focusVendor)
+        end
+        local cap = displayLimit or totalFiltered
+        for _, v in ipairs(filtered) do
+            if v.npcID ~= pendingFocusNpcID then
+                tinsert(displayVendors, v)
+                if #displayVendors >= cap then break end
+            end
+        end
+    else
+        for i = 1, displayCount do
+            tinsert(displayVendors, filtered[i])
+        end
+    end
+
     local yOffset = -4
     local CARD_GAP = 2
-    for i = 1, displayCount do
-        local vendor = filtered[i]
+    for _, vendor in ipairs(displayVendors) do
         local btn, cardH = CreateVendorListEntry(panels.listScrollChild, vendor, yOffset, panels, function(v)
-            for _, b in ipairs(vendorListButtons) do
-                if b.vendor and b.vendor.npcID == v.npcID then
-                    b:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_ACTIVE"))
-                    b:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_ACCENT"))
-                else
-                    b:SetBackdropColor(OneWoW_GUI:GetThemeColor("BG_SECONDARY"))
-                    b:SetBackdropBorderColor(OneWoW_GUI:GetThemeColor("BORDER_SUBTLE"))
-                end
-            end
+            HighlightVendorListEntry(v.npcID)
             ShowVendorDetail(panels, v)
         end)
         tinsert(vendorListButtons, btn)
@@ -730,6 +784,61 @@ function RefreshVendorList(panels)
 
     panels.listScrollChild:SetHeight(math.abs(yOffset) + 10)
     panels.UpdateListThumb()
+end
+
+local function SelectVendorByNpcID(panels, npcID)
+    local addon = GetDataAddon()
+    if not addon or not addon.VendorData then return false end
+
+    local vendor = addon.VendorData:GetAllVendors()[npcID]
+    if not vendor then return false end
+
+    pendingFocusNpcID = npcID
+    ClearVendorFilters(panels)
+    RefreshVendorList(panels)
+    ShowVendorDetail(panels, vendor)
+    HighlightVendorListEntry(npcID)
+    pendingFocusNpcID = nil
+    return true
+end
+
+function ns.UI.OpenToVendor(npcID)
+    npcID = tonumber(npcID)
+    if not npcID then return end
+
+    local addon = GetDataAddon()
+    if not addon or not addon.VendorData then
+        if OneWoW_Catalog then
+            OneWoW_Catalog.pendingVendorSelect = npcID
+        end
+        return
+    end
+
+    if not addon.VendorData:GetAllVendors()[npcID] then return end
+
+    if ns.oneWoWHubActive and OneWoW and OneWoW.GUI then
+        OneWoW.GUI:Show("catalog")
+        OneWoW.GUI:SelectSubTab("catalog", "vendors")
+    end
+
+    local function trySelect()
+        local panels = ns.UI.vendorsPanels
+        if not panels then
+            if OneWoW_Catalog then
+                OneWoW_Catalog.pendingVendorSelect = npcID
+            end
+            return false
+        end
+        if OneWoW_Catalog then
+            OneWoW_Catalog.pendingVendorSelect = nil
+        end
+        return SelectVendorByNpcID(panels, npcID)
+    end
+
+    if not trySelect() then
+        C_Timer.After(0.15, trySelect)
+        C_Timer.After(0.35, trySelect)
+    end
 end
 
 function ns.UI.CreateVendorsTab(parent)
@@ -762,6 +871,7 @@ function ns.UI.CreateVendorsTab(parent)
         end,
     })
     searchBox:SetPoint("TOPLEFT", headerBar, "TOPLEFT", 8, -8)
+    panels.searchBox = searchBox
 
     local clearBtn = OneWoW_GUI:CreateFitTextButton(headerBar, { text = L["VENDORS_FILTER_CLEAR"], height = 26, minWidth = 34 })
     clearBtn:SetPoint("LEFT", searchBox, "RIGHT", 4, 0)
@@ -774,6 +884,7 @@ function ns.UI.CreateVendorsTab(parent)
     local chkLabelGap   = OneWoW_GUI:GetSpacing("XS")
     local chkLabelWidth = chkBox.label:GetStringWidth()
     chkBox:SetPoint("TOPRIGHT", headerBar, "TOPRIGHT", -8 - chkLabelGap - chkLabelWidth, -13)
+    panels.zoneCurrentCheckbox = chkBox
 
     local zoneDropdown, zoneDropdownText = OneWoW_GUI:CreateDropdown(headerBar, {
         width = 200,
@@ -781,6 +892,7 @@ function ns.UI.CreateVendorsTab(parent)
         text = L["VENDORS_ZONE_ALL"],
     })
     zoneDropdown:SetPoint("RIGHT", chkBox, "LEFT", -10, 0)
+    panels.zoneDropdownText = zoneDropdownText
 
     OneWoW_GUI:AttachFilterMenu(zoneDropdown, {
         searchable = true,
@@ -810,16 +922,18 @@ function ns.UI.CreateVendorsTab(parent)
         text = L["VENDORS_CATEGORY_ALL"],
     })
     categoryDropdown:SetPoint("RIGHT", zoneDropdown, "LEFT", -10, 0)
+    panels.categoryDropdownText = categoryDropdownText
 
     OneWoW_GUI:AttachFilterMenu(categoryDropdown, {
-        searchable    = false,
+        searchable    = true,
+        maxVisible    = 12,
         getActiveValue = function() return categoryFilter end,
         buildItems = function()
             local items = {
                 { value = nil, text = L["VENDORS_CATEGORY_ALL"] },
                 { value = UNCATEGORIZED_KEY, text = L["VENDORS_CATEGORY_NONE"] },
             }
-            for _, key in ipairs(ns.VendorCategories.ORDER) do
+            for _, key in ipairs(ns.VendorCategories:GetSortedKeys()) do
                 tinsert(items, { value = key, text = ns.VendorCategories:GetLabel(key) })
             end
             return items
@@ -837,6 +951,7 @@ function ns.UI.CreateVendorsTab(parent)
         text = L["VENDORS_CURRENCY_ALL"],
     })
     currencyDropdown:SetPoint("RIGHT", categoryDropdown, "LEFT", -10, 0)
+    panels.currencyDropdownText = currencyDropdownText
 
     OneWoW_GUI:AttachFilterMenu(currencyDropdown, {
         searchable = true,
@@ -947,4 +1062,18 @@ function ns.UI.CreateVendorsTab(parent)
     ns.UI.RefreshVendorsList = function()
         RefreshVendorList(panels)
     end
+
+    function parent.SelectVendor(npcID)
+        ns.UI.OpenToVendor(npcID)
+    end
+
+    parent:HookScript("OnShow", function()
+        if OneWoW_Catalog and OneWoW_Catalog.pendingVendorSelect then
+            local id = OneWoW_Catalog.pendingVendorSelect
+            OneWoW_Catalog.pendingVendorSelect = nil
+            C_Timer.After(0.05, function()
+                ns.UI.OpenToVendor(id)
+            end)
+        end
+    end)
 end

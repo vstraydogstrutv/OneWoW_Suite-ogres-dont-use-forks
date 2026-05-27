@@ -64,6 +64,34 @@ local function NavigateToNPC(npcID)
     end
 end
 
+local function CatalogHasVendor(npcID)
+    local api = OneWoW_CatalogData_Vendors_API
+    if not api or not api.GetAllVendors then return false end
+    local allVendors = api.GetAllVendors()
+    return allVendors and allVendors[npcID] ~= nil
+end
+
+local function HandleOpenVendorDetails(npcIDNum)
+    local catalog = OneWoW_Catalog
+    if catalog and catalog.UI and catalog.UI.OpenToVendor then
+        catalog.UI.OpenToVendor(npcIDNum)
+        return
+    end
+    if not OneWoW or not OneWoW.GUI then return end
+    if catalog then
+        catalog.pendingVendorSelect = tonumber(npcIDNum)
+    end
+    OneWoW.GUI:Show("catalog")
+    C_Timer.After(0.25, function()
+        if OneWoW and OneWoW.GUI then
+            OneWoW.GUI:SelectSubTab("catalog", "vendors")
+        end
+        if catalog and catalog.UI and catalog.UI.OpenToVendor then
+            catalog.UI.OpenToVendor(npcIDNum)
+        end
+    end)
+end
+
 -- =============================================
 -- PLAYER HANDLERS
 -- =============================================
@@ -392,21 +420,32 @@ local function NPCContextMenuHandler(owner, rootDescription, contextData)
     if not npcIDNum then return end
 
     local notes = GetNotes()
-    if not notes then return end
+    local hasNotesMenu = notes and notes.NPCs
+    local hasVendor = CatalogHasVendor(npcIDNum)
+
+    if not hasNotesMenu and not hasVendor then return end
 
     rootDescription:CreateDivider()
     rootDescription:CreateTitle(L["UNIT_CTX_HEADER"])
 
-    local hasExisting = notes.NPCs and (notes.NPCs:GetNPC(npcIDNum) ~= nil)
-    local buttonText  = hasExisting and L["UNIT_CTX_EDIT_NPC_NOTE"] or L["UNIT_CTX_ADD_NPC_NOTE"]
+    if hasNotesMenu then
+        local hasExisting = notes.NPCs:GetNPC(npcIDNum) ~= nil
+        local buttonText  = hasExisting and L["UNIT_CTX_EDIT_NPC_NOTE"] or L["UNIT_CTX_ADD_NPC_NOTE"]
 
-    rootDescription:CreateButton(buttonText, function()
-        HandleNPCAdd(contextData.unit, npcIDNum)
-    end)
+        rootDescription:CreateButton(buttonText, function()
+            HandleNPCAdd(contextData.unit, npcIDNum)
+        end)
 
-    if hasExisting then
-        rootDescription:CreateButton(L["UNIT_CTX_UPDATE_LOCATION"], function()
-            HandleNPCUpdateLocation(contextData.unit, npcIDNum)
+        if hasExisting then
+            rootDescription:CreateButton(L["UNIT_CTX_UPDATE_LOCATION"], function()
+                HandleNPCUpdateLocation(contextData.unit, npcIDNum)
+            end)
+        end
+    end
+
+    if hasVendor then
+        rootDescription:CreateButton(L["UNIT_CTX_OPEN_VENDOR_DETAILS"], function()
+            HandleOpenVendorDetails(npcIDNum)
         end)
     end
 end

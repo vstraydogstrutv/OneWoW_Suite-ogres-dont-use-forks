@@ -712,6 +712,7 @@ OneWoW.Locales["enUS"] = {
     ["UNIT_CTX_ADD_NPC_NOTE"]           = "Add Note",
     ["UNIT_CTX_EDIT_NPC_NOTE"]          = "Edit Note",
     ["UNIT_CTX_UPDATE_LOCATION"]        = "Update Location",
+    ["UNIT_CTX_OPEN_VENDOR_DETAILS"]    = "Open Vendor Details",
     ["UNIT_CTX_NOTES_NOT_LOADED"]       = "OneWoW Notes is not loaded.",
     ["UNIT_CTX_PLAYMOUNTS_NOT_LOADED"]  = "QoL Player Mounts is not loaded.",
     ["UNIT_CTX_TARGET_NOT_PLAYER"]      = "Target is not a player.",
@@ -1031,15 +1032,15 @@ OneWoW.Locales["enUS"] = {
     ["ESCPANEL_HOUSING_FORMAT"]   = "Housing: %d/%d",
     ["ESCPANEL_TOYS_FORMAT"]      = "Toys: %d/%d",
     ["ESCPANEL_ZONE_TODOS"]       = "Tasks:",
+
+    ["BINDING_HEADER_ONEWOW"] = "|cFF00FF00OneWoW|r",
+    ["BINDING_NAME_ONEWOW_TOGGLE"] = "Toggle OneWoW Window",
+    ["BINDING_NAME_ONEWOW_RELOAD_UI"] = "Reload UI",
+    ["BINDING_NAME_ONEWOW_MARK_ITEM_JUNK"] = "Mark Item as Junk",
+    ["BINDING_NAME_ONEWOW_MARK_ITEM_PROTECTED"] = "Mark Item as Protected",
 }
 
 OneWoW.L = {}
 for k, v in pairs(OneWoW.Locales["enUS"]) do
     OneWoW.L[k] = v
 end
-
-_G["BINDING_HEADER_ONEWOW"] = "|cFF00FF00OneWoW|r"
-_G["BINDING_NAME_ONEWOW_TOGGLE"] = "Toggle OneWoW Window"
-_G["BINDING_NAME_ONEWOW_RELOAD_UI"] = "Reload UI"
-_G["BINDING_NAME_ONEWOW_MARK_ITEM_JUNK"] = "Mark Item as Junk"
-_G["BINDING_NAME_ONEWOW_MARK_ITEM_PROTECTED"] = "Mark Item as Protected"

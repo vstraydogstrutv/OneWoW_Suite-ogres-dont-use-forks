@@ -57,6 +57,11 @@ local function ApplyLanguage()
         OneWoW.L[k] = localeData[k] or v
     end
     L = OneWoW.L
+    for k, v in pairs(L) do
+        if k:find("^BINDING_") then
+            _G[k] = v
+        end
+    end
 end
 
 local function ResetGUIOnSettingChange(self2)
