@@ -2,6 +2,14 @@ local addonName, ns = ...
 
 ns.Locales = ns.Locales or {}
 
+local function ApplyBindingGlobals(L)
+    for k, v in pairs(L) do
+        if k:find("^BINDING_") then
+            _G[k] = v
+        end
+    end
+end
+
 function ns.ApplyLanguage()
     local OneWoW_GUI = LibStub("OneWoW_GUI-1.0", true)
     local selectedLang
@@ -15,4 +23,5 @@ function ns.ApplyLanguage()
     for k, v in pairs(fallback) do
         ns.L[k] = localeData[k] or v
     end
+    ApplyBindingGlobals(ns.L)
 end

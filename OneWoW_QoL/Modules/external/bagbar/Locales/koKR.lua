@@ -39,8 +39,3 @@ L["BAGBAR_GROW_UP"]                      = "위"
 L["BAGBAR_EXPRESSION_FILTER_HEADER"]      = "표현식 필터"
 L["BAGBAR_EXPRESSION_FILTER_DESC"]        = "가방에 어떤 아이템이 나타날 수 있는지 정하는 PredicateEngine 표현식입니다(가방 검색과 동일한 키워드). ?를 눌러 도움말을 보세요. 착용 가능한 장비는 이 표현식과 별도로 항상 제외됩니다."
 L["BAGBAR_EXPRESSION_FILTER_PLACEHOLDER"] = "예: #usable & #mount"
-
-BINDING_NAME_BAGITEM_1 = "가방 아이템 1"
-BINDING_NAME_BAGITEM_2 = "가방 아이템 2"
-BINDING_NAME_BAGITEM_3 = "가방 아이템 3"
-BINDING_NAME_BAGITEM_4 = "가방 아이템 4"

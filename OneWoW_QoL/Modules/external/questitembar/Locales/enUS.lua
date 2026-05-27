@@ -60,8 +60,3 @@ L["QUESTITEMBAR_GROW_RIGHT"]         = "Right"
 L["QUESTITEMBAR_GROW_LEFT"]          = "Left"
 L["QUESTITEMBAR_GROW_DOWN"]          = "Down"
 L["QUESTITEMBAR_GROW_UP"]            = "Up"
-
-BINDING_NAME_QUESTITEM_1 = "Quest Item 1"
-BINDING_NAME_QUESTITEM_2 = "Quest Item 2"
-BINDING_NAME_QUESTITEM_3 = "Quest Item 3"
-BINDING_NAME_QUESTITEM_4 = "Quest Item 4"

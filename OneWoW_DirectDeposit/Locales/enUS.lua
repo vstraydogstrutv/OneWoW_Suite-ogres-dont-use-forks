@@ -135,16 +135,15 @@ OneWoW_DirectDeposit.Locales["enUS"] = {
     ["TOOLTIP_WARBAND"] = "Warband",
     ["TOOLTIP_GUILD"] = "Guild",
 
+    ["BINDING_HEADER_ONEWOW_DIRECTDEPOSIT"] = "|cFF00FF00OneWoW|r Direct Deposit",
+    ["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_TOGGLE"] = "Toggle Direct Deposit Window",
+    ["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_DEPOSIT"] = "Deposit Items Now",
+    ["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_ADD_PERSONAL"] = "Quick Add: Personal Bank",
+    ["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_ADD_WARBAND"] = "Quick Add: Warband Bank",
+    ["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_ADD_GUILD"] = "Quick Add: Guild Bank",
 }
 
 OneWoW_DirectDeposit.L = {}
 for k, v in pairs(OneWoW_DirectDeposit.Locales["enUS"]) do
     OneWoW_DirectDeposit.L[k] = v
 end
-
-_G["BINDING_HEADER_ONEWOW_DIRECTDEPOSIT"] = "|cFF00FF00OneWoW|r Direct Deposit"
-_G["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_TOGGLE"] = "Toggle Direct Deposit Window"
-_G["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_DEPOSIT"] = "Deposit Items Now"
-_G["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_ADD_PERSONAL"] = "Quick Add: Personal Bank"
-_G["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_ADD_WARBAND"] = "Quick Add: Warband Bank"
-_G["BINDING_NAME_ONEWOW_DIRECTDEPOSIT_ADD_GUILD"] = "Quick Add: Guild Bank"

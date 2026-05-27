@@ -1196,9 +1196,9 @@ L_enUS["MSG_CHAR_ADDON_NOT_LOADED"] = "Warning - Character data addon not loaded
 L_enUS["MSG_NO_CHARS_SELECTED"] = "No characters selected."
 L_enUS["MSG_CHARS_REMOVED"] = "Removed %d character(s). Reloading..."
 
-_G["BINDING_HEADER_ONEWOW_ALTTRACKER"] = "|cFF00FF00OneWoW|r AltTracker"
-_G["BINDING_NAME_ONEWOW_ALTTRACKER_TOGGLE"] = "Toggle AltTracker Window"
-_G["BINDING_NAME_ONEWOW_ALTTRACKER_OPEN_SETUP"] = "Open Alt Setup"
+L_enUS["BINDING_HEADER_ONEWOW_ALTTRACKER"] = "|cFF00FF00OneWoW|r AltTracker"
+L_enUS["BINDING_NAME_ONEWOW_ALTTRACKER_TOGGLE"] = "Toggle AltTracker Window"
+L_enUS["BINDING_NAME_ONEWOW_ALTTRACKER_OPEN_SETUP"] = "Open Alt Setup"
 
 ns.L = {}
 for k, v in pairs(ns.Locales["enUS"]) do ns.L[k] = v end

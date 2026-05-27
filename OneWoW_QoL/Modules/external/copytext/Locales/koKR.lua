@@ -17,5 +17,3 @@ L_enUS["COPYTEXT_TOGGLE_FAST_DESC"]           = "TEST"
 L_enUS["COPYTEXT_NO_TEXT"]                    = "TEST"
 L_enUS["COPYTEXT_TOOLTIP_CONTENT"]            = "TEST"
 L_enUS["COPYTEXT_UI_CONTENT"]                 = "TEST"
-
-BINDING_NAME_COPY_TEXT = "텍스트 복사"

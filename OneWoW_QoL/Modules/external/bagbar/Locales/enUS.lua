@@ -38,8 +38,3 @@ L["BAGBAR_GROW_UP"]                      = "Up"
 L["BAGBAR_EXPRESSION_FILTER_HEADER"]      = "Expression Filter"
 L["BAGBAR_EXPRESSION_FILTER_DESC"]        = "Keyword expression for which bag items appear (same keywords as Bag search). Click ? for help. Equippable gear and quest items are excluded automatically from this expression."
 L["BAGBAR_EXPRESSION_FILTER_PLACEHOLDER"] = "e.g. #usable & #mount"
-
-BINDING_NAME_BAGITEM_1 = "Bag Item 1"
-BINDING_NAME_BAGITEM_2 = "Bag Item 2"
-BINDING_NAME_BAGITEM_3 = "Bag Item 3"
-BINDING_NAME_BAGITEM_4 = "Bag Item 4"

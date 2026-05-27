@@ -27,6 +27,11 @@ local function ApplyLanguage()
     for k, v in pairs(fallback) do
         L[k] = localeData[k] or v
     end
+    for k, v in pairs(L) do
+        if k:find("^BINDING_") then
+            _G[k] = v
+        end
+    end
 end
 
 
