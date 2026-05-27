@@ -125,7 +125,7 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
     pin:SetScript("OnDragStop", function(myself)
         myself:StopMovingOrSizing()
         local point, _, relativePoint, x, y = myself:GetPoint()
-        ZonePins:SavePinPosition(zoneName, point, relativePoint, x, y, semyselflf:GetWidth(), myself:GetHeight())
+        ZonePins:SavePinPosition(zoneName, point, relativePoint, x, y, myself:GetWidth(), myself:GetHeight())
     end)
 
     pin:SetScript("OnMouseDown", function(myself)
@@ -548,7 +548,7 @@ function ZonePins:CreateZonePin(zoneName, zoneData)
 
     pin:SetScript("OnHide", function(myself)
         if myself._destroying then
-            if OneWoW_Notes.zonePins and adOneWoW_Notesdon.zonePins[zoneName] == myself then
+            if OneWoW_Notes.zonePins and OneWoW_Notes.zonePins[zoneName] == myself then
                 OneWoW_Notes.zonePins[zoneName] = nil
             end
         end

@@ -529,8 +529,8 @@ L["UI_HELP_PIN_ZONE_LINE3"]         = "Right-click the zone pin for display opti
 
 L["ADDON_TITLE_SHORT"]              = "Notes"
 
-_G["BINDING_HEADER_ONEWOW_NOTES"] = "|cFF00FF00OneWoW|r Notes"
-_G["BINDING_NAME_ONEWOW_NOTES_QUICKNOTE"] = "Quick Note"
+L["BINDING_HEADER_ONEWOW_NOTES"] = "|cFF00FF00OneWoW|r Notes"
+L["BINDING_NAME_ONEWOW_NOTES_QUICKNOTE"] = "Quick Note"
 
 ns.L = {}
 for k, v in pairs(ns.Locales["enUS"]) do ns.L[k] = v end
