@@ -34,6 +34,7 @@ In the in-game Profession crafting page, three buttons appear under the schemati
 - **Make List** — create a new list named after the recipe and populate it with the recipe's reagents.
 - **Add to Active** — add the recipe's reagents to the current default/active list.
 - **Add to List** — pick any existing list to add the reagents to.
+- **Shift-click** any of the three buttons to enter how many crafts to add (materials scale accordingly).
 
 When you click the green **Craft** button on an item row, the addon:
 

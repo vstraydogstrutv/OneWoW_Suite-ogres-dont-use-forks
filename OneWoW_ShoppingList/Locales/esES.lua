@@ -88,6 +88,7 @@ ns.RegisterLocale("esES", {
     ["OWSL_TT_MAKE_LIST_DESC"] = "Crea una lista nueva con los reactivos de esta receta",
     ["OWSL_TT_ADD_TO_ACTIVE_TITLE"] = "Añadir a la lista activa",
     ["OWSL_TT_ADD_TO_ACTIVE_DESC"] = "Añade los reactivos a la lista marcada con estrella",
+    ["OWSL_TT_PROF_SHIFT_QTY"] = "Mayús+clic: añadir materiales para varias fabricaciones a la vez",
     ["OWSL_TT_OPEN_LIST_TITLE"] = "Abrir lista de compras",
     ["OWSL_TT_OPEN_LIST_DESC"] = "Clic para abrir la interfaz",
     ["OWSL_TT_DEFAULT_LIST"] = "Lista predeterminada",
@@ -217,6 +218,7 @@ ns.RegisterLocale("esES", {
     ["OWSL_SETTINGS_SHOW_AH_BUTTON"] = "Botón en la casa de subastas",
     ["OWSL_DIALOG_SET_QTY"] = "Establecer cantidad necesaria:",
     ["OWSL_DIALOG_SET_LIST_QTY"] = "Establecer cantidad de la orden:",
+    ["OWSL_DIALOG_PROF_CRAFT_COUNT"] = "Número de fabricaciones a añadir:",
     ["OWSL_STATUS_ITEMS_SUMMARY"] = "%d objetos (%d completados)",
 
     ["OWSL_LANG_ENGLISH"] = "English",

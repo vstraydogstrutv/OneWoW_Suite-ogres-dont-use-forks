@@ -88,6 +88,7 @@ ns.RegisterLocale("koKR", {
     ["OWSL_TT_MAKE_LIST_DESC"] = "이 레시피의 시약으로 새 쇼핑 목록을 만듭니다.",
     ["OWSL_TT_ADD_TO_ACTIVE_TITLE"] = "활성 목록에 추가",
     ["OWSL_TT_ADD_TO_ACTIVE_DESC"] = "현재 별표 표시된 쇼핑 목록에 이 레시피의 시약을 추가합니다.",
+    ["OWSL_TT_PROF_SHIFT_QTY"] = "쉬프트+클릭: 여러 제작분의 재료를 한 번에 추가",
     ["OWSL_TT_OPEN_LIST_TITLE"] = "쇼핑 목록 열기",
     ["OWSL_TT_OPEN_LIST_DESC"] = "클릭하면 쇼핑 목록 UI가 열립니다.",
     ["OWSL_TT_DEFAULT_LIST"] = "기본 목록",
@@ -217,6 +218,7 @@ ns.RegisterLocale("koKR", {
     ["OWSL_SETTINGS_SHOW_AH_BUTTON"] = "경매장에 버튼 표시",
     ["OWSL_DIALOG_SET_QTY"] = "필요한 수량 설정:",
     ["OWSL_DIALOG_SET_LIST_QTY"] = "공예품 주문 수량 설정:",
+    ["OWSL_DIALOG_PROF_CRAFT_COUNT"] = "추가할 제작 횟수:",
     ["OWSL_STATUS_ITEMS_SUMMARY"] = "%d개 항목(%d개 완료)",
 
     ["OWSL_LANG_ENGLISH"] = "English",

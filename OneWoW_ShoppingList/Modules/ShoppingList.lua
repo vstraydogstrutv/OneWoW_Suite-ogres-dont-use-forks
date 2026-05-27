@@ -36,6 +36,7 @@ function ShoppingList:Initialize()
     craftableCache = {}
     self.initialized = true
     C_Timer.After(2, function()
+        self:RepairOrphanedLists()
         self:FixAllCraftOrderNames()
     end)
 end
@@ -216,13 +217,56 @@ function ShoppingList:GetCraftOrdersByItem(itemID)
 end
 
 function ShoppingList:GetParentLists()
+    local db = GetDB().global.shoppingLists
+    local defaultList = db.defaultList or MAIN_LIST_KEY
     local result = {}
-    for listName, list in pairs(GetDB().global.shoppingLists.lists) do
+    for listName, list in pairs(db.lists) do
         if not list.isCraftOrder and not list.parentList then
             table.insert(result, listName)
         end
     end
+    table.sort(result, function(a, b)
+        if a == defaultList then return true end
+        if b == defaultList then return false end
+        local fa = self:IsListFavorite(a)
+        local fb = self:IsListFavorite(b)
+        if fa ~= fb then return fa end
+        if a == MAIN_LIST_KEY then return true end
+        if b == MAIN_LIST_KEY then return false end
+        return a < b
+    end)
     return result
+end
+
+function ShoppingList:RepairOrphanedLists()
+    local db = GetDB().global.shoppingLists.lists
+    local repaired = false
+
+    for _, list in pairs(db) do
+        if list.parentList and not db[list.parentList] then
+            list.parentList = nil
+            repaired = true
+        end
+    end
+
+    for _, list in pairs(db) do
+        if list.childLists then
+            for i = #list.childLists, 1, -1 do
+                if not db[list.childLists[i]] then
+                    table.remove(list.childLists, i)
+                    repaired = true
+                end
+            end
+            if #list.childLists == 0 then
+                list.isParent = false
+                list.childLists = nil
+                repaired = true
+            end
+        end
+    end
+
+    if repaired then ScheduleRefresh() end
+    return repaired
 end
 
 function ShoppingList:GetChildLists(listName)

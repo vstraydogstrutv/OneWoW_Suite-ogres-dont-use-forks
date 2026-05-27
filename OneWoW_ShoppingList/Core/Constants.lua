@@ -38,4 +38,10 @@ function OneWoW_ShoppingList.SetLocale(lang)
             OneWoW_ShoppingList.L[k] = v
         end
     end
+
+    for k, v in pairs(OneWoW_ShoppingList.L) do
+        if k:find("^BINDING_") then
+            _G[k] = v
+        end
+    end
 end

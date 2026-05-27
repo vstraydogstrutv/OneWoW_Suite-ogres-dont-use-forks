@@ -88,6 +88,7 @@ ns.RegisterLocale("deDE", {
     ["OWSL_TT_MAKE_LIST_DESC"] = "Erstellt eine neue Liste mit diesen Reagenzien",
     ["OWSL_TT_ADD_TO_ACTIVE_TITLE"] = "Zur aktiven Liste hinzufügen",
     ["OWSL_TT_ADD_TO_ACTIVE_DESC"] = "Fügt die Reagenzien zur aktuell mit Stern markierten Liste hinzu",
+    ["OWSL_TT_PROF_SHIFT_QTY"] = "Umschalt+Klick: Materialien für mehrere Herstellungen auf einmal hinzufügen",
     ["OWSL_TT_OPEN_LIST_TITLE"] = "Einkaufsliste öffnen",
     ["OWSL_TT_OPEN_LIST_DESC"] = "Klicken zum Öffnen der Einkaufsliste",
     ["OWSL_TT_DEFAULT_LIST"] = "Standardliste",
@@ -217,6 +218,7 @@ ns.RegisterLocale("deDE", {
     ["OWSL_SETTINGS_SHOW_AH_BUTTON"] = "Schaltfläche im Auktionshaus",
     ["OWSL_DIALOG_SET_QTY"] = "Benötigte Menge festlegen:",
     ["OWSL_DIALOG_SET_LIST_QTY"] = "Menge des Herstellauftrags festlegen:",
+    ["OWSL_DIALOG_PROF_CRAFT_COUNT"] = "Anzahl der Herstellungen:",
     ["OWSL_STATUS_ITEMS_SUMMARY"] = "%d Gegenstände (%d erledigt)",
 
     ["OWSL_LANG_ENGLISH"] = "English",

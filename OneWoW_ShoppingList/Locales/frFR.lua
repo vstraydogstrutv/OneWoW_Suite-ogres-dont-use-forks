@@ -88,6 +88,7 @@ ns.RegisterLocale("frFR", {
     ["OWSL_TT_MAKE_LIST_DESC"] = "Crée une nouvelle liste de courses avec les réactifs de cette recette",
     ["OWSL_TT_ADD_TO_ACTIVE_TITLE"] = "Ajouter à la liste active",
     ["OWSL_TT_ADD_TO_ACTIVE_DESC"] = "Ajoute les réactifs de cette recette à la liste de courses actuellement favorite",
+    ["OWSL_TT_PROF_SHIFT_QTY"] = "Maj+clic : ajouter les matériaux pour plusieurs fabrications d'un coup",
     ["OWSL_TT_OPEN_LIST_TITLE"] = "Ouvrir la liste de courses",
     ["OWSL_TT_OPEN_LIST_DESC"] = "Cliquez pour ouvrir l'interface utilisateur de la liste de courses",
     ["OWSL_TT_DEFAULT_LIST"] = "Liste par défaut",
@@ -217,6 +218,7 @@ ns.RegisterLocale("frFR", {
     ["OWSL_SETTINGS_SHOW_AH_BUTTON"] = "Afficher le bouton dans l’hôtel des ventes",
     ["OWSL_DIALOG_SET_QTY"] = "Définir la quantité nécessaire :",
     ["OWSL_DIALOG_SET_LIST_QTY"] = "Définir la quantité de commande de produits artisanaux :",
+    ["OWSL_DIALOG_PROF_CRAFT_COUNT"] = "Nombre de fabrications à ajouter :",
     ["OWSL_STATUS_ITEMS_SUMMARY"] = "%d éléments (%d terminés)",
 
     ["OWSL_LANG_ENGLISH"] = "Anglais",

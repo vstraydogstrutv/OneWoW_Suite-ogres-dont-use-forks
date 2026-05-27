@@ -88,6 +88,7 @@ ns.RegisterLocale("ruRU", {
     ["OWSL_TT_MAKE_LIST_DESC"] = "Создает новый список покупок с реагентами этого рецепта.",
     ["OWSL_TT_ADD_TO_ACTIVE_TITLE"] = "Добавить в активный список",
     ["OWSL_TT_ADD_TO_ACTIVE_DESC"] = "Добавляет реагенты этого рецепта в список отмеченных покупок.",
+    ["OWSL_TT_PROF_SHIFT_QTY"] = "Shift+щелчок: добавить материалы для нескольких изготовлений сразу",
     ["OWSL_TT_OPEN_LIST_TITLE"] = "Открыть список покупок",
     ["OWSL_TT_OPEN_LIST_DESC"] = "Нажмите, чтобы открыть интерфейс списка покупок.",
     ["OWSL_TT_DEFAULT_LIST"] = "Список по умолчанию",
@@ -217,6 +218,7 @@ ns.RegisterLocale("ruRU", {
     ["OWSL_SETTINGS_SHOW_AH_BUTTON"] = "Показать кнопку в аукционном доме",
     ["OWSL_DIALOG_SET_QTY"] = "Необходимое количество набора:",
     ["OWSL_DIALOG_SET_LIST_QTY"] = "Установить количество крафтового заказа:",
+    ["OWSL_DIALOG_PROF_CRAFT_COUNT"] = "Сколько изготовлений добавить:",
     ["OWSL_STATUS_ITEMS_SUMMARY"] = "%d элементов (выполнено %d)",
 
     ["OWSL_LANG_ENGLISH"] = "Английский",

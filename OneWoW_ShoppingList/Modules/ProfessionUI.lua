@@ -54,6 +54,64 @@ local function AddIngredientsToList(listName, recipeID, quantity)
     return true, #ingredients
 end
 
+local function ParseCraftQuantity(text)
+    local qty = tonumber(text)
+    if not qty or qty < 1 then return nil end
+    return math.floor(qty)
+end
+
+local function RequestCraftQuantity(onReady)
+    if IsShiftKeyDown() then
+        ns.Dialogs:InputDialog(L["OWSL_DIALOG_PROF_CRAFT_COUNT"], "1", function(val)
+            local qty = ParseCraftQuantity(val)
+            if qty then onReady(qty) end
+        end, L["OWSL_BTN_ADD"])
+    else
+        onReady(1)
+    end
+end
+
+local function PrintIngredientsAdded(listName, ingredientCount)
+    print(string.format(
+        L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_MSG_CRAFT_ORDER_UNDER"],
+        listName, ingredientCount, ingredientCount ~= 1 and "s" or "", ""))
+end
+
+local function RefreshShoppingListUI()
+    if ns.MainWindow and ns.MainWindow.frame and ns.MainWindow.frame:IsShown() then
+        if ns.MainWindow.RefreshSidebar then ns.MainWindow:RefreshSidebar() end
+        if ns.MainWindow.RefreshItemList then ns.MainWindow:RefreshItemList() end
+    end
+end
+
+local function ShowAddToListMenu(recipeID, quantity)
+    local parentLists = ns.ShoppingList:GetParentLists()
+    if #parentLists == 0 then
+        print(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_LIST_NOT_FOUND"])
+        return
+    end
+
+    MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
+        rootDescription:CreateTitle(L["OWSL_TT_ADD_TO_LIST_TITLE"])
+        for _, listName in ipairs(parentLists) do
+            local capturedName = listName
+            rootDescription:CreateButton(listName, function()
+                local ok, count = AddIngredientsToList(capturedName, recipeID, quantity)
+                if ok then
+                    PrintIngredientsAdded(capturedName, count)
+                    RefreshShoppingListUI()
+                end
+            end)
+        end
+    end)
+end
+
+local function ShowProfButtonTooltip(titleKey, descKey)
+    GameTooltip:SetText(L[titleKey], 1, 1, 1)
+    GameTooltip:AddLine(L[descKey], 0.8, 0.8, 0.8, true)
+    GameTooltip:AddLine(L["OWSL_TT_PROF_SHIFT_QTY"], 0.65, 0.82, 0.65, true)
+end
+
 local openBtn
 local makeListBtn
 local addToActiveBtn
@@ -102,26 +160,28 @@ local function CreateButtons(schematicForm)
         local recipeID, recipeInfo = GetCurrentRecipeInfo()
         if not recipeID or not recipeInfo then return end
 
-        local recipeName = recipeInfo.name or (string.format(L["OWSL_RECIPE_UNKNOWN"], recipeID))
-        local listName   = recipeName
+        RequestCraftQuantity(function(quantity)
+            local recipeName = recipeInfo.name or (string.format(L["OWSL_RECIPE_UNKNOWN"], recipeID))
+            local listName   = recipeName
 
-        if GetDB().global.shoppingLists.lists[listName] then
-            print(string.format(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_CONFIRM_LIST_EXISTS"], listName))
-            print(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_CONFIRM_LIST_EXISTS2"])
-        else
-            ns.ShoppingList:CreateList(listName)
-        end
+            if GetDB().global.shoppingLists.lists[listName] then
+                print(string.format(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_CONFIRM_LIST_EXISTS"], listName))
+                print(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_CONFIRM_LIST_EXISTS2"])
+            else
+                ns.ShoppingList:CreateList(listName)
+            end
 
-        local ok, count = AddIngredientsToList(listName, recipeID, 1)
-        if ok then
-            print(string.format(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_MSG_CRAFT_ORDER_UNDER"], listName, count, count ~= 1 and "s" or "", ""))
-        end
+            local ok, count = AddIngredientsToList(listName, recipeID, quantity)
+            if ok then
+                PrintIngredientsAdded(listName, count)
+                RefreshShoppingListUI()
+            end
+        end)
     end)
 
     makeListBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText(L["OWSL_TT_MAKE_LIST_TITLE"], 1, 1, 1)
-        GameTooltip:AddLine(L["OWSL_TT_MAKE_LIST_DESC"], 0.8, 0.8, 0.8, true)
+        ShowProfButtonTooltip("OWSL_TT_MAKE_LIST_TITLE", "OWSL_TT_MAKE_LIST_DESC")
         GameTooltip:Show()
     end)
     makeListBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -147,18 +207,20 @@ local function CreateButtons(schematicForm)
         local recipeID = GetCurrentRecipeInfo()
         if not recipeID then return end
 
-        local lists = GetDB().global.shoppingLists
-        local activeList = lists.defaultList or lists.activeList or ns.MAIN_LIST_KEY
-        local ok, count = AddIngredientsToList(activeList, recipeID, 1)
-        if ok then
-            print(string.format(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_MSG_CRAFT_ORDER_UNDER"], activeList, count, count ~= 1 and "s" or "", ""))
-        end
+        RequestCraftQuantity(function(quantity)
+            local lists = GetDB().global.shoppingLists
+            local activeList = lists.defaultList or lists.activeList or ns.MAIN_LIST_KEY
+            local ok, count = AddIngredientsToList(activeList, recipeID, quantity)
+            if ok then
+                PrintIngredientsAdded(activeList, count)
+                RefreshShoppingListUI()
+            end
+        end)
     end)
 
     addToActiveBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText(L["OWSL_TT_ADD_TO_ACTIVE_TITLE"], 1, 1, 1)
-        GameTooltip:AddLine(L["OWSL_TT_ADD_TO_ACTIVE_DESC"], 0.8, 0.8, 0.8, true)
+        ShowProfButtonTooltip("OWSL_TT_ADD_TO_ACTIVE_TITLE", "OWSL_TT_ADD_TO_ACTIVE_DESC")
         GameTooltip:Show()
     end)
     addToActiveBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -184,25 +246,14 @@ local function CreateButtons(schematicForm)
         local recipeID = GetCurrentRecipeInfo()
         if not recipeID then return end
 
-        local allLists = ns.ShoppingList:GetAllLists()
-        MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
-            rootDescription:CreateTitle(L["OWSL_TT_ADD_TO_LIST_TITLE"])
-            for listName in pairs(allLists) do
-                local capturedName = listName
-                rootDescription:CreateButton(listName, function()
-                    local ok, count = AddIngredientsToList(capturedName, recipeID, 1)
-                    if ok then
-                        print(string.format(L["ADDON_CHAT_PREFIX"] .. " " .. L["OWSL_MSG_CRAFT_ORDER_UNDER"], capturedName, count, count ~= 1 and "s" or "", ""))
-                    end
-                end)
-            end
+        RequestCraftQuantity(function(quantity)
+            ShowAddToListMenu(recipeID, quantity)
         end)
     end)
 
     addToListBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText(L["OWSL_TT_ADD_TO_LIST_TITLE"], 1, 1, 1)
-        GameTooltip:AddLine(L["OWSL_TT_ADD_TO_LIST_DESC"], 0.8, 0.8, 0.8, true)
+        ShowProfButtonTooltip("OWSL_TT_ADD_TO_LIST_TITLE", "OWSL_TT_ADD_TO_LIST_DESC")
         GameTooltip:Show()
     end)
     addToListBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)

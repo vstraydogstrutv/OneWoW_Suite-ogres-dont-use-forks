@@ -88,6 +88,7 @@ ns.RegisterLocale("enUS", {
     ["OWSL_TT_MAKE_LIST_DESC"] = "Creates a new shopping list with this recipe's reagents",
     ["OWSL_TT_ADD_TO_ACTIVE_TITLE"] = "Add to Active List",
     ["OWSL_TT_ADD_TO_ACTIVE_DESC"] = "Adds this recipe's reagents to your default shopping list",
+    ["OWSL_TT_PROF_SHIFT_QTY"] = "Shift-click to add materials for multiple crafts at once",
     ["OWSL_TT_OPEN_LIST_TITLE"] = "Open Shopping List",
     ["OWSL_TT_OPEN_LIST_DESC"] = "Click to open the shopping list UI",
     ["OWSL_TT_DEFAULT_LIST"] = "Default List",
@@ -223,6 +224,7 @@ ns.RegisterLocale("enUS", {
     ["OWSL_DIALOG_DONT_ASK_AGAIN"] = "Do not ask again",
     ["OWSL_DIALOG_SET_QTY"] = "Set quantity needed:",
     ["OWSL_DIALOG_SET_LIST_QTY"] = "Set craft order quantity:",
+    ["OWSL_DIALOG_PROF_CRAFT_COUNT"] = "Number of crafts to add:",
     ["OWSL_STATUS_ITEMS_SUMMARY"] = "%d items (%d complete)",
 
     ["OWSL_LANG_ENGLISH"] = "English",
@@ -279,10 +281,10 @@ ns.RegisterLocale("enUS", {
     ["OWSL_SETTINGS_ICON_ALLIANCE"] = "Alliance",
     ["OWSL_SETTINGS_ICON_NEUTRAL"] = "Neutral",
     ["ADDON_CHAT_PREFIX"] = "|cFFFFD100OneWoW Shopping List:|r",
+
+    ["BINDING_HEADER_ONEWOW_SHOPPING_LIST"] = "|cFF00FF00OneWoW|r Shopping List",
+    ["BINDING_NAME_ONEWOW_SHOPPING_LIST_TOGGLE"] = "Toggle Shopping List",
+    ["BINDING_NAME_ONEWOW_SHOPPING_LIST_ADD_ITEM"] = "Add Item to Default List",
 })
 
 ns.SetLocale("enUS")
-
-_G["BINDING_HEADER_ONEWOW_SHOPPING_LIST"] = "|cFF00FF00OneWoW|r Shopping List"
-_G["BINDING_NAME_ONEWOW_SHOPPING_LIST_TOGGLE"] = "Toggle Shopping List"
-_G["BINDING_NAME_ONEWOW_SHOPPING_LIST_ADD_ITEM"] = "Add Item to Default List"

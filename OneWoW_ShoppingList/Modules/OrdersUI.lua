@@ -575,10 +575,10 @@ local function CreateButtons(details)
     addToListBtn = CreateTextButton(details, 110, (L and L["OWSL_PROF_BTN_ADD_TO_LIST"]) or "Add to List")
     addToListBtn:SetPoint("RIGHT", addToActiveBtn, "LEFT", -5, 0)
     addToListBtn:SetScript("OnClick", function()
-        local allLists = ns.ShoppingList and ns.ShoppingList.GetAllLists and ns.ShoppingList:GetAllLists() or {}
+        local parentLists = ns.ShoppingList:GetParentLists()
         MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
             rootDescription:CreateTitle("Add missing reagents to...")
-            for listName in pairs(allLists) do
+            for _, listName in ipairs(parentLists) do
                 local capturedName = listName
                 rootDescription:CreateButton(listName, function()
                     AddMissingToList(capturedName)

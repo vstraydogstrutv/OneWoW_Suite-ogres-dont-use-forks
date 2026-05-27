@@ -1321,13 +1321,11 @@ function MainWindow:StartCraftOrder(listName, itemID, quantity, recipe)
 end
 
 function MainWindow:ShowItemContextMenu(itemID, listName)
-    local allLists = ns.ShoppingList:GetAllLists()
-
     MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
         rootDescription:CreateTitle(L["OWSL_TT_ITEM_TITLE"])
 
         local moveToMenu = rootDescription:CreateButton(L["OWSL_MENU_MOVE_TO"])
-        for otherListName in pairs(allLists) do
+        for _, otherListName in ipairs(ns.ShoppingList:GetParentLists()) do
             if otherListName ~= listName then
                 local capturedOther = otherListName
                 moveToMenu:CreateButton(otherListName, function()

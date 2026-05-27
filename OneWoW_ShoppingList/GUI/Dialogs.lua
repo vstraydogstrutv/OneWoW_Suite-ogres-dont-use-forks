@@ -16,7 +16,7 @@ local function CloseActive()
     end
 end
 
-function Dialogs:InputDialog(labelText, defaultVal, onConfirm, _)
+function Dialogs:InputDialog(labelText, defaultVal, onConfirm, confirmLabel)
     CloseActive()
 
     local result = OneWoW_GUI:CreateDialog({
@@ -27,7 +27,7 @@ function Dialogs:InputDialog(labelText, defaultVal, onConfirm, _)
         strata    = "FULLSCREEN_DIALOG",
         onClose   = function() activeDialogResult = nil end,
         buttons   = {
-            { text = L["OWSL_BTN_CREATE"] },
+            { text = confirmLabel or L["OWSL_BTN_CREATE"] },
             { text = L["OWSL_BTN_CANCEL"], onClick = function(f)
                 f:Hide()
                 activeDialogResult = nil
