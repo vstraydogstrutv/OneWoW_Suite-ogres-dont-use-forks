@@ -717,3 +717,31 @@ function BagBarModule:ShowContextMenu(anchor)
 end
 
 ns.BagBarModule = BagBarModule
+
+-- ============================================================================
+-- Slash command: /bagbar  /owbb
+-- ============================================================================
+-- Toggles the BagBar module's enabled state. Registered at file-load time
+-- (outside OnEnable/OnDisable) so the command can always re-show a hidden bar.
+-- ============================================================================
+
+local function ToggleBagBarModule()
+    local addon = _G.OneWoW_QoL
+    if not addon or not addon.db then
+        print("|cFFFFD100OneWoW QoL:|r BagBar isn't ready yet.")
+        return
+    end
+
+    local nowEnabled = not ns.ModuleRegistry:IsEnabled("bagbar")
+    ns.ModuleRegistry:SetEnabled("bagbar", nowEnabled)
+
+    if nowEnabled then
+        print("|cFFFFD100OneWoW QoL:|r BagBar |cFF00FF00shown|r.")
+    else
+        print("|cFFFFD100OneWoW QoL:|r BagBar |cFFFF6666hidden|r.")
+    end
+end
+
+_G["SLASH_OWBAGBAR1"] = "/bagbar"
+_G["SLASH_OWBAGBAR2"] = "/owbb"
+SlashCmdList["OWBAGBAR"] = ToggleBagBarModule
