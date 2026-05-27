@@ -96,6 +96,31 @@ function ESCPanelModule:CreateCustomDetail(detailScrollChild, yOffset, isEnabled
     local ph0 = GetPortalHubDB()
     local panelsSide = (ph0 and ph0.escPanelsSide == "right") and "right" or "left"
     local portalsSide = (ph0 and ph0.escPortalsSide == "left") and "left" or "right"
+    local currentIconSize = (ph0 and ph0.escIconSize) or 32
+
+    local iconSizeLabel = detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    iconSizeLabel:SetPoint("TOPLEFT", detailScrollChild, "TOPLEFT", 12, yOffset)
+    iconSizeLabel:SetText(L["ESCPANEL_ICON_SIZE_LABEL"] or "Portal icon size")
+    iconSizeLabel:SetTextColor(OneWoW_GUI:GetThemeColor("TEXT_PRIMARY"))
+    yOffset = yOffset - iconSizeLabel:GetStringHeight() - 4
+
+    local iconSizeSlider = OneWoW_GUI:CreateSlider(detailScrollChild, {
+        width      = 220,
+        minVal     = 20,
+        maxVal     = 64,
+        step       = 2,
+        currentVal = currentIconSize,
+        fmt        = "%dpx",
+        onChange   = function(val)
+            local p = GetPortalHubDB()
+            if p then p.escIconSize = val end
+            if _G.OneWoW and _G.OneWoW.PortalHubEsc then
+                _G.OneWoW.PortalHubEsc:Reload()
+            end
+        end,
+    })
+    iconSizeSlider:SetPoint("TOPLEFT", detailScrollChild, "TOPLEFT", 12, yOffset)
+    yOffset = yOffset - 36 - 14
 
     local panelsRowLabel = detailScrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     panelsRowLabel:SetPoint("TOPLEFT", detailScrollChild, "TOPLEFT", 12, yOffset)
@@ -172,6 +197,10 @@ function ESCPanelModule:CreateCustomDetail(detailScrollChild, yOffset, isEnabled
             local pr = (p and p.escPortalsSide == "left") and "left" or "right"
             panelsDDText:SetText(ps == "right" and (L["ESCPANEL_SIDE_RIGHT"] or "Right") or (L["ESCPANEL_SIDE_LEFT"] or "Left"))
             portalsDDText:SetText(pr == "left" and (L["ESCPANEL_SIDE_LEFT"] or "Left") or (L["ESCPANEL_SIDE_RIGHT"] or "Right"))
+            local sz = (p and p.escIconSize) or 32
+            if iconSizeSlider.slider:GetValue() ~= sz then
+                iconSizeSlider.slider:SetValue(sz)
+            end
         end)
     end
 
