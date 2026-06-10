@@ -139,12 +139,18 @@ end
 
 local INTERACT_UNITS = { "npc", "questnpc", "target" }
 
+local function ShouldScanInteractUnit(unit)
+    if unit ~= "target" then return true end
+    if UnitIsPlayer(unit) or UnitPlayerControlled(unit) then return false end
+    return true
+end
+
 --- Resolve the NPC/object the player is currently interacting with into a flat
 --- record. Returns nil when no quest-relevant unit is present (e.g. board quests).
 ---@return table|nil
 local function GetInteractNPC()
     for _, unit in ipairs(INTERACT_UNITS) do
-        if UnitExists(unit) then
+        if UnitExists(unit) and ShouldScanInteractUnit(unit) then
             local guid = UnitGUID(unit)
             if guid then
                 local unitType, _, _, _, _, npcID = strsplit("-", guid)
